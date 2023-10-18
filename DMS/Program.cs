@@ -1,9 +1,23 @@
-﻿namespace DMS
+﻿using System.Net.Sockets;
+using System.Net;
+using DataStructures;
+
+namespace DMS
 {
     internal class Program
     {
         static void Main(string[] args)
         {
+            BTree<int> bTree = new(1);
+            bTree.Insert(5);
+            bTree.Insert(59);
+            bTree.Insert(555);
+            bTree.Insert(5);
+            bTree.Insert(44);
+            bTree.Insert(5212);
+            bTree.Insert(1);
+
+
             Console.WriteLine("Welcome to DMS");
 
             bool running = true;

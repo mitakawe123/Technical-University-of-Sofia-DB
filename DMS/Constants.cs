@@ -28,4 +28,11 @@ namespace DMS
         DELETE,
         INSERT
     }
+
+
+    public enum EDataPagesExtensions
+    {
+        MDF,
+        NDF
+    }
 }
