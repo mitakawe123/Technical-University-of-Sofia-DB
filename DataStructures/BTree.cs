@@ -2,7 +2,7 @@
 {
     public class BTree<T> where T : IComparable<T>
     {
-        private int degree;
+        private readonly int degree;
         private BTreeNode<T> root;
 
         public BTree(int degree)
@@ -79,8 +79,8 @@
 
         public class BTreeNode<T> where T : IComparable<T>
         {
-            public List<T> Keys { get; private set; } = new();
-            public List<BTreeNode<T>> Children { get; private set; } = new();
+            public DKList<T> Keys { get; private set; } = new();
+            public DKList<BTreeNode<T>> Children { get; private set; } = new();
             public bool IsLeaf => Children.Count == 0;
         }
     }
