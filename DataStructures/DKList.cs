@@ -9,7 +9,7 @@ namespace DataStructures
         private T[] _items;
         private int _size;
 
-        public DKList() 
+        public DKList()
         {
             _items = new T[4];
             _size = 0;
@@ -24,6 +24,32 @@ namespace DataStructures
                 _items = Array.Empty<T>();
             else
                 _items = new T[capacity];
+        }
+
+        public DKList(IEnumerable<T> collection)
+        {
+            if (collection == null)
+                throw new ArgumentNullException();
+
+            if (collection is ICollection<T> c)
+            {
+                int count = c.Count;
+                if (count == 0)
+                    _items = Array.Empty<T>();
+                else
+                {
+                    _items = new T[count];
+                    c.CopyTo(_items, 0);
+                    _size = count;
+                }
+            }
+            else
+            {
+                _items = Array.Empty<T>();
+                using IEnumerator<T> en = collection.GetEnumerator();
+                while (en.MoveNext())
+                    Add(en.Current);
+            }
         }
 
         public int Capacity
@@ -55,7 +81,21 @@ namespace DataStructures
 
         public bool IsReadOnly => false;
 
-        T IList<T>.this[int index] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        T IList<T>.this[int index]
+        {
+            get => this[index];
+            set
+            {
+                try
+                {
+                    this[index] = value;
+                }
+                catch (InvalidCastException)
+                {
+                    throw new ArgumentException(nameof(value));
+                }
+            }
+        }
 
         public T this[int index]
         {
@@ -63,7 +103,7 @@ namespace DataStructures
             {
                 if ((uint)index >= (uint)_size)
                     throw new ArgumentOutOfRangeException();
-                
+
                 return _items[index];
             }
             set
@@ -90,7 +130,7 @@ namespace DataStructures
             if ((uint)index > (uint)_size)
                 throw new ArgumentOutOfRangeException();
 
-            if (_size == _items.Length) 
+            if (_size == _items.Length)
                 Grow(_size + 1);
 
             if (index < _size)
@@ -104,9 +144,9 @@ namespace DataStructures
         {
             if ((uint)index >= (uint)_size)
                 throw new ArgumentOutOfRangeException();
-            
+
             _size--;
-           
+
             if (index < _size)
                 Array.Copy(_items, index + 1, _items, index, _size - index);
         }

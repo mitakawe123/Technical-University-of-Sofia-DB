@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace DMS
+﻿namespace DMS.Constants
 {
     public enum ECliCommands
     {
@@ -26,9 +20,18 @@ namespace DMS
         ORDER_BY,
         DISTINCT,
         DELETE,
-        INSERT
+        INSERT,
+        UPDATE,
+        DROP, 
+        ALTER, 
+        BEGIN, 
+        COMMIT, 
+        ROLLBACK, 
+        MERGE, 
+        CALL, 
+        DECLARE,
+        EXECUTE
     }
-
 
     public enum EDataPagesExtensions
     {
