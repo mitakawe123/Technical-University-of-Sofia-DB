@@ -66,7 +66,7 @@ namespace DMS.DataPages
                 binaryWriter.Write(Encoding.UTF8.GetBytes($"{DataPageConstants.PAGE_HEADER}: {FileNumber}\n"));
                 binaryWriter.Write(Encoding.UTF8.GetBytes($"m_freeCnt = {AvailableSpace}\n"));
                 binaryWriter.Write(Encoding.UTF8.GetBytes($"{DataPageConstants.DATA}:\n"));
-                binaryWriter.Write(data);
+                binaryWriter.Write($"{data}\n");
                 binaryWriter.Write(Encoding.UTF8.GetBytes($"{DataPageConstants.ROW_OFFSET}\n"));
 
                 FileNumber++;
