@@ -47,7 +47,7 @@ namespace DMS
                             Console.WriteLine("Invalid command. Type 'help' for available commands.");
                             break;
                     }
-                } 
+                }
                 catch (Exception)
                 {
                     Console.WriteLine("Invalid command. Type 'help' for available commands.");

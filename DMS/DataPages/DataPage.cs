@@ -8,40 +8,50 @@ namespace DMS.DataPages
         private const int PageSize = 8192; //8KB
         private const int HeaderSize = 96; //need to check for headers init kb size
 
-        private readonly byte[] _data;
+        public byte[] Data { get; private set; }
+        public int PageNumber { get ; private set; }
+        public int AvailableSpace { get; private set; }
 
-        public byte[] Data => _data;
 
-        public DataPage() => _data = new byte[PageSize];
-
-        private void InitializeHeader()
+        public DataPage(int pageNumber)
         {
-            byte[] header = Encoding.ASCII.GetBytes("PAGE HEADER");
-            //Buffer.BlockCopy(header, 0, Data, 0, HeaderSize);
-            //Add more information to the header as needed, such as metadata.
+            PageNumber = pageNumber;
+            AvailableSpace = PageSize - sizeof(int) - sizeof(int);
+            Data = new byte[AvailableSpace];
         }
 
-        public void WriteData(int offset, string content)
+        public void WriteData(byte[] data)
         {
-            byte[] dataBytes = Encoding.ASCII.GetBytes(content);
-            if (offset + dataBytes.Length <= PageSize - HeaderSize)
-            {
-                //Buffer.BlockCopy(dataBytes, 0, Data, HeaderSize + offset, dataBytes.Length);
-            }
-            else
-            {
-                //Here i need to make page splitting so that the new data goes to a new data page and not overflow
-            }
+            if (Data.Length > AvailableSpace)
+                return;
+
+            AvailableSpace -= Data.Length;
+            Array.Copy(data, 0, Data, PageSize - AvailableSpace - data.Length, data.Length);
         }
 
-        public string ReadData(int offset, int length)
+        public void SaveToFile(string filePath)
         {
-            if (offset + length > PageSize - HeaderSize)
-                return "";
+            using FileStream fileStream = new(filePath, FileMode.Append);
+            using BinaryWriter writer = new(fileStream);
+            writer.Write(PageNumber);
+            writer.Write(AvailableSpace);
+            writer.Write(Data);
+        }
 
-            byte[] dataBytes = new byte[length];
-            Buffer.BlockCopy(Data, HeaderSize + offset, dataBytes, 0, length);
-            return Encoding.ASCII.GetString(dataBytes);
+        public static DataPage LoadFromFile(string filePath)
+        {
+            using FileStream fileStream = new(filePath, FileMode.Open, FileAccess.Read);
+            using BinaryReader reader = new(fileStream);
+            int pageNumber = reader.ReadInt32();
+            int availableSpace = reader.ReadInt32();
+            byte[] data = reader.ReadBytes(PageSize - sizeof(int) - sizeof(int));
+
+            DataPage dataPage = new(pageNumber)
+            {
+                AvailableSpace = availableSpace,
+                Data = data
+            };
+            return dataPage;
         }
     }
 }

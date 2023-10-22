@@ -6,7 +6,7 @@ namespace DMS.Commands
     {
         public static Command Parse(ECliCommands commandType, string command)
         {
-            bool isValidQuery = CommandValidator.ValidateQuery(command);
+            bool isValidQuery = CommandValidator.ValidateQuery(commandType, command);
 
             if (!isValidQuery)
                 throw new Exception("Invalid Query");
