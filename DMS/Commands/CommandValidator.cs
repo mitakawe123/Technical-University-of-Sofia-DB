@@ -79,7 +79,9 @@ namespace DMS.Commands
                     return false;
                 }
 
-                if (!SqlDataTypes.CustomAny(x => item[..firstWhiteSpace].CustomToLower() == x.CustomToLower()))
+                int firstWhiteSpaceAfterColumnName = item.IndexOf(' ');
+                string columnName = item[..firstWhiteSpaceAfterColumnName];
+                if (SqlDataTypes.CustomAny(x => columnName.CustomToLower() == x.CustomToLower()))
                 {
                     Console.WriteLine("Invalid column name");
                     return false;

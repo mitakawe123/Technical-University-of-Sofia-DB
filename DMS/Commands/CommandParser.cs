@@ -1,4 +1,5 @@
 ﻿using DMS.Constants;
+using DMS.DataPages;
 using DMS.Extensions;
 
 namespace DMS.Commands
@@ -12,7 +13,7 @@ namespace DMS.Commands
             if (!isValidQuery)
                 throw new Exception("Invalid Query");
 
-            switch(commandType)
+            switch (commandType)
             {
                 case ECliCommands.CreateTable:
                     CreateTable(command);
@@ -23,11 +24,11 @@ namespace DMS.Commands
                     break;
                 case ECliCommands.TableInfo:
                     break;
-                default: 
+                default:
                     break;
             }
 
-            
+
             return new Command();
         }
 
@@ -41,7 +42,9 @@ namespace DMS.Commands
             string tableName = command[(firstWhiteSpace + 1)..openingBracket];
 
 
-
+            DataPage page = new();
+            byte[] data = { 72, 101, 114, 101, 32, 105, 115, 32, 97, 32, 117, 110, 105, 99, 111, 100, 101, 32, 99, 104, 97, 114, 97, 99, 116, 101, 114, 115, 32, 115, 116, 114, 105, 110, 103, 46, 32, 80, 105, 32, 40, 206, 160, 41, };
+            page.WriteData(data);
         }
     }
 }

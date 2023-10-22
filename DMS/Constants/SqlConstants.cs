@@ -22,13 +22,13 @@
         DELETE,
         INSERT,
         UPDATE,
-        DROP, 
-        ALTER, 
-        BEGIN, 
-        COMMIT, 
-        ROLLBACK, 
-        MERGE, 
-        CALL, 
+        DROP,
+        ALTER,
+        BEGIN,
+        COMMIT,
+        ROLLBACK,
+        MERGE,
+        CALL,
         DECLARE,
         EXECUTE
     }
@@ -111,5 +111,12 @@
         Equal = '=',
         Tilde = '~',
         GraveAccent = '`'
+    }
+
+    public enum DataPageType
+    {
+        IAM = 10,
+        DATA_OVERFLOW = 2,
+        IN_ROW_DATA = 1
     }
 }
