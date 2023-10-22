@@ -1,4 +1,5 @@
 ﻿using DMS.Constants;
+using DMS.Extensions;
 
 namespace DMS.Commands
 {
@@ -32,7 +33,15 @@ namespace DMS.Commands
 
         private static void CreateTable(string command)
         {
-            Console.WriteLine("Create table");
+            //create the data pages for the sql
+            command = command.CustomToLower();
+            int firstWhiteSpace = command.CustomIndexOf(' ');
+            int openingBracket = command.CustomIndexOf('(');
+            int closingBracketForColumns = command.CustomLastIndexOf(')');
+            string tableName = command[(firstWhiteSpace + 1)..openingBracket];
+
+
+
         }
     }
 }
