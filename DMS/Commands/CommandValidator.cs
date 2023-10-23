@@ -6,8 +6,7 @@ namespace DMS.Commands
 {
     public static class CommandValidator
     {
-        //remove this hashset and implement your
-        private static readonly HashSet<string> AllowedKeywords = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly DKList<string> AllowedKeywords = new();
         private static readonly DKList<char> InvalidTableNameCharacters = new();
         private static readonly DKList<string> SqlDataTypes = new();
 
