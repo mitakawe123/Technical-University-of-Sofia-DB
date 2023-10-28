@@ -140,7 +140,6 @@ namespace DMS.Extensions
             return input.CustomAny(x => x.Equals(value));
         }
 
-
         public static bool CustomIsWhiteSpace(this char input) => input is ' ';
 
         public static bool CustomStartsWith(this string input, string value, StringCompare comparisonType)
@@ -211,6 +210,16 @@ namespace DMS.Extensions
             return -1;
         }
 
+        public static int CustomIndexOfAny(this string input, char[] anyOf)
+        {
+            for (int i = 0; i < input.Length; i++)
+                for (int j = 0; j < anyOf.Length; j++)
+                    if (input[i] == anyOf[j])
+                        return i;
+
+            return -1;
+        }
+
         public static T[] CustomToArray<T>(this IEnumerable<T> collection)
         {
             T[] result = new T[collection.Count()];
@@ -247,6 +256,18 @@ namespace DMS.Extensions
                     return true;
 
             return false;
+        }
+    
+        public static char[] CustomArrayReverse(this char[] input)
+        {
+            char[] output = new char[input.Length];
+            int j = 0;
+            for (int i = input.Length - 1; i >= 0; i--)
+            {
+                output[j] = input[i];
+                j++;
+            }
+            return output;
         }
     }
 }

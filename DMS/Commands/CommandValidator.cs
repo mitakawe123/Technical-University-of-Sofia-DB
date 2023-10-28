@@ -34,6 +34,8 @@ namespace DMS.Commands
                         return false;
                     }
                     return true;
+                case ECliCommands.ListTables:
+                    return true;
                 default:
                     Console.WriteLine("Invalid command please enter a valid command");
                     return false;

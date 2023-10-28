@@ -38,7 +38,7 @@ namespace DMS
                             Console.WriteLine("Drop Table command logic");
                             break;
                         case ECliCommands.ListTables:
-                            Console.WriteLine("List Tables command logic");
+                            CommandParser.Parse(ECliCommands.ListTables, command);
                             break;
                         case ECliCommands.TableInfo:
                             Console.WriteLine("Table Info command logic");

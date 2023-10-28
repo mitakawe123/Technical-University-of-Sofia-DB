@@ -46,6 +46,7 @@
                 throw new Exception("Already a table with this name");
 
             Directory.CreateDirectory($"{DB_DATA_FOLDER}/{tableName}");
+            Directory.CreateDirectory($"{DB_IAM_FOLDER}/{tableName}");
 
             string metadataFilePath = $"{DB_DATA_FOLDER}/{tableName}/metadata.bin";
             using FileStream metadataStream = File.Open(metadataFilePath, FileMode.CreateNew);
