@@ -1,12 +1,6 @@
-﻿using DMS.Constants;
-using DMS.Extensions;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json.Serialization;
-
-namespace DMS.DataPages
+﻿namespace DMS.DataPages
 {
-    //when i make this class static i need to catch the case when user delete data page lets say so i can reset the static fields
+    //when I make this class static I need to catch the case when user delete data page lets say so i can reset the static fields
     public static class DataPageManager
     {
         //GAM -> IAM -> data pages
@@ -41,31 +35,25 @@ namespace DMS.DataPages
             Data = new byte[AvailableSpace];
         }
 
-        //createtable test(id int primary key, name nvarchar(50) null)
+        //This method will create empty metadata file that will contains info how the table will look
         public static void CreateTable(string[] columnNames, string[] columnTypes, string tableName)
         {
-            //there is no alter table so this case is out of the way
-
             //here i need to check if for the given table there is IAM file created 
             //if yes just add the addresses of the new data pages
             //if no create the IAM file and then create the data pages and add the addresses of the data pages to the IAM file
 
-            //create metadata.txt for every table
-
-            //The page should have a header that contains:
-            //Total number of records
-            //Pointer / reference to the next page(could be the next filename)
             if (Directory.Exists($"{DB_DATA_FOLDER}/{tableName}"))
                 throw new Exception("Already a table with this name");
 
             Directory.CreateDirectory($"{DB_DATA_FOLDER}/{tableName}");
 
-            string metadataFilePath = $"{DB_DATA_FOLDER}/{tableName}/metadata.dat";
+            string metadataFilePath = $"{DB_DATA_FOLDER}/{tableName}/metadata.bin";
             using FileStream metadataStream = File.Open(metadataFilePath, FileMode.CreateNew);
             using BinaryWriter metadataWriter = new(metadataStream);
 
             // Write number of columns.
             metadataWriter.Write(columnNames.Length);
+            metadataWriter.Write("\n");
 
             // Write column details.
             for (int i = 0; i < columnNames.Length; i++)
@@ -74,24 +62,44 @@ namespace DMS.DataPages
                 metadataWriter.Write(columnTypes[i]);
             }
 
-            // Create initial data file.
-            string dataFilePath = $"{DB_DATA_FOLDER}/{tableName}/file_{tableName}.dat";
-            using FileStream dataStream = File.Open(dataFilePath, FileMode.CreateNew);
-            using BinaryWriter dataWriter = new(dataStream);
-
-            /*string filePath = $"{DB_DATA_FOLDER}/{tableName}/file_{tableName}.dat";
-
-            using FileStream fileStream = File.Open(filePath, FileMode.CreateNew);
-            FileInfo fileInfo = new(filePath);
-            if (!fileInfo.Exists)
-                fileStream.SetLength(PageSize);
-
-            BinaryWriter binaryWriter = new(fileStream);*/
+            metadataStream.Close();
+            metadataWriter.Close();
         }
 
-        private static void InitializePageHeaders()
+        //This method will fill data inside the tables if they exist
+        public static void InsertIntoTable()
         {
+            //The page should have a header that contains:
+            //Total number of records
+            //Pointer / reference to the next page(could be the next filename)
+        }
 
+        //this is for test purpose
+        private static (string[], string[]) DeserializeMetadata(string tableName)
+        {
+            string metadataFilePath = $"{DB_DATA_FOLDER}/{tableName}/metadata.bin";
+
+            if (!File.Exists(metadataFilePath))
+                throw new Exception("Metadata file does not exist for the specified table.");
+
+            using FileStream metadataStream = File.OpenRead(metadataFilePath);
+            using BinaryReader metadataReader = new(metadataStream);
+
+            // Read number of columns.
+            int numColumns = metadataReader.ReadInt32();
+            metadataReader.ReadString();  // Read the newline.
+
+            string[] columnNames = new string[numColumns];
+            string[] columnTypes = new string[numColumns];
+
+            // Read column details.
+            for (int i = 0; i < numColumns; i++)
+            {
+                columnNames[i] = metadataReader.ReadString();
+                columnTypes[i] = metadataReader.ReadString();
+            }
+
+            return (columnNames, columnTypes);
         }
     }
 }
