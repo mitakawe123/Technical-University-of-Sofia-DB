@@ -1,6 +1,7 @@
 ﻿using DMS.Constants;
 using DMS.DataPages;
 using DMS.Extensions;
+using System.Xml.Linq;
 
 namespace DMS.Commands
 {
@@ -31,19 +32,29 @@ namespace DMS.Commands
 
             return new Command();
         }
-
+        //createtable test(id int primary key, name nvarchar(50) null)
         private static void CreateTable(string command)
         {
-            //create the data pages for the sql
             command = command.CustomToLower();
             int firstWhiteSpace = command.CustomIndexOf(' ');
             int openingBracket = command.CustomIndexOf('(');
             int closingBracketForColumns = command.CustomLastIndexOf(')');
+            
             string tableName = command[(firstWhiteSpace + 1)..openingBracket];
+            string columnDefinition = command[(openingBracket + 1)..closingBracketForColumns].CustomTrim();
+            string[] columnDefinitions = columnDefinition.CustomSplit(',');
 
+            string[] columnNames = new string[columnDefinitions.Length];
+            string[] columnTypes = new string[columnDefinitions.Length];
+            for (int i = 0; i < columnDefinitions.Length; i++)
+            {
+                string trimedColumn = columnDefinitions[i].CustomTrim();
+                string[] values = trimedColumn.Split(' ');
+                columnNames[i] = values[0];
+                columnTypes[i] = values[1];
+            }
 
-            byte[] data = { 72, 101, 114, 101, 32, 105, 115, 32, 97, 32, 117, 110, 105, 99, 111, 100, 101, 32, 99, 104, 97, 114, 97, 99, 116, 101, 114, 115, 32, 115, 116, 114, 105, 110, 103, 46, 32, 80, 105, 32, 40, 206, 160, 41, };
-            DataPage.WriteData(data);
+            DataPageManager.CreateTable(columnNames, columnTypes, tableName);
         }
     }
 }

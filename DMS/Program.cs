@@ -48,9 +48,9 @@ namespace DMS
                             break;
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    Console.WriteLine("Invalid command. Type 'help' for available commands.");
+                    Console.WriteLine("Invalid command. Type 'help' for available commands." + "\n" + ex.Message);
                 }
             }
         }
