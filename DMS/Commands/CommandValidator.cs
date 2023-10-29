@@ -35,7 +35,7 @@ namespace DMS.Commands
                     }
                     return true;
                 case ECliCommands.DropTable:
-                    bool isValidDropTableCommand = ValidateDropTableCommand(command);
+                    bool isValidDropTableCommand = ValidateDropTableAndTableInfoCommands(command);
                     if (!isValidDropTableCommand)
                     {
                         Console.WriteLine("Please enter a valid dtop table command!");
@@ -43,6 +43,14 @@ namespace DMS.Commands
                     }
                     return true;
                 case ECliCommands.ListTables:
+                    return true;
+                case ECliCommands.TableInfo:
+                    bool isValidTableInfoCommand = ValidateDropTableAndTableInfoCommands(command);
+                    if (!isValidTableInfoCommand)
+                    {
+                        Console.WriteLine("Please enter a valid table info command!");
+                        return false;
+                    }
                     return true;
                 default:
                     Console.WriteLine("Invalid command please enter a valid command");
@@ -100,13 +108,13 @@ namespace DMS.Commands
             return true;
         }
 
-        private static bool ValidateDropTableCommand(string command)
+        private static bool ValidateDropTableAndTableInfoCommands(string command)
         {
             int firstWhiteSpace = command.CustomIndexOf(' ');
             string tableName = command[firstWhiteSpace..].CustomTrim();
             if (!Directory.Exists($"{Folders.DB_DATA_FOLDER}/{tableName}"))
                 throw new Exception($"There is no table with the name {tableName}");
-            
+
             return true;
         }
     }

@@ -28,6 +28,7 @@ namespace DMS.Commands
                     TableInfo(command);
                     break;
                 default:
+                    Console.WriteLine("Invalid command. Type 'help' for available commands.");
                     break;
             }
         }
@@ -95,14 +96,39 @@ namespace DMS.Commands
         private static void TableInfo(string command)
         {
             //here what I will list
-            //the whole folder how much space it takes
-            //how much the metadata takes
-            //how much the IAM file takes
-            //how much the data pages takes
+            //the whole folder how much space it takes- done
+            //how much the metadata takes -done
+            //how much the IAM file takes - done
+            //how much the data pages takes - done
             //how many columns are there in the table
             //how many records are there
             int firstWhiteSpace = command.CustomIndexOf(' ');
             string tableName = command[firstWhiteSpace..].CustomTrim();
+
+            DirectoryInfo directoryTableSize = new($"{Folders.DB_DATA_FOLDER}/{tableName}");
+            DirectoryInfo directoryInfoDataPages = new($"{Folders.DB_DATA_FOLDER}/{tableName}");
+            DirectoryInfo directoryInfoIAM = new($"{Folders.DB_IAM_FOLDER}/{tableName}");
+            FileInfo directoryInfoMetadata = new($"{Folders.DB_DATA_FOLDER}/{tableName}/metadata.bin");
+
+            long totalTableSize = FolderSize(directoryTableSize); 
+            long totalFolderSizeDataPages = FolderSize(directoryInfoDataPages);
+            long totalFolderSizeIAM = FolderSize(directoryInfoIAM);
+            long totalSizeMetadata = directoryInfoMetadata.Length;
+        }
+
+        private static long FolderSize(DirectoryInfo folder)
+        {
+            long totalSizeOfDir = 0;
+
+            FileInfo[] allFiles = folder.GetFiles();
+            foreach (FileInfo file in allFiles)
+                totalSizeOfDir += file.Length;
+
+            DirectoryInfo[] subFolders = folder.GetDirectories();
+            foreach (DirectoryInfo dir in subFolders)
+                totalSizeOfDir += FolderSize(dir);
+
+            return totalSizeOfDir;
         }
     }
 }
