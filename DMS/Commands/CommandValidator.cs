@@ -102,11 +102,8 @@ namespace DMS.Commands
 
         private static bool ValidateDropTableCommand(string command)
         {
-            //fix this 
             int firstWhiteSpace = command.CustomIndexOf(' ');
-            string tableName = command[firstWhiteSpace..];
-            string[] filesindirectory = Directory.GetDirectories(Folders.DB_DATA_FOLDER);
-
+            string tableName = command[firstWhiteSpace..].CustomTrim();
             if (!Directory.Exists($"{Folders.DB_DATA_FOLDER}/{tableName}"))
                 throw new Exception($"There is no table with the name {tableName}");
             

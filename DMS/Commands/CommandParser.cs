@@ -6,7 +6,7 @@ namespace DMS.Commands
 {
     public static class CommandParser
     {
-        public static Command Parse(ECliCommands commandType, string command)
+        public static void Parse(ECliCommands commandType, string command)
         {
             bool isValidQuery = CommandValidator.ValidateQuery(commandType, command);
 
@@ -19,18 +19,17 @@ namespace DMS.Commands
                     CreateTable(command);
                     break;
                 case ECliCommands.DropTable:
+                    DropTable(command);
                     break;
                 case ECliCommands.ListTables:
                     ListTables();
                     break;
                 case ECliCommands.TableInfo:
+                    TableInfo(command);
                     break;
                 default:
                     break;
             }
-
-
-            return new Command();
         }
         //createtable test(id int primary key, name nvarchar(50) null)
         private static void CreateTable(string command)
@@ -57,6 +56,15 @@ namespace DMS.Commands
             DataPageManager.CreateTable(columnNames, columnTypes, tableName);
         }
 
+        private static void DropTable(string command)
+        {
+            //here I need to delete the logic address from the IAM file too
+            int firstWhiteSpace = command.CustomIndexOf(' ');
+            string tableName = command[firstWhiteSpace..].CustomTrim();
+            Directory.Delete($"{Folders.DB_DATA_FOLDER}/{tableName}", true);
+            Console.WriteLine($"Successfully deleted {tableName}");
+        }
+
         private static void ListTables()
         {
             string[] filesindirectory = Directory.GetDirectories(Folders.DB_DATA_FOLDER);
@@ -81,6 +89,20 @@ namespace DMS.Commands
                     Console.WriteLine(firstPart);
                 }
             }
+        }
+
+        //схема и брой записи, заемано пространство и др.
+        private static void TableInfo(string command)
+        {
+            //here what I will list
+            //the whole folder how much space it takes
+            //how much the metadata takes
+            //how much the IAM file takes
+            //how much the data pages takes
+            //how many columns are there in the table
+            //how many records are there
+            int firstWhiteSpace = command.CustomIndexOf(' ');
+            string tableName = command[firstWhiteSpace..].CustomTrim();
         }
     }
 }
