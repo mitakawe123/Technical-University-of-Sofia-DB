@@ -34,6 +34,14 @@ namespace DMS.Commands
                         return false;
                     }
                     return true;
+                case ECliCommands.DropTable:
+                    bool isValidDropTableCommand = ValidateDropTableCommand(command);
+                    if (!isValidDropTableCommand)
+                    {
+                        Console.WriteLine("Please enter a valid dtop table command!");
+                        return false;
+                    }
+                    return true;
                 case ECliCommands.ListTables:
                     return true;
                 default:
@@ -89,6 +97,19 @@ namespace DMS.Commands
                 }
             }
 
+            return true;
+        }
+
+        private static bool ValidateDropTableCommand(string command)
+        {
+            //fix this 
+            int firstWhiteSpace = command.CustomIndexOf(' ');
+            string tableName = command[firstWhiteSpace..];
+            string[] filesindirectory = Directory.GetDirectories(Folders.DB_DATA_FOLDER);
+
+            if (!Directory.Exists($"{Folders.DB_DATA_FOLDER}/{tableName}"))
+                throw new Exception($"There is no table with the name {tableName}");
+            
             return true;
         }
     }

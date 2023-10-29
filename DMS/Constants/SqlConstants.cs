@@ -6,7 +6,8 @@
         CreateTable,
         DropTable,
         ListTables,
-        TableInfo
+        TableInfo,
+        Exit
     }
 
     public enum ESQLCommands
@@ -67,7 +68,7 @@
         SQL_VARIANT,
         MONEY,
         TABLE,
-        HIERARCHYID
+        HIERARCHYID,
     }
 
     public enum EDataPagesExtensions
@@ -111,12 +112,5 @@
         Equal = '=',
         Tilde = '~',
         GraveAccent = '`'
-    }
-
-    public enum DataPageType
-    {
-        IAM = 10,
-        DATA_OVERFLOW = 2,
-        IN_ROW_DATA = 1
     }
 }

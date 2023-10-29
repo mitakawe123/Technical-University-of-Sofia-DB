@@ -1,7 +1,4 @@
-﻿using System.Net.Sockets;
-using System.Net;
-using DataStructures;
-using DMS.Commands;
+﻿using DMS.Commands;
 using DMS.Constants;
 using DMS.Extensions;
 
@@ -35,13 +32,16 @@ namespace DMS
                             CommandParser.Parse(ECliCommands.CreateTable, command);
                             break;
                         case ECliCommands.DropTable:
-                            Console.WriteLine("Drop Table command logic");
+                            CommandParser.Parse(ECliCommands.DropTable, command);
                             break;
                         case ECliCommands.ListTables:
                             CommandParser.Parse(ECliCommands.ListTables, command);
                             break;
                         case ECliCommands.TableInfo:
-                            Console.WriteLine("Table Info command logic");
+                            CommandParser.Parse(ECliCommands.TableInfo, command);
+                            break;
+                        case ECliCommands.Exit:
+                            running = false;    
                             break;
                         default:
                             Console.WriteLine("Invalid command. Type 'help' for available commands.");
@@ -50,7 +50,7 @@ namespace DMS
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Invalid command. Type 'help' for available commands." + "\n" + ex.Message);
+                    Console.WriteLine("Invalid command. Type 'help' for available commands. \n" + ex.Message);
                 }
             }
         }

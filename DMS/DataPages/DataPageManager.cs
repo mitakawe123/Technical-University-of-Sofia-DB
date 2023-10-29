@@ -1,13 +1,11 @@
-﻿namespace DMS.DataPages
+﻿using DMS.Constants;
+
+namespace DMS.DataPages
 {
-    //when I make this class static I need to catch the case when user delete data page lets say so i can reset the static fields
+    // When I make this class static I need to catch the case when user delete data page lets say so i can reset the static fields
+    // We will store only string,int and date so we want only in-row and row-overflow data pages
     public static class DataPageManager
     {
-        //GAM -> IAM -> data pages
-        private const string DB_FOLDER = "/STORAGE";
-        private const string DB_IAM_FOLDER = "/STORAGE/IAM";
-        private const string DB_DATA_FOLDER = "/STORAGE/DATA_PAGES";
-
         private static int FileNumber = 0;
 
         //There are three types of data pages in SQL Server: in-row, row-overflow, and LOB data pages.
@@ -16,7 +14,7 @@
         private const int RowOffset = 36;
         private const int BufferOverflowPage = 24; // this is when you try to write data in data page but there is not enough space so you leave 24kb that will hold address to the next data page
        
-        //this will hold the address of every row (one slot item needs to take 2Bytes of data for each row // 2bytes * row address)
+        //this will hold the logical address of every row (one slot item needs to take 2Bytes of data for each row // 2bytes * row address)
         private static byte[] _slotArray = new byte[RowOffset];
 
         public static long AvailableSpace { get; private set; }
@@ -26,29 +24,31 @@
         static DataPageManager()
         {
             //this check automatically for the STORAGE Folder
-            Directory.CreateDirectory(DB_FOLDER);
-            Directory.CreateDirectory(DB_DATA_FOLDER);
-            Directory.CreateDirectory(DB_IAM_FOLDER);
+            Directory.CreateDirectory(Folders.DB_FOLDER);
+            Directory.CreateDirectory(Folders.DB_DATA_FOLDER);
+            Directory.CreateDirectory(Folders.DB_IAM_FOLDER);
 
             AvailableSpace = PageSize - HeaderSize - RowOffset;
             HeaderData = new byte[HeaderSize];
             Data = new byte[AvailableSpace];
         }
 
+        //createtable test(id int primary key, name nvarchar(50) null)
         //This method will create empty metadata file that will contains info how the table will look
         public static void CreateTable(string[] columnNames, string[] columnTypes, string tableName)
         {
-            //here i need to check if for the given table there is IAM file created 
-            //if yes just add the addresses of the new data pages
-            //if no create the IAM file and then create the data pages and add the addresses of the data pages to the IAM file
-
-            if (Directory.Exists($"{DB_DATA_FOLDER}/{tableName}"))
+            if (Directory.Exists($"{Folders.DB_DATA_FOLDER}/{tableName}"))
                 throw new Exception("Already a table with this name");
 
-            Directory.CreateDirectory($"{DB_DATA_FOLDER}/{tableName}");
-            Directory.CreateDirectory($"{DB_IAM_FOLDER}/{tableName}");
+            Directory.CreateDirectory($"{Folders.DB_DATA_FOLDER}/{tableName}");
+            Directory.CreateDirectory($"{Folders.DB_IAM_FOLDER}/{tableName}");
 
-            string metadataFilePath = $"{DB_DATA_FOLDER}/{tableName}/metadata.bin";
+            string iamFilePath = $"{Folders.DB_IAM_FOLDER}/{tableName}/iam_{tableName}.bin";
+            using FileStream iamdataStream = File.Open(iamFilePath, FileMode.CreateNew);
+            
+            iamdataStream.Close();
+
+            string metadataFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/metadata.bin";
             using FileStream metadataStream = File.Open(metadataFilePath, FileMode.CreateNew);
             using BinaryWriter metadataWriter = new(metadataStream);
 
@@ -56,7 +56,7 @@
             metadataWriter.Write(columnNames.Length);
             metadataWriter.Write("\n");
 
-            // Write column details.
+            // Write column types.
             for (int i = 0; i < columnNames.Length; i++)
             {
                 metadataWriter.Write(columnNames[i]);
@@ -78,7 +78,7 @@
         //this is for test purpose
         private static (string[], string[]) DeserializeMetadata(string tableName)
         {
-            string metadataFilePath = $"{DB_DATA_FOLDER}/{tableName}/metadata.bin";
+            string metadataFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/metadata.bin";
 
             if (!File.Exists(metadataFilePath))
                 throw new Exception("Metadata file does not exist for the specified table.");
@@ -93,7 +93,7 @@
             string[] columnNames = new string[numColumns];
             string[] columnTypes = new string[numColumns];
 
-            // Read column details.
+            // Read column types.
             for (int i = 0; i < numColumns; i++)
             {
                 columnNames[i] = metadataReader.ReadString();

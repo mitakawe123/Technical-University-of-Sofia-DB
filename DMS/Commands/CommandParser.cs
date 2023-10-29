@@ -6,8 +6,6 @@ namespace DMS.Commands
 {
     public static class CommandParser
     {
-        private const string DB_DATA_FOLDER = "/STORAGE/DATA_PAGES";
-
         public static Command Parse(ECliCommands commandType, string command)
         {
             bool isValidQuery = CommandValidator.ValidateQuery(commandType, command);
@@ -61,7 +59,7 @@ namespace DMS.Commands
 
         private static void ListTables()
         {
-            string[] filesindirectory = Directory.GetDirectories(DB_DATA_FOLDER);
+            string[] filesindirectory = Directory.GetDirectories(Folders.DB_DATA_FOLDER);
             foreach (string dir in filesindirectory)
             {
                 char[] pathChars = dir.CustomToCharArray();
@@ -84,6 +82,5 @@ namespace DMS.Commands
                 }
             }
         }
-
     }
 }
