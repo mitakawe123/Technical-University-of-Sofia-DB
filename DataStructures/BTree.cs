@@ -1,5 +1,6 @@
 ﻿namespace DataStructures
 {
+    //change this with B+TREE
     public class BTree<T> where T : IComparable<T>
     {
         private readonly int degree;
@@ -32,18 +33,16 @@
             {
                 // Insert key into the leaf node
                 while (index >= 0 && key.CompareTo(node.Keys[index]) < 0)
-                {
                     index--;
-                }
+
                 node.Keys.Insert(index + 1, key);
             }
             else
             {
                 // Insert into a non-leaf node
                 while (index >= 0 && key.CompareTo(node.Keys[index]) < 0)
-                {
                     index--;
-                }
+
                 index++;
 
                 if (node.Children[index].Keys.Count == (2 * degree) - 1)
@@ -52,9 +51,7 @@
                     SplitChild(node, index);
 
                     if (key.CompareTo(node.Keys[index]) > 0)
-                    {
                         index++;
-                    }
                 }
                 InsertNonFull(node.Children[index], key);
             }
