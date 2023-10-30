@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using DataStructures;
+using System.Runtime.InteropServices;
 
 namespace DMS.DataPages
 {
@@ -13,12 +14,12 @@ namespace DMS.DataPages
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public class Record
     {
-        public List<object> Columns = new();
+        public DKList<object> Columns = new();
     }
 
     public class DataPage
     {
         public DataPageHeader Header;
-        public List<Record> Records = new();
+        public DKList<Record> Records = new();
     }
 }

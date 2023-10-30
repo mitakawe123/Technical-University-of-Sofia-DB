@@ -2,12 +2,9 @@
 
 namespace DMS.DataPages
 {
-    // When I make this class static I need to catch the case when user delete data page lets say so i can reset the static fields
     // We will store only string,int and date so we want only in-row and row-overflow data pages
-    public static class DataPageManager
+    public class DataPageManager
     {
-        private static int FileNumber = 0;
-
         //There are three types of data pages in SQL Server: in-row, row-overflow, and LOB data pages.
         private const int PageSize = 8192; //8KB
         private const int HeaderSize = 96;
@@ -17,20 +14,12 @@ namespace DMS.DataPages
         //this will hold the logical address of every row (one slot item needs to take 2Bytes of data for each row // 2bytes * row address)
         private static byte[] _slotArray = new byte[RowOffset];
 
-        public static long AvailableSpace { get; private set; }
-        public static byte[] HeaderData { get; private set; }
-        public static byte[] Data { get; private set; }
-
-        static DataPageManager()
+        public DataPageManager()
         {
             //this check automatically for the STORAGE Folder
             Directory.CreateDirectory(Folders.DB_FOLDER);
             Directory.CreateDirectory(Folders.DB_DATA_FOLDER);
             Directory.CreateDirectory(Folders.DB_IAM_FOLDER);
-
-            AvailableSpace = PageSize - HeaderSize - RowOffset;
-            HeaderData = new byte[HeaderSize];
-            Data = new byte[AvailableSpace];
         }
 
         //createtable test(id int primary key, name nvarchar(50) null)
