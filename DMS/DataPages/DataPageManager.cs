@@ -61,11 +61,10 @@ namespace DMS.DataPages
         {
             //The page should have a header that contains:
             //Total number of records
-            //Pointer / reference to the next page(could be the next filename)
+            //Pointer / reference to the next page
         }
 
-        //this is for test purpose
-        private static (string[], string[]) DeserializeMetadata(string tableName)
+        public static (string[], string[]) DeserializeMetadata(string tableName)
         {
             string metadataFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/metadata.bin";
 

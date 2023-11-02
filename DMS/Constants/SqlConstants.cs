@@ -7,6 +7,7 @@
         DropTable,
         ListTables,
         TableInfo,
+        Insert,
         Exit
     }
 

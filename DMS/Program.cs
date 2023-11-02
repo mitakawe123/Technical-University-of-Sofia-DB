@@ -40,6 +40,9 @@ namespace DMS
                         case ECliCommands.TableInfo:
                             CommandParser.Parse(ECliCommands.TableInfo, command);
                             break;
+                        case ECliCommands.Insert:
+                            CommandParser.Parse(ECliCommands.Insert, command);
+                            break;
                         case ECliCommands.Exit:
                             running = false;    
                             break;

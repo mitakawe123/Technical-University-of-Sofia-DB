@@ -1,5 +1,6 @@
 ﻿using DataStructures;
 using DMS.Constants;
+using DMS.DataPages;
 using DMS.Extensions;
 
 namespace DMS.Commands
@@ -49,6 +50,14 @@ namespace DMS.Commands
                     if (!isValidTableInfoCommand)
                     {
                         Console.WriteLine("Please enter a valid table info command!");
+                        return false;
+                    }
+                    return true;
+                case ECliCommands.Insert:
+                    bool isValidInsertCommand = ValidateInsertTableCommand(command);
+                    if (!isValidInsertCommand)
+                    {
+                        Console.WriteLine("Please enter a insert command!");
                         return false;
                     }
                     return true;
@@ -114,6 +123,41 @@ namespace DMS.Commands
             string tableName = command[firstWhiteSpace..].CustomTrim();
             if (!Directory.Exists($"{Folders.DB_DATA_FOLDER}/{tableName}"))
                 throw new Exception($"There is no table with the name {tableName}");
+
+            return true;
+        }
+
+        private static bool ValidateInsertTableCommand(string command)
+        {
+            if (!command.CustomToLower().CustomContains("INSERT INTO".CustomToLower())
+                || !command.CustomToLower().CustomContains("VALUES".CustomToLower()))
+                throw new Exception("Not a valid insert into command");
+
+            string loweredCommand = command.CustomToLower();
+            string[] parts = loweredCommand.CustomSplit(' ');
+            string tableName = parts[2];
+
+            if (!Directory.Exists($"{Folders.DB_DATA_FOLDER}/{tableName}"))
+                throw new Exception($"There is no table with name {tableName}");
+
+            string[] columnsAndValues = loweredCommand.CustomSplit($"{tableName.CustomToLower()}");
+            string[] values = columnsAndValues[1].CustomSplit("values");
+
+            if (!values[0].CustomContains('(') || !values[0].CustomContains(')'))
+                throw new Exception("No brackets for column definitions");
+
+            //will open the metadata file and check for the column defined there
+            string columnDefinitions = values[0].CustomTrim();
+            columnDefinitions = columnDefinitions.CustomSubstring(1, columnDefinitions.Length - 2);
+
+            string[] splitedColumnDefinitions = columnDefinitions.CustomSplit(',');
+            (string[], string[]) deserializedMetadata = DataPageManager.DeserializeMetadata(tableName);
+
+            for (int i = 0; i < deserializedMetadata.Item1.Length; i++)
+            {
+                if (deserializedMetadata.Item1[i].CustomToLower() != splitedColumnDefinitions[i].CustomTrim())
+                    throw new Exception($"Invalid column {splitedColumnDefinitions[i]}");
+            }
 
             return true;
         }

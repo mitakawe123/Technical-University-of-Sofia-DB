@@ -27,6 +27,9 @@ namespace DMS.Commands
                 case ECliCommands.TableInfo:
                     TableInfo(command);
                     break;
+                case ECliCommands.Insert:
+                    InsertIntoTable(command);
+                    break;
                 default:
                     Console.WriteLine("Invalid command. Type 'help' for available commands.");
                     break;
@@ -55,6 +58,24 @@ namespace DMS.Commands
             }
 
             DataPageManager.CreateTable(columnNames, columnTypes, tableName);
+        }
+        //Insert INTO Sample (Id, Name) VALUES (1, “Иван”) 
+        private static void InsertIntoTable(string command)
+        {
+            string loweredCommand = command.CustomToLower();
+            string[] parts = loweredCommand.CustomSplit(' ');
+            string tableName = parts[2];
+
+            string[] columnsAndValues = loweredCommand.CustomSplit($"{tableName.CustomToLower()}");
+            string[] values = columnsAndValues[1].CustomSplit("values");
+
+            string columnDefinition = values[0].CustomTrim();
+            columnDefinition = columnDefinition.CustomSubstring(1, columnDefinition.Length - 2);
+            string[] columnDefinitions = columnDefinition.CustomSplit(',');
+
+            string columnValue = values[1].CustomTrim();
+            columnValue = columnValue.CustomSubstring(1, columnValue.Length - 2);
+            string[] columnValues = columnValue.CustomSplit(',');
         }
 
         private static void DropTable(string command)

@@ -81,6 +81,37 @@ namespace DMS.Extensions
             return result.ToArray();
         }
 
+        public static string[] CustomSplit(this string input, string separator)
+        {
+            if (input is null)
+                throw new ArgumentNullException(nameof(input));
+
+            if (separator is null)
+                throw new ArgumentNullException(nameof(separator));
+
+            int separatorLength = separator.Length;
+            int inputLength = input.Length;
+            int startIndex = 0;
+            int matchIndex = -1;
+            int count = 0;
+
+            DKList<string> result = new();
+
+            while ((matchIndex = input.IndexOf(separator, startIndex)) >= 0)
+            {
+                result.Add(input[startIndex..matchIndex]);
+                startIndex = matchIndex + separatorLength;
+                count++;
+            }
+
+            if (count == 0)
+                result.Add(input);
+            else
+                result.Add(input[startIndex..inputLength]);
+
+            return result.CustomToArray();
+        }
+
         public static string CustomTrim(this string input, char[] trimChars)
         {
             if (input.CustomIsNullOrEmpty() || trimChars is null || trimChars.Length is 0)
