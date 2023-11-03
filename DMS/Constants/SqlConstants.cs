@@ -1,4 +1,7 @@
-﻿namespace DMS.Constants
+﻿using System.Collections.Generic;
+using System.Data;
+
+namespace DMS.Constants
 {
     public enum ECliCommands
     {
@@ -35,7 +38,7 @@
         EXECUTE
     }
 
-    public enum SqlServerDataTypes
+    public enum ESqlServerDataTypes
     {
         INT,
         SMALLINT,
@@ -72,13 +75,18 @@
         HIERARCHYID,
     }
 
-    public enum EDataPagesExtensions
+    //('2023-11-03'); -- ISO format
+    //('11/03/2023'); -- U.S.format
+    //('03/11/2023'); -- European format
+    //('20231103');   -- ISO basic (unseparated)
+    public enum ESupportedDataTypes
     {
-        MDF,
-        NDF
+        DATE, //DATE: Stores a date in the format YYYY-MM-DD.
+        INT,
+        NVARCHAR
     }
 
-    public enum InvalidTableNameCharacters
+    public enum EInvalidTableNameCharacters
     {
         Underscore = '_',
         Space = ' ',

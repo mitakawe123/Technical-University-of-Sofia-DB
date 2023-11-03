@@ -25,6 +25,7 @@ namespace DMS
                             Console.WriteLine($"Available commands: " +
                                               $"{ECliCommands.CreateTable}, " +
                                               $"{ECliCommands.DropTable}, " +
+                                              $"{ECliCommands.Insert}, " +
                                               $"{ECliCommands.ListTables}, " +
                                               $"{ECliCommands.TableInfo}");
                             break;

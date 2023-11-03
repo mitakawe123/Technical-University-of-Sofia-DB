@@ -16,10 +16,10 @@ namespace DMS.Commands
             foreach (ESQLCommands keyword in Enum.GetValues(typeof(ESQLCommands)))
                 AllowedKeywords.Add(keyword.ToString());
 
-            foreach (InvalidTableNameCharacters keyword in Enum.GetValues(typeof(InvalidTableNameCharacters)))
+            foreach (EInvalidTableNameCharacters keyword in Enum.GetValues(typeof(EInvalidTableNameCharacters)))
                 InvalidTableNameCharacters.Add((char)keyword);
 
-            foreach (SqlServerDataTypes keyword in Enum.GetValues(typeof(SqlServerDataTypes)))
+            foreach (ESqlServerDataTypes keyword in Enum.GetValues(typeof(ESqlServerDataTypes)))
                 SqlDataTypes.Add(keyword.ToString());
         }
 
@@ -113,6 +113,8 @@ namespace DMS.Commands
                     return false;
                 }
             }
+
+            //add a check if data type is supported from ESupportedDataTypes
 
             return true;
         }

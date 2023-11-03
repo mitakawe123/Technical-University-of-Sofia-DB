@@ -1,6 +1,7 @@
 ﻿using DataStructures;
+using DMS.DataPages;
 
-namespace DMS.DataPages
+namespace DMS.IAM
 {
     public class IAMPage
     {

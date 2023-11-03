@@ -38,6 +38,7 @@ namespace DMS.Commands
         //createtable test(id int primary key, name nvarchar(50) null)
         private static void CreateTable(string command)
         {
+            //add a case when there is default values
             command = command.CustomToLower();
             int firstWhiteSpace = command.CustomIndexOf(' ');
             int openingBracket = command.CustomIndexOf('(');
@@ -62,6 +63,7 @@ namespace DMS.Commands
         //Insert INTO Sample (Id, Name) VALUES (1, “Иван”) 
         private static void InsertIntoTable(string command)
         {
+            //catch the case when user insert multiple values
             string loweredCommand = command.CustomToLower();
             string[] parts = loweredCommand.CustomSplit(' ');
             string tableName = parts[2];
@@ -76,14 +78,16 @@ namespace DMS.Commands
             string columnValue = values[1].CustomTrim();
             columnValue = columnValue.CustomSubstring(1, columnValue.Length - 2);
             string[] columnValues = columnValue.CustomSplit(',');
+
+            DataPageManager.InsertIntoTable(columnDefinitions, columnValues, tableName);
         }
 
         private static void DropTable(string command)
         {
-            //here I need to delete the logic address from the IAM file too
             int firstWhiteSpace = command.CustomIndexOf(' ');
             string tableName = command[firstWhiteSpace..].CustomTrim();
             Directory.Delete($"{Folders.DB_DATA_FOLDER}/{tableName}", true);
+            Directory.Delete($"{Folders.DB_IAM_FOLDER}/{tableName}", true);
             Console.WriteLine($"Successfully deleted {tableName}");
         }
 

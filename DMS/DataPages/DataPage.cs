@@ -11,15 +11,9 @@ namespace DMS.DataPages
         public int RecordCount; // Number of records in the page
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public class Record
-    {
-        public DKList<object> Columns = new();
-    }
-
     public class DataPage
     {
         public DataPageHeader Header;
-        public DKList<Record> Records = new();
+        public DKList<object> Records = new();
     }
 }

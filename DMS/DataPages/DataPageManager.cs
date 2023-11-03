@@ -16,14 +16,12 @@ namespace DMS.DataPages
 
         public DataPageManager()
         {
-            //this check automatically for the STORAGE Folder
             Directory.CreateDirectory(Folders.DB_FOLDER);
             Directory.CreateDirectory(Folders.DB_DATA_FOLDER);
             Directory.CreateDirectory(Folders.DB_IAM_FOLDER);
         }
 
         //createtable test(id int primary key, name nvarchar(50) null)
-        //This method will create empty metadata file that will contains info how the table will look
         public static void CreateTable(string[] columnNames, string[] columnTypes, string tableName)
         {
             if (Directory.Exists($"{Folders.DB_DATA_FOLDER}/{tableName}"))
@@ -56,12 +54,14 @@ namespace DMS.DataPages
             metadataWriter.Close();
         }
 
-        //This method will fill data inside the tables if they exist
-        public static void InsertIntoTable()
+        public static void InsertIntoTable(string[] columnDefinitions, string[] columnValues, string tableName)
         {
             //The page should have a header that contains:
             //Total number of records
             //Pointer / reference to the next page
+            //Check for the space of the column type 
+            DataPage dataPage = new();
+            string[] columnTypes = DeserializeMetadata(tableName).Item2;
         }
 
         public static (string[], string[]) DeserializeMetadata(string tableName)
