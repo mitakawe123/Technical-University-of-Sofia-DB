@@ -276,6 +276,60 @@ namespace DMS.Extensions
             return stringBuilder.ToString(index, length);
         }
 
+        public static string[] CustomSplit(this string input, string[]? separators, StringSplitOptions options)
+        {
+            if (separators == null || separators.Length == 0)
+                return new string[] { input };
+
+            DKList<string> results = new();
+            string currentSegment = string.Empty;
+            int potentialMatchIndex = -1;
+            int matchedSeparatorIndex = 0;
+            int[] separatorsLengths = new int[separators.Length];
+
+            for (int i = 0; i < separators.Length; i++)
+                separatorsLengths[i] = separators[i].Length;
+
+            foreach (char character in input)
+            {
+                bool matchedSeparator = false;
+                for (int sepIndex = 0; sepIndex < separators.Length; sepIndex++)
+                {
+                    string separator = separators[sepIndex];
+
+                    if (character == separator[matchedSeparatorIndex])
+                    {
+                        if (potentialMatchIndex == -1)
+                            potentialMatchIndex = currentSegment.Length;
+                        matchedSeparatorIndex++;
+
+                        if (matchedSeparatorIndex == separator.Length)
+                        {
+                            results.Add(currentSegment.Substring(0, potentialMatchIndex));
+                            currentSegment = currentSegment.Substring(potentialMatchIndex + separator.Length);
+                            matchedSeparator = true;
+                            matchedSeparatorIndex = 0;
+                            potentialMatchIndex = -1;
+                            break;
+                        }
+                    }
+                    else if (matchedSeparatorIndex > 0)
+                    {
+                        matchedSeparatorIndex = 0;
+                        potentialMatchIndex = -1;
+                    }
+                }
+
+                if (!matchedSeparator)
+                    currentSegment += character;
+            }
+
+            if (currentSegment.Length > 0 || options != StringSplitOptions.RemoveEmptyEntries)
+                results.Add(currentSegment);
+
+            return results.CustomToArray();
+        }
+
         public static bool CustomIsNullOrEmpty(this string input)
         {
             if (input is null || input is "")
@@ -340,7 +394,7 @@ namespace DMS.Extensions
             return lastItem;
         }
 
-        public static T? CustomElementAt<T>(this IEnumerable<T> input, int index) where T : class
+        public static T CustomElementAt<T>(this IEnumerable<T> input, int index) 
         {
             if (input == null)
                 throw new ArgumentNullException(nameof(input));
@@ -349,7 +403,7 @@ namespace DMS.Extensions
                 return default;
 
             int currentIndex = 0;
-            foreach (var element in input)
+            foreach (T element in input)
             {
                 if (currentIndex == index)
                     return element;
@@ -359,6 +413,18 @@ namespace DMS.Extensions
             return default;
         }
 
+        public static IEnumerable<T> CustomSkip<T>(this IEnumerable<T> input, int count)
+        {
+            if(input is null)
+                throw new ArgumentNullException(nameof(input));
+
+            DKList<T> values = new();
+            for (int i = count; i < input.CustomCount(); i++)
+                values.Add(input.CustomElementAt(i));
+
+            return values;
+        }
+
         public static int CustomCount<T>(this IEnumerable<T> input)
         {
             int i = 0;
@@ -366,6 +432,43 @@ namespace DMS.Extensions
                 i++;
 
             return i;
+        }
+
+        public static string CustomTrimStart(this string input, char charToTrim)
+        {
+            string value = "";
+            for (int i = 0; i < input.Length; i++)
+                if (input[i] != charToTrim)
+                    value += input[i];
+            return value;
+        }
+
+        public static string CustomTrimEnd(this string input, char charToTrim)
+        {
+            string value = "";
+            int j = 0;
+            for (int i = input.Length - 1; i >= 0; i--)
+            {
+                if (input[j] != charToTrim)
+                    value += input[j];
+                j++;
+            }
+            return value;
+        }
+
+        public static bool CustomEndsWith(this string str, string suffix)
+        {
+            if (str == null || suffix == null) 
+                throw new ArgumentNullException(str == null ? nameof(str) : nameof(suffix));
+
+            if (suffix.Length > str.Length) 
+                return false;
+
+            for (int i = 0; i < suffix.Length; i++)
+                if (str[str.Length - i - 1] != suffix[suffix.Length - i - 1])
+                    return false;
+
+            return true;
         }
     }
 }

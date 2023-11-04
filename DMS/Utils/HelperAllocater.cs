@@ -6,7 +6,7 @@ namespace DMS.Utils
     public static class HelperAllocater
     {
         //how much bytes for each data type
-        public static ulong[] AllocatedStorageForType(string[] columnTypes, string[] columnValues)
+        public static ulong[] AllocatedStorageForType(string[] columnTypes, IEnumerable<string> columnValuesSplitted)
         {
             ulong[] allocatedBytes = new ulong[columnTypes.Length];
             for (int i = 0; i < columnTypes.Length; i++)
@@ -22,11 +22,12 @@ namespace DMS.Utils
                     //this is dynamic case so I need to loop over how much chars are there and for each char allocate 2bytes
                     if (columnTypes[i].CustomContains("max"))
                     {
-                        if (columnValues[i].Length > 4000)
+                        //this check is wrong i need to split first by "," and then check for the 4000 chars
+                        if (columnValuesSplitted.CustomElementAt(i).Length > 4000)
                             throw new Exception("nvarchar(max) cannot be over 4000 chars long");
 
                         uint bytes = 0;
-                        for (int j = 0; j < columnValues[i].Length; j++)
+                        for (int j = 0; j < columnValuesSplitted.CustomElementAt(i).Length; j++)
                             bytes += 2;
 
                         allocatedBytes[i] = bytes;

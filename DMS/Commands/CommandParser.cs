@@ -1,4 +1,5 @@
-﻿using DMS.Constants;
+﻿using DataStructures;
+using DMS.Constants;
 using DMS.DataPages;
 using DMS.Extensions;
 
@@ -60,7 +61,7 @@ namespace DMS.Commands
 
             DataPageManager.CreateTable(columnNames, columnTypes, tableName);
         }
-        //Insert INTO test (Id, Name) VALUES (1, “Иван”) 
+        //Insert INTO test (Id, Name) VALUES (1, “pepi”, 3), (2, “mariq”, 6), (3, “georgi”, 1)
         private static void InsertIntoTable(string command)
         {
             //catch the case when user insert multiple values
@@ -71,6 +72,15 @@ namespace DMS.Commands
             string[] columnsAndValues = loweredCommand.CustomSplit($"{tableName.CustomToLower()}");
             string[] values = columnsAndValues[1].CustomSplit("values");
 
+            values[1] = values[1].CustomTrim();
+            string[] tupleStrings = values[1].Split(new string[] { "), (" }, StringSplitOptions.RemoveEmptyEntries);
+            DKList<string> columnValuesSplitted = new();
+            foreach (string tuple in tupleStrings)
+            {
+                string cleanedTuple = tuple.CustomTrim(new char[] { '(', ')' });
+                columnValuesSplitted.Add(cleanedTuple);
+            }
+
             string columnDefinition = values[0].CustomTrim();
             columnDefinition = columnDefinition.CustomSubstring(1, columnDefinition.Length - 2);
             string[] columnDefinitions = columnDefinition.CustomSplit(',');
@@ -79,7 +89,7 @@ namespace DMS.Commands
             columnValue = columnValue.CustomSubstring(1, columnValue.Length - 2);
             string[] columnValues = columnValue.CustomSplit(',');
 
-            DataPageManager.InsertIntoTable(columnDefinitions, columnValues, tableName);
+            DataPageManager.InsertIntoTable(columnDefinitions, tableName, columnValuesSplitted);
         }
 
         private static void DropTable(string command)
