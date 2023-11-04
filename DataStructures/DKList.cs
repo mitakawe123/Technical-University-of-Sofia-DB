@@ -262,7 +262,6 @@ namespace DataStructures
 
         private void AddWithResize(T item)
         {
-            Debug.Assert(_size == _items.Length);
             int size = _size;
             Grow(size + 1);
             _size = size + 1;

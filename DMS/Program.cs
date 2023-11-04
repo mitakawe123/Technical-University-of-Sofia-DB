@@ -14,11 +14,12 @@ namespace DMS
 
             while (running)
             {
-                Console.Write("Enter a command (or 'exit' to quit): ");
-                string command = Console.ReadLine()!;
-                string input = command.CustomSplit(new char[] { ' ' })[0];
                 try
                 {
+                    Console.Write("Enter a command (or 'exit' to quit): ");
+                    string command = Console.ReadLine()!;
+                    string input = command.CustomSplit(new char[] { ' ' })[0];
+                    
                     switch ((ECliCommands)Enum.Parse(typeof(ECliCommands), input, true))
                     {
                         case ECliCommands.Help:
@@ -45,7 +46,7 @@ namespace DMS
                             CommandParser.Parse(ECliCommands.Insert, command);
                             break;
                         case ECliCommands.Exit:
-                            running = false;    
+                            running = false;
                             break;
                         default:
                             Console.WriteLine("Invalid command. Type 'help' for available commands.");

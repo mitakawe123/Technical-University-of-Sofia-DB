@@ -1,6 +1,7 @@
 ﻿using DataStructures;
 using DMS.Constants;
 using DMS.Utils;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace DMS.Extensions
@@ -168,14 +169,14 @@ namespace DMS.Extensions
             if (input is null)
                 throw new ArgumentNullException(nameof(input));
 
-            return input.CustomAny(x => x.Equals(value));
+            return input.CustomAny(x => x.CustomEquals(value));
         }
 
         public static bool CustomIsWhiteSpace(this char input) => input is ' ';
 
         public static bool CustomStartsWith(this string input, string value, StringCompare comparisonType)
         {
-            if(comparisonType == StringCompare.IgnoreCaseSensitivity && input.CustomToLower() == value.CustomToLower())
+            if (comparisonType == StringCompare.IgnoreCaseSensitivity && input.CustomToLower() == value.CustomToLower())
                 return true;
 
             return false;
@@ -184,6 +185,15 @@ namespace DMS.Extensions
         public static int CustomIndexOf(this string input, char value)
         {
             for (int i = 0; i < input.Length; i++)
+                if (input[i] == value)
+                    return i;
+
+            return -1;
+        }
+
+        public static int CustomIndexOf(this string input, char value, int startPosition)
+        {
+            for (int i = startPosition; i < input.Length; i++)
                 if (input[i] == value)
                     return i;
 
@@ -231,11 +241,11 @@ namespace DMS.Extensions
 
         public static int CustomLastIndexOf(this string input, char value)
         {
-            if(input is null)
+            if (input is null)
                 throw new ArgumentNullException(nameof(input));
 
             for (int i = input.Length - 1; i > 0; i--)
-                if (input[i] == value) 
+                if (input[i] == value)
                     return i;
 
             return -1;
@@ -288,7 +298,7 @@ namespace DMS.Extensions
 
             return false;
         }
-    
+
         public static char[] CustomArrayReverse(this char[] input)
         {
             char[] output = new char[input.Length];
@@ -299,6 +309,63 @@ namespace DMS.Extensions
                 j++;
             }
             return output;
+        }
+
+        public static bool CustomEquals<T>(this T input, T? value)
+        {
+            if (input == null && value == null)
+                return true;
+            else if (input == null || value == null)
+                return false;
+
+            return EqualityComparer<T>.Default.Equals(input, value);
+        }
+
+        public static T? CustomLast<T>(this IEnumerable<T> input) where T : class
+        {
+            if (input == null)
+                throw new ArgumentNullException(nameof(input));
+
+            T? lastItem = default;
+            bool hasItems = false;
+            foreach (T item in input)
+            {
+                hasItems = true;
+                lastItem = item;
+            }
+
+            if (!hasItems)
+                return default;
+
+            return lastItem;
+        }
+
+        public static T? CustomElementAt<T>(this IEnumerable<T> input, int index) where T : class
+        {
+            if (input == null)
+                throw new ArgumentNullException(nameof(input));
+
+            if (index < 0)
+                return default;
+
+            int currentIndex = 0;
+            foreach (var element in input)
+            {
+                if (currentIndex == index)
+                    return element;
+                currentIndex++;
+            }
+
+            return default;
+        }
+
+        public static int CustomCount<T>(this IEnumerable<T> input)
+        {
+            int i = 0;
+            foreach (var item in input)
+                i++;
+
+            return i;
         }
     }
 }

@@ -10,6 +10,7 @@ namespace DMS.Commands
         private static readonly DKList<string> AllowedKeywords = new();
         private static readonly DKList<char> InvalidTableNameCharacters = new();
         private static readonly DKList<string> SqlDataTypes = new();
+        private static readonly DKList<string> SupportedSqlDataTypes = new();
 
         static CommandValidator()
         {
@@ -21,6 +22,9 @@ namespace DMS.Commands
 
             foreach (ESqlServerDataTypes keyword in Enum.GetValues(typeof(ESqlServerDataTypes)))
                 SqlDataTypes.Add(keyword.ToString());
+
+            foreach (ESupportedDataTypes keyword in Enum.GetValues(typeof(ESupportedDataTypes)))
+                SupportedSqlDataTypes.Add(keyword.ToString());
         }
 
         public static bool ValidateQuery(ECliCommands commandType, string command)
@@ -99,22 +103,39 @@ namespace DMS.Commands
 
             foreach (string item in columnDefinitions)
             {
-                if (!SqlDataTypes.CustomAny(x => item.CustomToLower().Contains(x.CustomToLower())))
-                {
-                    Console.WriteLine("Invalid data type in create table command");
-                    return false;
-                }
+                string commandTrimmed = item.CustomToLower().CustomTrim();
+                /* if (!SqlDataTypes.CustomAny(x => item.CustomToLower().Contains(x.CustomToLower())))
+                 {
+                     Console.WriteLine("Invalid data type in create table command");
+                     return false;
+                 }*/
 
-                int firstWhiteSpaceAfterColumnName = item.IndexOf(' ');
-                string columnName = item[..firstWhiteSpaceAfterColumnName];
+                int firstWhiteSpaceAfterColumnName = commandTrimmed.CustomIndexOf(' ');
+                string columnName = commandTrimmed[..firstWhiteSpaceAfterColumnName].CustomTrim();
                 if (SqlDataTypes.CustomAny(x => columnName.CustomToLower() == x.CustomToLower()))
                 {
                     Console.WriteLine("Invalid column name");
                     return false;
                 }
-            }
 
-            //add a check if data type is supported from ESupportedDataTypes
+                int secondWhiteSpaceAfterColumnName = commandTrimmed.CustomIndexOf(' ', firstWhiteSpaceAfterColumnName + 1);
+                string columnType = commandTrimmed[firstWhiteSpaceAfterColumnName..secondWhiteSpaceAfterColumnName].CustomTrim();
+                //case when user uses nvarchar for string type because of the brackets
+                if (columnType.CustomContains(ESupportedDataTypes.NVARCHAR.ToString()))
+                {
+                    if (!columnType.CustomContains('(') ||
+                        !columnType.CustomContains(')'))
+                    {
+                        Console.WriteLine("Not supported data type curretly we support STRING/INT/DATE");
+                        return false;
+                    }
+                }
+                else if (!SupportedSqlDataTypes.CustomAny(x => x.CustomToLower().CustomContains(columnType)))
+                {
+                    Console.WriteLine("Not supported data type curretly we support STRING/INT/DATE");
+                    return false;
+                }
+            }
 
             return true;
         }
@@ -148,10 +169,10 @@ namespace DMS.Commands
             if (!values[0].CustomContains('(') || !values[0].CustomContains(')'))
                 throw new Exception("No brackets for column definitions");
 
-            //will open the metadata file and check for the column defined there
             string columnDefinitions = values[0].CustomTrim();
             columnDefinitions = columnDefinitions.CustomSubstring(1, columnDefinitions.Length - 2);
 
+            //will open the metadata file and check for the column defined there
             string[] splitedColumnDefinitions = columnDefinitions.CustomSplit(',');
             (string[], string[]) deserializedMetadata = DataPageManager.DeserializeMetadata(tableName);
 

@@ -11,7 +11,7 @@ namespace DMS.Commands
             bool isValidQuery = CommandValidator.ValidateQuery(commandType, command);
 
             if (!isValidQuery)
-                throw new Exception("Invalid Query");
+                return;
 
             switch (commandType)
             {
@@ -60,7 +60,7 @@ namespace DMS.Commands
 
             DataPageManager.CreateTable(columnNames, columnTypes, tableName);
         }
-        //Insert INTO Sample (Id, Name) VALUES (1, “Иван”) 
+        //Insert INTO test (Id, Name) VALUES (1, “Иван”) 
         private static void InsertIntoTable(string command)
         {
             //catch the case when user insert multiple values
