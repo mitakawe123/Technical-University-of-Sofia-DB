@@ -82,8 +82,8 @@ namespace DMS.Constants
     public enum ESupportedDataTypes
     {
         DATE, //DATE: Stores a date in the format YYYY-MM-DD.
-        INT,
-        NVARCHAR
+        INT, //4 bytes (32 bits)
+        NVARCHAR // 2^31-1 bytes (2 GB). <- nvarchar(MAX) / 4,000char can be store there
     }
 
     public enum EInvalidTableNameCharacters

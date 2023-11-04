@@ -1,5 +1,6 @@
 ﻿using DMS.Constants;
 using DMS.Extensions;
+using DMS.Utils;
 
 namespace DMS.DataPages
 {
@@ -64,9 +65,11 @@ namespace DMS.DataPages
             //Check for the space of the column type 
             DataPage dataPage = new();
             string[] columnTypes = DeserializeMetadata(tableName).Item2;
+            ulong[] allocatedSpaceForColumnTypes = HelperAllocater.AllocatedStorageForType(columnTypes, columnValues);
+
             string[] fileNames = Directory.GetFiles($"{Folders.DB_DATA_FOLDER}/{tableName}");
             string lastFileNameInDir = fileNames[^1];
-            int pageNumber;
+            uint pageNumber;
 
             if (lastFileNameInDir.CustomContains("metadata.bin"))
             {
@@ -77,14 +80,20 @@ namespace DMS.DataPages
                 FileInfo fileInfo = new(lastFileNameInDir);
                 long fileSize = fileInfo.Length;
                 //here i need to check how much space the new values will take and then increment the page number and create new data page or insert into the current data page
-                /*if()
+                if (true)
                 {
 
-                }*/
+                }
+                else
+                {
+
+                }
+
                 //here i need to check first if the data page is full then add a logical address to the next data page and then increment the page number and create the new page
+                //if i create new data page i need to add the address of that data page to the IAM file
                 int underScoreIndex = lastFileNameInDir.CustomLastIndexOf('_');
                 int dotIndex = lastFileNameInDir.CustomLastIndexOf('.');
-                pageNumber = int.Parse(lastFileNameInDir[(underScoreIndex+1)..dotIndex]);
+                pageNumber = uint.Parse(lastFileNameInDir[(underScoreIndex+1)..dotIndex]);
                 pageNumber++;
             }
 
@@ -92,7 +101,7 @@ namespace DMS.DataPages
             using FileStream dataPageStream = File.Open(dataPagesFilePath, FileMode.CreateNew);
             using BinaryWriter dataPageWriter = new(dataPageStream);
 
-            dataPageStream.SetLength(PageSize);
+            //dataPageStream.SetLength(PageSize);
 
 
         }
