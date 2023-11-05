@@ -20,34 +20,36 @@ namespace DMS
                     string command = Console.ReadLine()!;
                     string input = command.CustomSplit(new char[] { ' ' })[0];
                     
-                    switch ((ECliCommands)Enum.Parse(typeof(ECliCommands), input, true))
+                    switch (Enum.Parse<ECliCommands>(input, true))
                     {
                         case ECliCommands.Help:
-                            Console.WriteLine($"Available commands: " +
-                                              $"{ECliCommands.CreateTable}, " +
-                                              $"{ECliCommands.DropTable}, " +
-                                              $"{ECliCommands.Insert}, " +
-                                              $"{ECliCommands.ListTables}, " +
-                                              $"{ECliCommands.TableInfo}");
+                            Console.WriteLine("Available commands: " + string.Join(", ", Enum.GetNames(typeof(ECliCommands))));
                             break;
+
                         case ECliCommands.CreateTable:
                             CommandParser.Parse(ECliCommands.CreateTable, command);
                             break;
+
                         case ECliCommands.DropTable:
                             CommandParser.Parse(ECliCommands.DropTable, command);
                             break;
+
                         case ECliCommands.ListTables:
                             CommandParser.Parse(ECliCommands.ListTables, command);
                             break;
+
                         case ECliCommands.TableInfo:
                             CommandParser.Parse(ECliCommands.TableInfo, command);
                             break;
+
                         case ECliCommands.Insert:
                             CommandParser.Parse(ECliCommands.Insert, command);
                             break;
+
                         case ECliCommands.Exit:
                             running = false;
                             break;
+
                         default:
                             Console.WriteLine("Invalid command. Type 'help' for available commands.");
                             break;

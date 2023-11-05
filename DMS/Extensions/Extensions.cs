@@ -8,6 +8,7 @@ namespace DMS.Extensions
 {
     public static class Extensions
     {
+        #region nomal extensions
         public static DKList<T> CustomToList<T>(this T[] array) => new(array);
 
         public static string CustomToLower(this string input)
@@ -394,7 +395,7 @@ namespace DMS.Extensions
             return lastItem;
         }
 
-        public static T CustomElementAt<T>(this IEnumerable<T> input, int index) 
+        public static T CustomElementAt<T>(this IEnumerable<T> input, int index)
         {
             if (input == null)
                 throw new ArgumentNullException(nameof(input));
@@ -415,7 +416,7 @@ namespace DMS.Extensions
 
         public static IEnumerable<T> CustomSkip<T>(this IEnumerable<T> input, int count)
         {
-            if(input is null)
+            if (input is null)
                 throw new ArgumentNullException(nameof(input));
 
             DKList<T> values = new();
@@ -458,10 +459,10 @@ namespace DMS.Extensions
 
         public static bool CustomEndsWith(this string str, string suffix)
         {
-            if (str == null || suffix == null) 
+            if (str == null || suffix == null)
                 throw new ArgumentNullException(str == null ? nameof(str) : nameof(suffix));
 
-            if (suffix.Length > str.Length) 
+            if (suffix.Length > str.Length)
                 return false;
 
             for (int i = 0; i < suffix.Length; i++)
@@ -470,5 +471,39 @@ namespace DMS.Extensions
 
             return true;
         }
+        #endregion
+
+        #region span extensions
+
+        public static ReadOnlySpan<T> CustomSlice<T>(int start, int length)
+        {
+            return new ReadOnlySpan<T>();
+        }
+
+        public static int CustomIndexOf<T>(this ReadOnlySpan<T> span, T value)
+        {
+            for (int i = 0; i < span.Length; i++)
+                if (EqualityComparer<T>.Default.Equals(span[i], value))
+                    return i;
+
+            return -1;
+        }
+
+        public static int CustomLastIndexOf<T>(this ReadOnlySpan<T> span, T value)
+        {
+            //this is not working
+            for (int i = span.Length - 1; i >= 0; i++)
+                if (EqualityComparer<T>.Default.Equals(span[i], value))
+                    return i;
+
+            return -1;
+        }
+
+        public static ReadOnlySpan<char> CustomTrim(this ReadOnlySpan<char> span)
+        {
+            return new ReadOnlySpan<char>();
+        }
+
+        #endregion
     }
 }

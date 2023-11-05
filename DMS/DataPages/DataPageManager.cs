@@ -1,6 +1,7 @@
 ﻿using DMS.Constants;
 using DMS.Extensions;
 using DMS.Utils;
+using System.Collections.Generic;
 
 namespace DMS.DataPages
 {
@@ -21,7 +22,7 @@ namespace DMS.DataPages
         }
 
         //createtable test(id int primary key, name nvarchar(50) null)
-        public static void CreateTable(string[] columnNames, string[] columnTypes, string tableName)
+        public static void CreateTable(IReadOnlyList<string> columnNames, IReadOnlyList<string> columnTypes, ReadOnlySpan<char> tableName)
         {
             if (Directory.Exists($"{Folders.DB_DATA_FOLDER}/{tableName}"))
                 throw new Exception("Already a table with this name");
@@ -29,7 +30,7 @@ namespace DMS.DataPages
             Directory.CreateDirectory($"{Folders.DB_DATA_FOLDER}/{tableName}");
             Directory.CreateDirectory($"{Folders.DB_IAM_FOLDER}/{tableName}");
 
-            string iamFilePath = $"{Folders.DB_IAM_FOLDER}/{tableName}/iam_{tableName}.bin";
+            string iamFilePath = $"{Folders.DB_IAM_FOLDER}/{tableName}/iam_{1}.bin";
             using FileStream iamdataStream = File.Open(iamFilePath, FileMode.CreateNew);
 
             iamdataStream.Close();
@@ -39,11 +40,11 @@ namespace DMS.DataPages
             using BinaryWriter metadataWriter = new(metadataStream);
 
             // Write number of columns.
-            metadataWriter.Write(columnNames.Length);
+            metadataWriter.Write(columnNames.Count);
             metadataWriter.Write("\n");
 
             // Write column types.
-            for (int i = 0; i < columnNames.Length; i++)
+            for (int i = 0; i < columnNames.Count; i++)
             {
                 metadataWriter.Write(columnNames[i]);
                 metadataWriter.Write(columnTypes[i]);
@@ -71,14 +72,14 @@ namespace DMS.DataPages
             if (lastFileNameInDir.CustomContains("metadata.bin"))
             {
                 //need to assing IAM logical address
-                string dataPageFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/{tableName}_datapage_{1}.bin";
+                string dataPageFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/datapage_{1}.bin";
                 using FileStream dataPageStream = File.Open(dataPageFilePath, FileMode.CreateNew);
                 using BinaryWriter dataPageWriter = new(dataPageStream);
 
                 //this is the header section
-                dataPageWriter.Write("Identifier:" + Guid.Empty + "|");
-                dataPageWriter.Write("Record count:" + columnValuesSplitted.CustomCount() + "|");
+                dataPageWriter.Write(Guid.Empty.ToByteArray());
                 dataPageWriter.Write("Remaining space:" + (PageSize - (allAlocatedSpaceForOneRecord * (ulong)columnValuesSplitted.CustomCount())) + "|");
+                dataPageWriter.Write("Record count:" + columnValuesSplitted.CustomCount() + "|");
                 dataPageWriter.Write('\n');
 
                 //this is the value section
@@ -88,17 +89,17 @@ namespace DMS.DataPages
                     foreach (string value in values)
                         dataPageWriter.Write(value.CustomTrim());
                     dataPageWriter.Write('\n');
-                }
+                }   
 
-                dataPageWriter.Write("Pointer next page:" + Guid.Empty + "|");
+                dataPageWriter.Write("Pointer next page:" + Guid.Empty);
                 dataPageStream.Close();
                 dataPageWriter.Close();
 
                 //need to think about how to connect data pages and IAM file and catch the case when IAM file is over 4GB to extend it to new IAM file
                 //need to add the bplustree here for managing the data pages
-                string iamPageFilePath = $"{Folders.DB_IAM_FOLDER}/{tableName}/iam_{tableName}_{1}.bin";
-                using FileStream iamPageStream = File.Open(iamPageFilePath, FileMode.CreateNew);
-                using BinaryWriter iamPageWriter = new(dataPageStream);
+                string iamPageFilePath = $"{Folders.DB_IAM_FOLDER}/{tableName}/iam_{1}.bin";
+                using FileStream iamPageStream = File.Open(iamPageFilePath, FileMode.OpenOrCreate);
+                using BinaryWriter iamPageWriter = new(iamPageStream);
             }
             else
             {
@@ -113,7 +114,7 @@ namespace DMS.DataPages
                     //create the new data page
                     //assign logical address to the IAM file
                     //need to find where is the "Pointer next page:" and change Guid.Empty with something else
-                    string dataPagesFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/{tableName}_datapage_{pageNumber}.bin";
+                    string dataPagesFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/datapage_{pageNumber}.bin";
                     using FileStream dataPageStream = File.Open(dataPagesFilePath, FileMode.Append);
                     using BinaryWriter dataPageWriter = new(dataPageStream);
                     ulong tempFileSize = (ulong)fileSize;
@@ -137,7 +138,7 @@ namespace DMS.DataPages
                     dataPageWriter.Close();
 
                     pageNumber++;
-                    string nextDataPagesFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/{tableName}_datapage_{pageNumber}.bin";
+                    string nextDataPagesFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/datapage_{pageNumber}.bin";
                     using FileStream nextDataPageStream = File.Open(dataPagesFilePath, FileMode.CreateNew);
                     using BinaryWriter nextDataPageWriter = new(dataPageStream);
 
@@ -146,26 +147,27 @@ namespace DMS.DataPages
                     //this is the header section
                     Guid pageIndentifier = Guid.NewGuid(); //<- add this to the prev page pointer next page 
                     nextDataPageWriter.Write("Identifier:" + pageIndentifier + "|");
-                    nextDataPageWriter.Write("Record count:" + leftRecords.CustomCount() + "|");
                     nextDataPageWriter.Write("Remaining space:" + (PageSize - (allAlocatedSpaceForOneRecord * (ulong)leftRecords.CustomCount())) + "|");
+                    nextDataPageWriter.Write("Record count:" + leftRecords.CustomCount() + "|");
                     nextDataPageWriter.Write('\n');
 
-                    nextDataPageWriter.Write("Pointer next page:" + Guid.Empty + "|");
+                    nextDataPageWriter.Write("Pointer next page:" + Guid.Empty);
                     nextDataPageWriter.Close();
                     nextDataPageWriter.Close();
                 }
                 else
                 {
+                    string dataPagesFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/datapage_{pageNumber}.bin";
+                    
+                    //need to update Record count and Remaining space
+                    long currentRecordPosition = FindRecordPosition(dataPagesFilePath, "Record count:");
+                    
+                    FileInfo info = new(dataPagesFilePath);
+                    long currentRemainingSpace = PageSize - info.Length;
+
                     //just append the info to the current data page wihtout creating a new data page
-                    string dataPagesFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/{tableName}_datapage_{pageNumber}.bin";
                     using FileStream dataPageStream = File.Open(dataPagesFilePath, FileMode.Append);
                     using BinaryWriter dataPageWriter = new(dataPageStream);
-
-                    //this is the header section
-                    dataPageWriter.Write("Record count:" + columnValuesSplitted.CustomCount() + "|");
-                    dataPageWriter.Write("Remaining space:" + (PageSize - (allAlocatedSpaceForOneRecord * (ulong)columnValuesSplitted.CustomCount())) + "|");
-                    dataPageWriter.Write("Pointer next page:0" + "|");
-                    dataPageWriter.Write('\n');
 
                     //this is the value section
                     foreach (string col in columnValuesSplitted)
@@ -178,6 +180,8 @@ namespace DMS.DataPages
 
                     dataPageStream.Close();
                     dataPageWriter.Close();
+
+                    //FindAndReplaceRecord(dataPagesFilePath, "Record count:", )
                 }
             }
         }
@@ -209,7 +213,41 @@ namespace DMS.DataPages
             return (columnNames, columnTypes);
         }
 
-        private static bool FindAndReplaceBytes(string filePath, string searchString)
+        private static long FindRecordPosition(string filePath, string searchString)
+        {
+            using FileStream fs = new(filePath, FileMode.Open, FileAccess.ReadWrite);
+            using BinaryReader br = new(fs);
+
+            long position = 0;
+            bool found = false;
+
+            while (br.BaseStream.Position != br.BaseStream.Length)
+            {
+                if (br.ReadByte() != searchString[0])
+                    continue;
+
+                for (int i = 1; i < searchString.Length; i++)
+                {
+                    if (br.ReadByte() != searchString[i])
+                        break;
+                    if (i == searchString.Length - 1)
+                        found = true;
+                }
+
+                if (found)
+                {
+                    position = br.BaseStream.Position;
+                    break;
+                }
+            }
+
+            if (!found)
+                return -1;
+
+            return position;
+        }
+
+        private static bool FindAndReplaceRecord<T>(string filePath, string searchString, T valueToUpdate)
         {
             using FileStream fs = new(filePath, FileMode.Open, FileAccess.ReadWrite);
             using BinaryReader br = new(fs);
@@ -241,7 +279,7 @@ namespace DMS.DataPages
                 return false;
             
             fs.Seek(position, SeekOrigin.Begin);
-            ulong newRemainingSpace = 100000;
+            T newRemainingSpace = valueToUpdate;
             using BinaryWriter bw = new(fs);
             bw.Write(newRemainingSpace.ToString());
             return true;
