@@ -150,7 +150,7 @@ namespace DMS.Commands
             return true;
         }
 
-        //Insert INTO test (Id, Name) VALUES (1, “ivan”), (2, "georgi"), (3, "mariq") 
+        //Insert INTO test (Id, Name) VALUES (1, “pepi”), (2, “mariq”), (3, “georgi”)
         private static bool ValidateInsertTableCommand(string command)
         {
             if (!command.CustomToLower().CustomContains("INSERT INTO".CustomToLower())

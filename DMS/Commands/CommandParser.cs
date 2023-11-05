@@ -43,7 +43,7 @@ namespace DMS.Commands
                     break;
             }
         }
-        //createtable test(id int primary key, name nvarchar(50) null, namemain nvarchar(50) null)
+        //createtable test(id int primary key, name nvarchar(50) null)
         private static void CreateTable(string command)
         {
             //add a case when there is default values
@@ -51,57 +51,65 @@ namespace DMS.Commands
             int startAfterKeyword = "createtable".Length;
             int openingBracket = commandSpan.CustomIndexOf('(');
             int closingBracket = commandSpan.CustomLastIndexOf(')');
-            int endBeforeParenthesis = commandSpan[startAfterKeyword..].IndexOf('(');
+            int endBeforeParenthesis = commandSpan[startAfterKeyword..].CustomIndexOf('(');
 
-            ReadOnlySpan<char> tableNameSpan = commandSpan.Slice(startAfterKeyword, endBeforeParenthesis).Trim();
+            ReadOnlySpan<char> tableNameSpan = commandSpan.CustomSlice(startAfterKeyword, endBeforeParenthesis).CustomTrim();
             ReadOnlySpan<char> values = commandSpan[(openingBracket + 1)..closingBracket];
             DKList<string> columnNames = new();
             DKList<string> columnTypes = new();
 
             while (values.Length > 0)
             {
-                int commaIndex = values.IndexOf(',');
+                int commaIndex = values.CustomIndexOf(',');
                 ReadOnlySpan<char> columnDefinition = commaIndex != -1 ? values[..commaIndex] : values;
 
-                int spaceIndex = columnDefinition.IndexOf(' ');
+                int spaceIndex = columnDefinition.CustomIndexOf(' ');
 
-                ReadOnlySpan<char> columnName = columnDefinition[..spaceIndex].Trim();
-                ReadOnlySpan<char> columnType = columnDefinition[(spaceIndex + 1)..].Trim();
+                ReadOnlySpan<char> columnName = columnDefinition[..spaceIndex].CustomTrim();
+                ReadOnlySpan<char> columnType = columnDefinition[(spaceIndex + 1)..].CustomTrim();
 
-                int typeSpaceIndex = columnType.IndexOf(' ');
+                int typeSpaceIndex = columnType.CustomIndexOf(' ');
                 columnType = columnType[..typeSpaceIndex];
 
                 columnNames.Add(columnName.ToString());
                 columnTypes.Add(columnType.ToString());
 
-                values = commaIndex != -1 ? values[(commaIndex + 1)..].Trim() : ReadOnlySpan<char>.Empty;
+                values = commaIndex != -1 ? values[(commaIndex + 1)..].CustomTrim() : ReadOnlySpan<char>.Empty;
             }
 
             DataPageManager.CreateTable(columnNames, columnTypes, tableNameSpan);
         }
-        //Insert INTO test (Id, Name) VALUES (1, “pepi”, 3), (2, “mariq”, 6), (3, “georgi”, 1)
+        //Insert INTO test (Id, Name) VALUES (1, “pepi”), (2, “mariq”), (3, “georgi”)
         private static void InsertIntoTable(string command)
         {
-            string[] parts = command.CustomSplit(' ');
-            string tableName = parts[2];
+            ReadOnlySpan<char> commandSpan = command;
+            int startAfterKeyword = commandSpan.CustomIndexOf("insert into") + "insert into".Length;
+            int valuesKeyword = commandSpan.CustomIndexOf("values") + "values".Length;
 
-            string[] columnsAndValues = command.CustomSplit($"{tableName.CustomToLower()}");
-            string[] values = columnsAndValues[1].CustomSplit("values");
+            int endBeforeParenthesis = commandSpan[startAfterKeyword..].CustomIndexOf('(');
 
-            values[1] = values[1].CustomTrim();
-            string[] tupleStrings = values[1].Split(new string[] { "), (" }, StringSplitOptions.RemoveEmptyEntries);
-            DKList<string> columnValuesSplitted = new();
-            foreach (string tuple in tupleStrings)
+            ReadOnlySpan<char> tableNameSpan = commandSpan.CustomSlice(startAfterKeyword, endBeforeParenthesis).CustomTrim();
+            ReadOnlySpan<char> valuesSpan = commandSpan[valuesKeyword..].CustomTrim();
+
+            DKList<string> columnValues = new();
+
+            while (valuesSpan.Length > 0)
             {
-                string cleanedTuple = tuple.CustomTrim(new char[] { '(', ')' });
-                columnValuesSplitted.Add(cleanedTuple);
+                int bracketIndex = valuesSpan.CustomIndexOf(')');
+                ReadOnlySpan<char> vals = bracketIndex != -1
+                    ? valuesSpan[..bracketIndex]
+                    : valuesSpan;
+
+                int openingBracket = vals.CustomIndexOf('(');
+
+                columnValues.Add(vals[(openingBracket + 1)..].ToString());
+
+                valuesSpan = bracketIndex != -1
+                    ? valuesSpan[(bracketIndex + 1)..].CustomTrim()
+                    : ReadOnlySpan<char>.Empty;
             }
 
-            string columnDefinition = values[0].CustomTrim();
-            columnDefinition = columnDefinition.CustomSubstring(1, columnDefinition.Length - 2);
-            string[] columnDefinitions = columnDefinition.CustomSplit(',');
-
-            DataPageManager.InsertIntoTable(columnDefinitions, tableName, columnValuesSplitted);
+            DataPageManager.InsertIntoTable(columnValues, tableNameSpan);
         }
 
         private static void DropTable(string command)
@@ -117,7 +125,7 @@ namespace DMS.Commands
         {
             string[] filesindirectory = Directory.GetDirectories(Folders.DB_DATA_FOLDER);
 
-            DirectoryInfo dirInfo = new DirectoryInfo(Folders.DB_DATA_FOLDER + "/");
+            DirectoryInfo dirInfo = new(Folders.DB_DATA_FOLDER + "/");
             FileInfo[] files = dirInfo.GetFiles();
 
             foreach (FileInfo file in files)
@@ -157,7 +165,7 @@ namespace DMS.Commands
             DirectoryInfo directoryTableSize = new($"{Folders.DB_DATA_FOLDER}/{tableName}");
             DirectoryInfo directoryInfoDataPages = new($"{Folders.DB_DATA_FOLDER}/{tableName}");
             DirectoryInfo directoryInfoIAM = new($"{Folders.DB_IAM_FOLDER}/{tableName}");
-            FileInfo directoryInfoMetadata = new($"{Folders.DB_DATA_FOLDER}/{tableName}/metadata.bin");
+            FileInfo directoryInfoMetadata = new($"{Folders.DB_DATA_FOLDER}/{tableName}/{Files.METADATA_NAME}");
 
             long totalTableSize = FolderSize(directoryTableSize);
             long totalFolderSizeDataPages = FolderSize(directoryInfoDataPages);

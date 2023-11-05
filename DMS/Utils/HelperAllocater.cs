@@ -45,5 +45,13 @@ namespace DMS.Utils
 
             return allocatedBytes;
         }
+
+        public static ulong AllocatedSpaceForColumnTypes(ulong[] allocatedSpaceForColumnTypes)
+        {
+            ulong all = 0;
+            foreach (ulong item in allocatedSpaceForColumnTypes)
+                all += item;
+            return all;
+        }
     }
 }

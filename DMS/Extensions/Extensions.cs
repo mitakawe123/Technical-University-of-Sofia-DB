@@ -1,7 +1,6 @@
 ﻿using DataStructures;
 using DMS.Constants;
 using DMS.Utils;
-using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace DMS.Extensions
@@ -414,7 +413,7 @@ namespace DMS.Extensions
             return default;
         }
 
-        public static IEnumerable<T> CustomSkip<T>(this IEnumerable<T> input, int count)
+        public static IReadOnlyList<T> CustomSkip<T>(this IEnumerable<T> input, int count)
         {
             if (input is null)
                 throw new ArgumentNullException(nameof(input));
@@ -473,11 +472,11 @@ namespace DMS.Extensions
         }
         #endregion
 
-        #region span extensions
+        #region readonly span extensions
 
-        public static ReadOnlySpan<T> CustomSlice<T>(int start, int length)
+        public static ReadOnlySpan<T> CustomSlice<T>(this ReadOnlySpan<T> span, int start, int length)
         {
-            return new ReadOnlySpan<T>();
+            return new ReadOnlySpan<T>(span.CustomToArray(), start, length);
         }
 
         public static int CustomIndexOf<T>(this ReadOnlySpan<T> span, T value)
@@ -485,6 +484,19 @@ namespace DMS.Extensions
             for (int i = 0; i < span.Length; i++)
                 if (EqualityComparer<T>.Default.Equals(span[i], value))
                     return i;
+
+            return -1;
+        }
+
+        public static int CustomIndexOf<T>(this ReadOnlySpan<T> span, ReadOnlySpan<T> value)
+        {
+            for (int i = 0; i <= span.Length - value.Length; i++)
+            {
+                ReadOnlySpan<T> slice = span.CustomSlice(i, value.Length);
+
+                if (slice.SequenceEqual(value))
+                    return i;
+            }
 
             return -1;
         }
@@ -501,7 +513,28 @@ namespace DMS.Extensions
 
         public static ReadOnlySpan<char> CustomTrim(this ReadOnlySpan<char> span)
         {
-            return new ReadOnlySpan<char>();
+            int startIndex = 0;
+            int endIndex = span.Length - 1;
+
+            while (startIndex <= endIndex && span[startIndex].CustomIsWhiteSpace())
+                startIndex++;
+
+            while (endIndex >= startIndex && span[endIndex].CustomIsWhiteSpace())
+                endIndex--;
+
+            if (startIndex > endIndex)
+                return "";
+
+            return span.CustomSlice(startIndex, endIndex - startIndex + 1);
+        }
+
+        public static T[] CustomToArray<T>(this ReadOnlySpan<T> collection)
+        {
+            T[] result = new T[collection.Length];
+            for (int i = 0; i < result.Length; i++)
+                result[i] = collection[i];
+
+            return result;
         }
 
         #endregion
