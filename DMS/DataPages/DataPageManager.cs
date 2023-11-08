@@ -1,14 +1,16 @@
 ﻿using DMS.Constants;
 using DMS.Extensions;
+using DMS.Offset;
 using DMS.Utils;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
+using Domain;
+using System.IO;
 
 namespace DMS.DataPages
 {
-    // We will store only string,int and date so we want only in-row and row-overflow data pages
     public class DataPageManager
     {
+        private static Dictionary<string, Table> Tables { get; set; } = new();
+
         //There are three types of data pages in SQL Server: in-row, row-overflow, and LOB data pages.
         private const int PageSize = 8192; //8KB
         private const int HeaderSize = 96;
@@ -25,38 +27,29 @@ namespace DMS.DataPages
         //createtable test(id int primary key, name string null)
         public static void CreateTable(IReadOnlyList<string> columnNames, IReadOnlyList<string> columnTypes, ReadOnlySpan<char> tableName)
         {
-            //in the mdf file at the start write the offset mapping
+            bool isOffsetMapperLoaded = OffsetManager.LoadOffsetMapper();
 
+            using var binaryStream = new FileStream(Files.MDF_FILE_NAME, FileMode.Append);
+            using var writer = new BinaryWriter(binaryStream);
+            //need to make them as a 8KB sections
+            writer.Seek(0, SeekOrigin.End);
 
+            //writer.Write(Tables.Count);
 
-            /*if (Directory.Exists($"{Folders.DB_DATA_FOLDER}/{tableName}"))
-                throw new Exception("Already a table with this name");
+            Table table = new() { Name = tableName.ToString() };
 
-            Directory.CreateDirectory($"{Folders.DB_DATA_FOLDER}/{tableName}");
-            Directory.CreateDirectory($"{Folders.DB_IAM_FOLDER}/{tableName}");
-
-            string iamFilePath = $"{Folders.DB_IAM_FOLDER}/{tableName}/iam_{1}.bin";
-            using FileStream iamdataStream = File.Open(iamFilePath, FileMode.CreateNew);
-
-            iamdataStream.Close();
-
-            string metadataFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/{Files.METADATA_NAME}";
-            using FileStream metadataStream = File.Open(metadataFilePath, FileMode.CreateNew);
-            using BinaryWriter metadataWriter = new(metadataStream);
-
-            // Write number of columns.
-            metadataWriter.Write(columnNames.Count);
-            metadataWriter.Write("\n");
-
-            // Write column types.
             for (int i = 0; i < columnNames.Count; i++)
             {
-                metadataWriter.Write(columnNames[i]);
-                metadataWriter.Write(columnTypes[i]);
+                Type type = Type.GetType(columnTypes[i]) 
+                    ?? throw new ArgumentException($"Type for column is not found");
+                
+                table.Columns.Add(new Column { Name = columnNames[i], DataType = type });
             }
 
-            metadataStream.Close();
-            metadataWriter.Close();*/
+            // Write number of columns.
+
+            // Write column types.
+
         }
 
         //Insert INTO test (Id, Name) VALUES (1, “pepi”, 3), (2, “mariq”, 6), (3, “georgi”, 1)
@@ -65,10 +58,10 @@ namespace DMS.DataPages
             //add check if column values can be cast to columnDefinitions
             string[] columnTypes = DeserializeMetadata(tableName.ToString()).Item2;
             string[] filesInDir = Directory.GetFiles($"{Folders.DB_DATA_FOLDER}/{tableName}");
-            
+
             ulong[] allocatedSpaceForColumnTypes = HelperAllocater.AllocatedStorageForType(columnTypes, columnValues);
             ulong allAlocatedSpaceForOneRecord = HelperAllocater.AllocatedSpaceForColumnTypes(allocatedSpaceForColumnTypes);
-            
+
             int remainingSpace = PageSize - ((int)allAlocatedSpaceForOneRecord * columnValues.Count);
             int pageNumber = 1;
             int iamPageNumber = 1;
@@ -107,7 +100,7 @@ namespace DMS.DataPages
                 string iamPageFilePath = $"{Folders.DB_IAM_FOLDER}/{tableName}/iam_{iamPageNumber}.bin";
                 using FileStream iamPageStream = File.Open(iamPageFilePath, FileMode.OpenOrCreate);
                 using BinaryWriter iamPageWriter = new(iamPageStream);
-                
+
                 iamPageWriter.Seek(0, SeekOrigin.End);
                 iamPageWriter.Write(pageNumber);
 
@@ -122,9 +115,9 @@ namespace DMS.DataPages
 
             int underScoreIndex = lastFileNameInDir.CustomLastIndexOf('_');
             int dotIndex = lastFileNameInDir.CustomLastIndexOf('.');
-            
+
             long fileSize = fileInfo.Length;
-            
+
             pageNumber = int.Parse(lastFileNameInDir[(underScoreIndex + 1)..dotIndex]);
 
             if (allAlocatedSpaceForOneRecord * (ulong)columnValues.CustomCount() + (ulong)fileSize > PageSize)
@@ -132,7 +125,7 @@ namespace DMS.DataPages
                 string dataPagesFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/datapage_{pageNumber}.bin";
                 using FileStream dataPageStream = File.Open(dataPagesFilePath, FileMode.Append);
                 using BinaryWriter dataPageWriter = new(dataPageStream);
-                
+
                 ulong tempFileSize = (ulong)fileSize;
                 int currentIndexOfColumValues = 0;
 
@@ -158,7 +151,7 @@ namespace DMS.DataPages
                 using BinaryWriter nextDataPageWriter = new(nextDataPageStream);
 
                 IReadOnlyList<string> leftRecords = columnValues.CustomSkip(currentIndexOfColumValues);
-                
+
                 //this is the header section
                 nextDataPageWriter.Write(remainingSpace);
                 nextDataPageWriter.Write(leftRecords.Count);

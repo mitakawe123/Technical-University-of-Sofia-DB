@@ -9,12 +9,12 @@ namespace DMS.Commands
     {
         public static void Parse(ECliCommands commandType, string command)
         {
+            command = command.CustomToLower();
+
             bool isValidQuery = CommandValidator.ValidateQuery(commandType, command);
 
             if (!isValidQuery)
                 return;
-
-            command = command.CustomToLower();
 
             switch (commandType)
             {

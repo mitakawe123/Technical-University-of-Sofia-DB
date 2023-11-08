@@ -71,11 +71,9 @@ namespace DMS.Commands
             }
         }
 
-        //createtable test(id int primary key, name nvarchar(50) null)
+        //createtable test(id int primary key, name string null)
         private static bool ValidateCreateTableCommand(string command)
         {
-            command = command.CustomTrim();
-
             if (!command.CustomContains(ECliCommands.CreateTable.ToString()))
                 return false;
 
@@ -103,7 +101,7 @@ namespace DMS.Commands
 
             foreach (string item in columnDefinitions)
             {
-                string commandTrimmed = item.CustomToLower().CustomTrim();
+                string commandTrimmed = item.CustomTrim();
                 /* if (!SqlDataTypes.CustomAny(x => item.CustomToLower().Contains(x.CustomToLower())))
                  {
                      Console.WriteLine("Invalid data type in create table command");
@@ -120,17 +118,7 @@ namespace DMS.Commands
 
                 int secondWhiteSpaceAfterColumnName = commandTrimmed.CustomIndexOf(' ', firstWhiteSpaceAfterColumnName + 1);
                 string columnType = commandTrimmed[firstWhiteSpaceAfterColumnName..secondWhiteSpaceAfterColumnName].CustomTrim();
-                //case when user uses nvarchar for string type because of the brackets
-                if (columnType.CustomContains(ESupportedDataTypes.STRING.ToString()))
-                {
-                    if (!columnType.CustomContains('(') ||
-                        !columnType.CustomContains(')'))
-                    {
-                        Console.WriteLine("Not supported data type curretly we support STRING/INT/DATE");
-                        return false;
-                    }
-                }
-                else if (!SupportedSqlDataTypes.CustomAny(x => x.CustomToLower().CustomContains(columnType)))
+                if (!SupportedSqlDataTypes.CustomAny(x => x.CustomToLower().CustomContains(columnType)))
                 {
                     Console.WriteLine("Not supported data type curretly we support STRING/INT/DATE");
                     return false;

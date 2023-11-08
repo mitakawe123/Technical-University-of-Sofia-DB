@@ -11,5 +11,6 @@
     {
         public const string METADATA_NAME = "_metadata.bin";
         public const string MDF_FILE_NAME = "database.mdf";
+        public const string OFFSET_FILE_NAME = "offset.bin";
     }
 }
