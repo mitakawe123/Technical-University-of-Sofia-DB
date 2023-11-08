@@ -1,33 +1,33 @@
 ﻿using DMS.Constants;
 using DMS.Extensions;
+using DMS.Shared;
 
 namespace DMS.Utils
 {
     public static class HelperAllocater
     {
         //how much bytes for each data type
-        public static ulong[] AllocatedStorageForType(string[] columnTypes, IEnumerable<string> columnValuesSplitted)
+        public static ulong AllocatedStorageForType(IReadOnlyList<Column> columns)
         {
-            ulong[] allocatedBytes = new ulong[columnTypes.Length];
-            for (int i = 0; i < columnTypes.Length; i++)
+            return 1;
+            /*ulong[] allocatedBytes = new ulong[columnTypes.Count];
+            for (int i = 0; i < columnTypes.Count; i++)
             {
-                columnTypes[i] = columnTypes[i].CustomTrim().CustomToLower();
-
-                if (columnTypes[i] == ESupportedDataTypes.INT.ToString().CustomToLower())
+                if (columnTypes[i] == EDataTypes.INT.ToString().CustomToLower())
                     allocatedBytes[i] = 4;
-                else if (columnTypes[i] == ESupportedDataTypes.DATE.ToString().CustomToLower())
+                else if (columnTypes[i] == EDataTypes.DATE.ToString().CustomToLower())
                     allocatedBytes[i] = 3;
-                else if (columnTypes[i].Contains(ESupportedDataTypes.STRING.ToString().CustomToLower()))
+                else if (columnTypes[i].Contains(EDataTypes.STRING.ToString().CustomToLower()))
                 {
                     //this is dynamic case so I need to loop over how much chars are there and for each char allocate 2bytes
                     if (columnTypes[i].CustomContains("max"))
                     {
                         //this check is wrong i need to split first by "," and then check for the 4000 chars
-                        if (columnValuesSplitted.CustomElementAt(i).Length > 4000)
+                        if (columnValues.CustomElementAt(i).Length > 4000)
                             throw new Exception("nvarchar(max) cannot be over 4000 chars long");
 
                         uint bytes = 0;
-                        for (int j = 0; j < columnValuesSplitted.CustomElementAt(i).Length; j++)
+                        for (int j = 0; j < columnValues.CustomElementAt(i).Length; j++)
                             bytes += 2;
 
                         allocatedBytes[i] = bytes;
@@ -40,18 +40,9 @@ namespace DMS.Utils
                         allocatedBytes[i] = charForNvarchar * 2;
                     }
                 }
-
             }
 
-            return allocatedBytes;
-        }
-
-        public static ulong AllocatedSpaceForColumnTypes(ulong[] allocatedSpaceForColumnTypes)
-        {
-            ulong all = 0;
-            foreach (ulong item in allocatedSpaceForColumnTypes)
-                all += item;
-            return all;
+            return allocatedBytes;*/
         }
     }
 }

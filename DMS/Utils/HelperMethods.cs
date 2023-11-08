@@ -13,7 +13,5 @@
             
             return -1;
         }
-
-        public static T[] CustomEmpty<T>() => new T[0];
     }
 }

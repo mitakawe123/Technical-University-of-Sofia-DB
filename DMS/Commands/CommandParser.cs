@@ -2,6 +2,7 @@
 using DMS.Constants;
 using DMS.DataPages;
 using DMS.Extensions;
+using DMS.Shared;
 
 namespace DMS.Commands
 {
@@ -37,10 +38,6 @@ namespace DMS.Commands
                 case ECliCommands.Insert:
                     InsertIntoTable(command);
                     break;
-
-                default:
-                    Console.WriteLine("Invalid command. Type 'help' for available commands.");
-                    break;
             }
         }
         //createtable test(id int primary key, name string null)
@@ -48,15 +45,14 @@ namespace DMS.Commands
         {
             //add a case when there is default values
             ReadOnlySpan<char> commandSpan = command;
-            int startAfterKeyword = "createtable".Length;
+            int startAfterKeyword = ECliCommands.CreateTable.ToString().Length;
             int openingBracket = commandSpan.CustomIndexOf('(');
             int closingBracket = commandSpan.CustomLastIndexOf(')');
             int endBeforeParenthesis = commandSpan[startAfterKeyword..].CustomIndexOf('(');
-
+            
             ReadOnlySpan<char> tableNameSpan = commandSpan.CustomSlice(startAfterKeyword, endBeforeParenthesis).CustomTrim();
             ReadOnlySpan<char> values = commandSpan[(openingBracket + 1)..closingBracket];
-            DKList<string> columnNames = new();
-            DKList<string> columnTypes = new();
+            DKList<Column> columns = new();
 
             while (values.Length > 0)
             {
@@ -64,20 +60,21 @@ namespace DMS.Commands
                 ReadOnlySpan<char> columnDefinition = commaIndex != -1 ? values[..commaIndex] : values;
 
                 int spaceIndex = columnDefinition.CustomIndexOf(' ');
-
+                
                 ReadOnlySpan<char> columnName = columnDefinition[..spaceIndex].CustomTrim();
                 ReadOnlySpan<char> columnType = columnDefinition[(spaceIndex + 1)..].CustomTrim();
 
                 int typeSpaceIndex = columnType.CustomIndexOf(' ');
                 columnType = columnType[..typeSpaceIndex];
 
-                columnNames.Add(columnName.ToString());
-                columnTypes.Add(columnType.ToString());
+                columns.Add(new Column(
+                    new string(columnName),
+                    Enum.Parse<EDataTypes>(columnType, true)));
 
                 values = commaIndex != -1 ? values[(commaIndex + 1)..].CustomTrim() : ReadOnlySpan<char>.Empty;
             }
 
-            DataPageManager.CreateTable(columnNames, columnTypes, tableNameSpan);
+            DataPageManager.CreateTable(columns, tableNameSpan);
         }
         //Insert INTO test (Id, Name) VALUES (1, “pepi”), (2, “mariq”), (3, “georgi”)
         private static void InsertIntoTable(string command)
@@ -109,50 +106,14 @@ namespace DMS.Commands
                     : ReadOnlySpan<char>.Empty;
             }
 
-            DataPageManager.InsertIntoTable(columnValues, tableNameSpan);
         }
 
         private static void DropTable(string command)
         {
-            int firstWhiteSpace = command.CustomIndexOf(' ');
-            string tableName = command[firstWhiteSpace..].CustomTrim();
-            Directory.Delete($"{Folders.DB_DATA_FOLDER}/{tableName}", true);
-            Directory.Delete($"{Folders.DB_IAM_FOLDER}/{tableName}", true);
-            Console.WriteLine($"Successfully deleted {tableName}");
         }
 
         private static void ListTables()
         {
-            string[] filesindirectory = Directory.GetDirectories(Folders.DB_DATA_FOLDER);
-
-            DirectoryInfo dirInfo = new(Folders.DB_DATA_FOLDER + "/");
-            FileInfo[] files = dirInfo.GetFiles();
-
-            foreach (FileInfo file in files)
-            {
-                Console.WriteLine(file.Name);
-            }
-            foreach (string dir in filesindirectory)
-            {
-                char[] pathChars = dir.CustomToCharArray();
-                char[] pathCharsReversed = pathChars.CustomArrayReverse();
-                string reversedPath = new(pathCharsReversed);
-
-                int slashIndex = reversedPath.CustomIndexOfAny(new char[] { '/', '\\' });
-
-                if (slashIndex < 0)
-                    Console.WriteLine(dir);
-                else
-                {
-                    string reversedFirstPart = reversedPath[..slashIndex];
-
-                    char[] firstPartChars = reversedFirstPart.CustomToCharArray();
-                    char[] firstPartCharsReversed = firstPartChars.CustomArrayReverse();
-                    string firstPart = new(firstPartCharsReversed);
-
-                    Console.WriteLine(firstPart);
-                }
-            }
         }
 
         //схема и брой записи, заемано пространство и др.
@@ -162,15 +123,11 @@ namespace DMS.Commands
             //how many records are there
             string tableName = command[command.CustomIndexOf(' ')..].CustomTrim();
 
-            DirectoryInfo directoryTableSize = new($"{Folders.DB_DATA_FOLDER}/{tableName}");
-            DirectoryInfo directoryInfoDataPages = new($"{Folders.DB_DATA_FOLDER}/{tableName}");
-            DirectoryInfo directoryInfoIAM = new($"{Folders.DB_IAM_FOLDER}/{tableName}");
-            FileInfo directoryInfoMetadata = new($"{Folders.DB_DATA_FOLDER}/{tableName}/{Files.METADATA_NAME}");
 
-            long totalTableSize = FolderSize(directoryTableSize);
+            /*long totalTableSize = FolderSize(directoryTableSize);
             long totalFolderSizeDataPages = FolderSize(directoryInfoDataPages);
             long totalFolderSizeIAM = FolderSize(directoryInfoIAM);
-            long totalSizeMetadata = directoryInfoMetadata.Length;
+            long totalSizeMetadata = directoryInfoMetadata.Length;*/
         }
 
         private static long FolderSize(DirectoryInfo folder)

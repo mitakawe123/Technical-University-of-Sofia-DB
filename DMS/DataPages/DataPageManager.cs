@@ -1,59 +1,41 @@
 ﻿using DMS.Constants;
-using DMS.Extensions;
 using DMS.Offset;
-using DMS.Utils;
-using Domain;
-using System.IO;
+using DMS.Shared;
 
 namespace DMS.DataPages
 {
     public class DataPageManager
     {
-        private static Dictionary<string, Table> Tables { get; set; } = new();
-
-        //There are three types of data pages in SQL Server: in-row, row-overflow, and LOB data pages.
-        private const int PageSize = 8192; //8KB
-        private const int HeaderSize = 96;
-        private const int RowOffset = 36;
-        private const int BufferOverflowPage = 16; // this is when you try to write data in data page but there is not enough space so you leave 24kb that will hold address to the next data page
+        private const int DataPageSize = 8192; //8KB
 
         static DataPageManager()
         {
-            Directory.CreateDirectory(Folders.DB_FOLDER);
-            Directory.CreateDirectory(Folders.DB_DATA_FOLDER);
-            Directory.CreateDirectory(Folders.DB_IAM_FOLDER);
+            if (!File.Exists(Files.MDF_FILE_NAME))
+                File.Create(Files.MDF_FILE_NAME);
         }
 
         //createtable test(id int primary key, name string null)
-        public static void CreateTable(IReadOnlyList<string> columnNames, IReadOnlyList<string> columnTypes, ReadOnlySpan<char> tableName)
+        public static void CreateTable(IReadOnlyList<Column> columns, ReadOnlySpan<char> tableName)
         {
-            bool isOffsetMapperLoaded = OffsetManager.LoadOffsetMapper();
-
             using var binaryStream = new FileStream(Files.MDF_FILE_NAME, FileMode.Append);
             using var writer = new BinaryWriter(binaryStream);
-            //need to make them as a 8KB sections
-            writer.Seek(0, SeekOrigin.End);
 
-            //writer.Write(Tables.Count);
+            writer.Write(tableName);
+            writer.Write(columns.Count);
 
-            Table table = new() { Name = tableName.ToString() };
-
-            for (int i = 0; i < columnNames.Count; i++)
+            for (int i = 0; i < columns.Count; i++)
             {
-                Type type = Type.GetType(columnTypes[i]) 
-                    ?? throw new ArgumentException($"Type for column is not found");
-                
-                table.Columns.Add(new Column { Name = columnNames[i], DataType = type });
+                writer.Write((byte)columns[i].Type);
+                writer.Write(columns[i].Name);
             }
 
-            // Write number of columns.
+            //ulong totalSpace = HelperAllocater.AllocatedStorageForType();
 
-            // Write column types.
-
+            OffsetManager.SaveOffsetMapper();
         }
 
         //Insert INTO test (Id, Name) VALUES (1, “pepi”, 3), (2, “mariq”, 6), (3, “georgi”, 1)
-        public static void InsertIntoTable(IReadOnlyList<string> columnValues, ReadOnlySpan<char> tableName)
+/*        public static void InsertIntoTable(IReadOnlyList<string> columnValues, ReadOnlySpan<char> tableName)
         {
             //add check if column values can be cast to columnDefinitions
             string[] columnTypes = DeserializeMetadata(tableName.ToString()).Item2;
@@ -62,7 +44,7 @@ namespace DMS.DataPages
             ulong[] allocatedSpaceForColumnTypes = HelperAllocater.AllocatedStorageForType(columnTypes, columnValues);
             ulong allAlocatedSpaceForOneRecord = HelperAllocater.AllocatedSpaceForColumnTypes(allocatedSpaceForColumnTypes);
 
-            int remainingSpace = PageSize - ((int)allAlocatedSpaceForOneRecord * columnValues.Count);
+            int remainingSpace = DataPageSize - ((int)allAlocatedSpaceForOneRecord * columnValues.Count);
             int pageNumber = 1;
             int iamPageNumber = 1;
 
@@ -120,7 +102,7 @@ namespace DMS.DataPages
 
             pageNumber = int.Parse(lastFileNameInDir[(underScoreIndex + 1)..dotIndex]);
 
-            if (allAlocatedSpaceForOneRecord * (ulong)columnValues.CustomCount() + (ulong)fileSize > PageSize)
+            if (allAlocatedSpaceForOneRecord * (ulong)columnValues.CustomCount() + (ulong)fileSize > DataPageSize)
             {
                 string dataPagesFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/datapage_{pageNumber}.bin";
                 using FileStream dataPageStream = File.Open(dataPagesFilePath, FileMode.Append);
@@ -129,7 +111,7 @@ namespace DMS.DataPages
                 ulong tempFileSize = (ulong)fileSize;
                 int currentIndexOfColumValues = 0;
 
-                while (allAlocatedSpaceForOneRecord + tempFileSize + BufferOverflowPage < PageSize)
+                *//*while (allAlocatedSpaceForOneRecord + tempFileSize + BufferOverflowPage < PageSize)
                 {
                     foreach (string col in columnValues)
                     {
@@ -140,7 +122,7 @@ namespace DMS.DataPages
                         currentIndexOfColumValues++;
                     }
                     tempFileSize += allAlocatedSpaceForOneRecord;
-                }
+                }*//*
 
                 dataPageStream.Close();
                 dataPageWriter.Close();
@@ -194,10 +176,11 @@ namespace DMS.DataPages
                 //FindAndReplaceRecord(dataPagesFilePath, "Record count:", )
             }
         }
-
-        public static (string[], string[]) DeserializeMetadata(string tableName)
+*/
+        public static IReadOnlyList<Column> DeserializeMetadata(string tableName)
         {
-            string metadataFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/{Files.METADATA_NAME}";
+            return default;
+            /*string metadataFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/{Files.METADATA_NAME}";
 
             if (!File.Exists(metadataFilePath))
                 throw new Exception("Metadata file does not exist for the specified table.");
@@ -219,7 +202,7 @@ namespace DMS.DataPages
                 columnTypes[i] = metadataReader.ReadString();
             }
 
-            return (columnNames, columnTypes);
+            return (columnNames, columnTypes);*/
         }
 
         private static long FindRecordPosition(string filePath, string searchString)

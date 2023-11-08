@@ -2,6 +2,7 @@
 using DMS.Constants;
 using DMS.DataPages;
 using DMS.Extensions;
+using DMS.Shared;
 
 namespace DMS.Commands
 {
@@ -10,21 +11,17 @@ namespace DMS.Commands
         private static readonly DKList<string> AllowedKeywords = new();
         private static readonly DKList<char> InvalidTableNameCharacters = new();
         private static readonly DKList<string> SqlDataTypes = new();
-        private static readonly DKList<string> SupportedSqlDataTypes = new();
 
         static CommandValidator()
         {
-            foreach (ESQLCommands keyword in Enum.GetValues(typeof(ESQLCommands)))
+            foreach (ESQLCommands keyword in Enum.GetValues<ESQLCommands>())
                 AllowedKeywords.Add(keyword.ToString());
 
-            foreach (EInvalidTableNameCharacters keyword in Enum.GetValues(typeof(EInvalidTableNameCharacters)))
+            foreach (EInvalidTableNameCharacters keyword in Enum.GetValues<EInvalidTableNameCharacters>())
                 InvalidTableNameCharacters.Add((char)keyword);
 
-            foreach (ESqlServerDataTypes keyword in Enum.GetValues(typeof(ESqlServerDataTypes)))
+            foreach (EDataTypes keyword in Enum.GetValues<EDataTypes>())
                 SqlDataTypes.Add(keyword.ToString());
-
-            foreach (ESupportedDataTypes keyword in Enum.GetValues(typeof(ESupportedDataTypes)))
-                SupportedSqlDataTypes.Add(keyword.ToString());
         }
 
         public static bool ValidateQuery(ECliCommands commandType, string command)
@@ -33,38 +30,39 @@ namespace DMS.Commands
             {
                 case ECliCommands.CreateTable:
                     bool isValidCreateTableCommand = ValidateCreateTableCommand(command);
-                    if (!isValidCreateTableCommand)
-                    {
-                        Console.WriteLine("Please enter valid create table command!");
-                        return false;
-                    }
-                    return true;
+                    if (isValidCreateTableCommand)
+                        return true;
+                    
+                    Console.WriteLine("Please enter valid create table command!");
+                    return false;
+                
                 case ECliCommands.DropTable:
                     bool isValidDropTableCommand = ValidateDropTableAndTableInfoCommands(command);
-                    if (!isValidDropTableCommand)
-                    {
-                        Console.WriteLine("Please enter a valid dtop table command!");
-                        return false;
-                    }
-                    return true;
+                    if (isValidDropTableCommand)
+                        return true;
+                    
+                    Console.WriteLine("Please enter a valid drop table command!");
+                    return false;
+                
                 case ECliCommands.ListTables:
                     return true;
+
                 case ECliCommands.TableInfo:
-                    bool isValidTableInfoCommand = ValidateDropTableAndTableInfoCommands(command);
-                    if (!isValidTableInfoCommand)
-                    {
-                        Console.WriteLine("Please enter a valid table info command!");
-                        return false;
-                    }
-                    return true;
+                    /*bool isValidTableInfoCommand = ValidateDropTableAndTableInfoCommands(command);
+                    if (isValidTableInfoCommand)*/
+                        return true;
+                    
+                    Console.WriteLine("Please enter a valid table info command!");
+                    return false;
+
                 case ECliCommands.Insert:
                     bool isValidInsertCommand = ValidateInsertTableCommand(command);
-                    if (!isValidInsertCommand)
-                    {
-                        Console.WriteLine("Please enter a insert command!");
-                        return false;
-                    }
-                    return true;
+                    if (isValidInsertCommand)
+                        return true;
+                    
+                    Console.WriteLine("Please enter a insert command!");
+                    return false;
+                
                 default:
                     Console.WriteLine("Invalid command please enter a valid command");
                     return false;
@@ -116,13 +114,13 @@ namespace DMS.Commands
                     return false;
                 }
 
-                int secondWhiteSpaceAfterColumnName = commandTrimmed.CustomIndexOf(' ', firstWhiteSpaceAfterColumnName + 1);
+              /*  int secondWhiteSpaceAfterColumnName = commandTrimmed.CustomIndexOf(' ', firstWhiteSpaceAfterColumnName + 1);
                 string columnType = commandTrimmed[firstWhiteSpaceAfterColumnName..secondWhiteSpaceAfterColumnName].CustomTrim();
                 if (!SupportedSqlDataTypes.CustomAny(x => x.CustomToLower().CustomContains(columnType)))
                 {
                     Console.WriteLine("Not supported data type curretly we support STRING/INT/DATE");
                     return false;
-                }
+                }*/
             }
 
             return true;
@@ -132,8 +130,6 @@ namespace DMS.Commands
         {
             int firstWhiteSpace = command.CustomIndexOf(' ');
             string tableName = command[firstWhiteSpace..].CustomTrim();
-            if (!Directory.Exists($"{Folders.DB_DATA_FOLDER}/{tableName}"))
-                throw new Exception($"There is no table with the name {tableName}");
 
             return true;
         }
@@ -149,9 +145,6 @@ namespace DMS.Commands
             string[] parts = loweredCommand.CustomSplit(' ');
             string tableName = parts[2];
 
-            if (!Directory.Exists($"{Folders.DB_DATA_FOLDER}/{tableName}"))
-                throw new Exception($"There is no table with name {tableName}");
-
             string[] columnsAndValues = loweredCommand.CustomSplit($"{tableName.CustomToLower()}");
             string[] values = columnsAndValues[1].CustomSplit("values");
 
@@ -163,13 +156,13 @@ namespace DMS.Commands
 
             //will open the metadata file and check for the column defined there
             string[] splitedColumnDefinitions = columnDefinitions.CustomSplit(',');
-            (string[], string[]) deserializedMetadata = DataPageManager.DeserializeMetadata(tableName);
+            //IReadOnlyList<Column> deserializedMetadata = DataPageManager.DeserializeMetadata(tableName);
 
-            for (int i = 0; i < deserializedMetadata.Item1.Length; i++)
+            /*for (int i = 0; i < deserializedMetadata.Item1.Length; i++)
             {
                 if (deserializedMetadata.Item1[i].CustomToLower() != splitedColumnDefinitions[i].CustomTrim())
                     throw new Exception($"Invalid column {splitedColumnDefinitions[i]}");
-            }
+            }*/
 
             return true;
         }
