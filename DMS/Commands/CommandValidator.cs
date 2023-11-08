@@ -121,7 +121,7 @@ namespace DMS.Commands
                 int secondWhiteSpaceAfterColumnName = commandTrimmed.CustomIndexOf(' ', firstWhiteSpaceAfterColumnName + 1);
                 string columnType = commandTrimmed[firstWhiteSpaceAfterColumnName..secondWhiteSpaceAfterColumnName].CustomTrim();
                 //case when user uses nvarchar for string type because of the brackets
-                if (columnType.CustomContains(ESupportedDataTypes.NVARCHAR.ToString()))
+                if (columnType.CustomContains(ESupportedDataTypes.STRING.ToString()))
                 {
                     if (!columnType.CustomContains('(') ||
                         !columnType.CustomContains(')'))
