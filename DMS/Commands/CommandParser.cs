@@ -43,7 +43,7 @@ namespace DMS.Commands
                     break;
             }
         }
-        //createtable test(id int primary key, name nvarchar(50) null)
+        //createtable test(id int primary key, name string null)
         private static void CreateTable(string command)
         {
             //add a case when there is default values

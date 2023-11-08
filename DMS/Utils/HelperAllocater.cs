@@ -17,7 +17,7 @@ namespace DMS.Utils
                     allocatedBytes[i] = 4;
                 else if (columnTypes[i] == ESupportedDataTypes.DATE.ToString().CustomToLower())
                     allocatedBytes[i] = 3;
-                else if (columnTypes[i].Contains(ESupportedDataTypes.NVARCHAR.ToString().CustomToLower()))
+                else if (columnTypes[i].Contains(ESupportedDataTypes.STRING.ToString().CustomToLower()))
                 {
                     //this is dynamic case so I need to loop over how much chars are there and for each char allocate 2bytes
                     if (columnTypes[i].CustomContains("max"))

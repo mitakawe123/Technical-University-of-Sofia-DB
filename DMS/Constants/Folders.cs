@@ -10,5 +10,6 @@
     public static class Files
     {
         public const string METADATA_NAME = "_metadata.bin";
+        public const string MDF_FILE_NAME = "database.mdf";
     }
 }

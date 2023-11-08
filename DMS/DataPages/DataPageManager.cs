@@ -22,10 +22,14 @@ namespace DMS.DataPages
             Directory.CreateDirectory(Folders.DB_IAM_FOLDER);
         }
 
-        //createtable test(id int primary key, name nvarchar(50) null)
+        //createtable test(id int primary key, name string null)
         public static void CreateTable(IReadOnlyList<string> columnNames, IReadOnlyList<string> columnTypes, ReadOnlySpan<char> tableName)
         {
-            if (Directory.Exists($"{Folders.DB_DATA_FOLDER}/{tableName}"))
+            //in the mdf file at the start write the offset mapping
+
+
+
+            /*if (Directory.Exists($"{Folders.DB_DATA_FOLDER}/{tableName}"))
                 throw new Exception("Already a table with this name");
 
             Directory.CreateDirectory($"{Folders.DB_DATA_FOLDER}/{tableName}");
@@ -52,7 +56,7 @@ namespace DMS.DataPages
             }
 
             metadataStream.Close();
-            metadataWriter.Close();
+            metadataWriter.Close();*/
         }
 
         //Insert INTO test (Id, Name) VALUES (1, “pepi”, 3), (2, “mariq”, 6), (3, “georgi”, 1)

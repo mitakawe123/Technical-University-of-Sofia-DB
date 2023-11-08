@@ -8,6 +8,9 @@ namespace DMS
     {
         static void Main(string[] args)
         {
+            if (!File.Exists(Files.MDF_FILE_NAME))
+                File.Create(Files.MDF_FILE_NAME);
+
             Console.WriteLine("Welcome to DMS");
 
             bool running = true;
@@ -19,7 +22,7 @@ namespace DMS
                     Console.Write("Enter a command (or 'exit' to quit): ");
                     string command = Console.ReadLine()!;
                     string input = command.CustomSplit(new char[] { ' ' })[0];
-                    
+
                     switch (Enum.Parse<ECliCommands>(input, true))
                     {
                         case ECliCommands.Help:
