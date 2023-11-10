@@ -39,7 +39,7 @@
     //('11/03/2023'); -- U.S.format
     //('03/11/2023'); -- European format
     //('20231103');   -- ISO basic (unseparated)
-    public enum EDataTypes : byte
+    public enum EDataTypes
     {
         DATE, //DATE: Stores a date in the format YYYY-MM-DD.
         INT, //4 bytes (32 bits)

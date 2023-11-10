@@ -1,13 +1,11 @@
-﻿using DMS.Constants;
-
-namespace DMS.Shared
+﻿namespace DMS.Shared
 {
     public readonly struct Column
     {
         public string Name { get; }
-        public EDataTypes Type { get; }
+        public string Type { get; }
       
-        public Column(string name, EDataTypes type)
+        public Column(string name, string type)
         {
             Name = name;
             Type = type;

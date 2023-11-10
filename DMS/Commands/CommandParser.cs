@@ -40,7 +40,7 @@ namespace DMS.Commands
                     break;
             }
         }
-        //createtable test(id int primary key, name string null)
+        //createtable test(id int primary key, name string(50) null)
         private static void CreateTable(string command)
         {
             //add a case when there is default values
@@ -49,7 +49,7 @@ namespace DMS.Commands
             int openingBracket = commandSpan.CustomIndexOf('(');
             int closingBracket = commandSpan.CustomLastIndexOf(')');
             int endBeforeParenthesis = commandSpan[startAfterKeyword..].CustomIndexOf('(');
-            
+
             ReadOnlySpan<char> tableNameSpan = commandSpan.CustomSlice(startAfterKeyword, endBeforeParenthesis).CustomTrim();
             ReadOnlySpan<char> values = commandSpan[(openingBracket + 1)..closingBracket];
             DKList<Column> columns = new();
@@ -60,16 +60,14 @@ namespace DMS.Commands
                 ReadOnlySpan<char> columnDefinition = commaIndex != -1 ? values[..commaIndex] : values;
 
                 int spaceIndex = columnDefinition.CustomIndexOf(' ');
-                
+
                 ReadOnlySpan<char> columnName = columnDefinition[..spaceIndex].CustomTrim();
                 ReadOnlySpan<char> columnType = columnDefinition[(spaceIndex + 1)..].CustomTrim();
 
                 int typeSpaceIndex = columnType.CustomIndexOf(' ');
                 columnType = columnType[..typeSpaceIndex];
 
-                columns.Add(new Column(
-                    new string(columnName),
-                    Enum.Parse<EDataTypes>(columnType, true)));
+                columns.Add(new Column(new string(columnName), new string(columnType)));
 
                 values = commaIndex != -1 ? values[(commaIndex + 1)..].CustomTrim() : ReadOnlySpan<char>.Empty;
             }
