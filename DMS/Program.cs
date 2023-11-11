@@ -1,25 +1,13 @@
 ﻿using DMS.Commands;
 using DMS.Constants;
-using DMS.DataPages;
 using DMS.Extensions;
-using System.Runtime.InteropServices;
 
 namespace DMS
 {
     internal class Program
     {
-        private delegate bool ConsoleEventDelegate(int eventType);
-        private static readonly ConsoleEventDelegate ConsoleEventHandler = DataPageManager.ConsoleEventCallback;
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool SetConsoleCtrlHandler(ConsoleEventDelegate callback, bool add);
-
         static void Main(string[] args)
         {
-            DataPageManager.RemoveIntFromEndOfFile();
-
-            SetConsoleCtrlHandler(ConsoleEventHandler, true);
-
             Console.WriteLine("Welcome to DMS");
 
             bool running = true;

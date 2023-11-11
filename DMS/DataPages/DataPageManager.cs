@@ -3,50 +3,33 @@ using DMS.Constants;
 using DMS.Shared;
 using DMS.Utils;
 using System.Text;
+using static DMS.Utils.ControlTypes;
 
 namespace DMS.DataPages
 {
     public class DataPageManager
     {
         private const int DataPageSize = 8192; //8KB
+        private const int HeaderSectionSize = 8; // 4 bytes for remaining space and 4 bytes for record count
+
         private static int DataPageNumberInMDFFile = 0;
-        private static readonly Dictionary<string, DKList<int>> tableOffsets = new();
+        private static int SizeOfOffsetRecords = 0;
+
+        private static Dictionary<char[], DKList<int>> tableOffsets = new();
+
+        private static bool isclosing = false;
 
         static DataPageManager()
         {
-            if (File.Exists(Files.MDF_FILE_NAME))
-                tableOffsets = ReadOffsetMapper();
-        }
+            UpdateHeaderSection();
 
-        public static bool ConsoleEventCallback(int eventType)
-        {
-            if (eventType == 2)
-            {
-                using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Append);
-                using BinaryWriter writer = new(binaryStream);
-                writer.Write(DataPageNumberInMDFFile);
-            }
-            return false;
-        }
-
-        public static void RemoveIntFromEndOfFile()
-        {
-            if (!File.Exists(Files.MDF_FILE_NAME))
-                return;
-
-            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
-            using BinaryReader reader = new(fs);
-
-            fs.Seek(-4, SeekOrigin.End);
-            DataPageNumberInMDFFile = reader.ReadInt32();
-
-            fs.SetLength(fs.Length - 4);
+            SetConsoleCtrlHandler(new HandlerRoutine(ConsoleCtrlCheck), true);
         }
 
         //createtable test1(id int primary key, name string(max) null, name1 string(max) null)
         public static void CreateTable(IReadOnlyList<Column> columns, ReadOnlySpan<char> tableName)
         {
-            string table = tableName.ToString();
+            char[] table = tableName.ToArray();
             if (tableOffsets.ContainsKey(table))
                 throw new Exception($"Table {table} already exists");
 
@@ -63,7 +46,7 @@ namespace DMS.DataPages
 
             while (numberOfPagesNeeded > 0)
             {
-                binaryStream.Seek(currentPage * DataPageSize, SeekOrigin.Begin);
+                binaryStream.Seek((currentPage * DataPageSize) + HeaderSectionSize, SeekOrigin.Begin);
 
                 // Write table name and column count on the first page only
                 if (firstDataPageForTable)
@@ -88,7 +71,7 @@ namespace DMS.DataPages
                 if (columnIndex < columns.Count)
                 {
                     // Last 4 bytes of each page store the next page number
-                    binaryStream.Seek((currentPage + 1) * DataPageSize - 4, SeekOrigin.Begin);
+                    binaryStream.Seek(((currentPage + 1) * DataPageSize - 4) + HeaderSectionSize, SeekOrigin.Begin);
                     writer.Write(currentPage + 1); // Next page number
                     freeSpace = DataPageSize;
                     tableOffsets[table].Add(currentPage + 1);
@@ -126,7 +109,7 @@ namespace DMS.DataPages
 
         public static bool DropTable(ReadOnlySpan<char> tableName)
         {
-            string tableNameAsString = tableName.ToString();
+            char[] tableNameAsString = tableName.ToArray();
             if (!tableOffsets.ContainsKey(tableNameAsString))
                 return false;
 
@@ -137,20 +120,21 @@ namespace DMS.DataPages
 
             for (int i = 0; i < pageNumbers.Count; i++)
             {
-                binaryStream.Seek(pageNumbers[i] * DataPageSize, SeekOrigin.Begin);
+                binaryStream.Seek((pageNumbers[i] * DataPageSize) + HeaderSectionSize, SeekOrigin.Begin);
                 writer.Write(new byte[DataPageSize]);
             }
 
             tableOffsets.Remove(tableNameAsString);
 
             //here I need to update the offset file also
+            DeleteOffsetMapperByKey(tableName);
 
             return true;
         }
 
         public static void ListTables()
         {
-            foreach (string table in tableOffsets.Keys)
+            foreach (char[] table in tableOffsets.Keys)
                 Console.WriteLine(table);
         }
 
@@ -163,30 +147,42 @@ namespace DMS.DataPages
             return typeSize + nameSize + columnSize;
         }
         //createtable test(id int primary key, name string(max) null, name1 string(max) null)
-        private static void WriteOffsetMapper(KeyValuePair<string, DKList<int>> entry)
+        private static void WriteOffsetMapper(KeyValuePair<char[], DKList<int>> entry)
         {
             using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Append);
             using BinaryWriter writer = new(binaryStream, Encoding.UTF8);
 
+            // Writing the string and its count
+            writer.Write(entry.Key.Length);
+            SizeOfOffsetRecords += sizeof(int); // 4 bytes for int
+
             writer.Write(entry.Key);
+            SizeOfOffsetRecords += entry.Key.Length; // 1 bytes for each char
+
             writer.Write(entry.Value.Count);
+            SizeOfOffsetRecords += sizeof(int); // 4 bytes for int
 
             foreach (int value in entry.Value)
+            {
                 writer.Write(value);
+                SizeOfOffsetRecords += sizeof(int); // 4 bytes for each int
+            }
         }
 
-        private static Dictionary<string, DKList<int>> ReadOffsetMapper()
+        private static Dictionary<char[], DKList<int>> ReadOffsetMapper()
         {
-            Dictionary<string, DKList<int>> result = new();
+            Dictionary<char[], DKList<int>> result = new();
 
             using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryReader reader = new(binaryStream, Encoding.UTF8);
 
-            binaryStream.Seek(DataPageNumberInMDFFile * DataPageSize + 1, SeekOrigin.Begin);
+            binaryStream.Seek(-SizeOfOffsetRecords, SeekOrigin.End);
 
             while (binaryStream.Position < binaryStream.Length)
             {
-                string key = reader.ReadString();
+                int tableNameLength = reader.ReadInt32();
+                byte[] tableNameAsBytes = reader.ReadBytes(tableNameLength);
+                char[] tableName = Encoding.UTF8.GetString(tableNameAsBytes).ToArray();
 
                 int listCount = reader.ReadInt32();
                 DKList<int> list = new(listCount);
@@ -194,10 +190,15 @@ namespace DMS.DataPages
                 for (int i = 0; i < listCount; i++)
                     list.Add(reader.ReadInt32());
 
-                result.Add(key, list);
+                result.Add(tableName, list);
             }
 
             return result;
+        }
+
+        private static Dictionary<string, DKList<int>> DeleteOffsetMapperByKey(ReadOnlySpan<char> tableName)
+        {
+            return default;
         }
 
         private static ulong FreeSpaceInDataPage(int pageNumber)
@@ -212,6 +213,72 @@ namespace DMS.DataPages
             ulong bytesRead = (ulong)reader.Read(buffer, 0, DataPageSize);
 
             return DataPageSize - bytesRead;
+        }
+
+        private static void UpdateHeaderSection()
+        {
+            try
+            {
+                using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
+                using BinaryReader reader = new(fs);
+                fs.Seek(0, SeekOrigin.Begin);
+
+                DataPageNumberInMDFFile = reader.ReadInt32();
+                SizeOfOffsetRecords = reader.ReadInt32();
+            }
+            catch (Exception)
+            {
+                using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.OpenOrCreate);
+                using BinaryWriter writer = new(fs);
+                fs.Seek(0, SeekOrigin.Begin);
+
+                writer.Write(DataPageNumberInMDFFile);
+                writer.Write(SizeOfOffsetRecords);
+            }
+
+            tableOffsets = ReadOffsetMapper();
+        }
+
+        private static bool ConsoleCtrlCheck(CtrlTypes ctrlType)
+        {
+            switch (ctrlType)
+            {
+                case CtrlTypes.CTRL_C_EVENT:
+                    isclosing = true;
+                    ConsoleEventCallback();
+                    Console.WriteLine("CTRL+C received!");
+                    break;
+
+                case CtrlTypes.CTRL_BREAK_EVENT:
+                    isclosing = true;
+                    ConsoleEventCallback();
+                    Console.WriteLine("CTRL+BREAK received!");
+                    break;
+
+                case CtrlTypes.CTRL_CLOSE_EVENT:
+                    isclosing = true;
+                    ConsoleEventCallback();
+                    break;
+
+                case CtrlTypes.CTRL_LOGOFF_EVENT:
+                case CtrlTypes.CTRL_SHUTDOWN_EVENT:
+                    isclosing = true;
+                    ConsoleEventCallback();
+                    Console.WriteLine("User is logging off!");
+                    break;
+            }
+            return true;
+        }
+
+        private static void ConsoleEventCallback()
+        {
+            using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open, FileAccess.ReadWrite);
+            using BinaryWriter writer = new(binaryStream);
+
+            binaryStream.Seek(0, SeekOrigin.Begin);
+
+            writer.Write(DataPageNumberInMDFFile);
+            writer.Write(SizeOfOffsetRecords);
         }
 
         //Insert INTO test (Id, Name) VALUES (1, “pepi”, 3), (2, “mariq”, 6), (3, “georgi”, 1)

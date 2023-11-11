@@ -13,5 +13,18 @@
             
             return -1;
         }
+
+        public static int Get7BitEncodedIntSize(int value)
+        {
+            int size = 0;
+            uint num = (uint)value;
+            while (num >= 0x80)
+            {
+                num >>= 7;
+                size++;
+            }
+            size++;
+            return size;
+        }
     }
 }
