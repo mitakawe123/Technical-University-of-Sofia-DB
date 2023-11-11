@@ -375,25 +375,6 @@ namespace DMS.Extensions
             return EqualityComparer<T>.Default.Equals(input, value);
         }
 
-        public static T? CustomLast<T>(this IEnumerable<T> input) where T : class
-        {
-            if (input == null)
-                throw new ArgumentNullException(nameof(input));
-
-            T? lastItem = default;
-            bool hasItems = false;
-            foreach (T item in input)
-            {
-                hasItems = true;
-                lastItem = item;
-            }
-
-            if (!hasItems)
-                return default;
-
-            return lastItem;
-        }
-
         public static T CustomElementAt<T>(this IEnumerable<T> input, int index)
         {
             if (input == null)

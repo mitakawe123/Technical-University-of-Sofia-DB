@@ -74,6 +74,20 @@ namespace DMS.Commands
 
             DataPageManager.CreateTable(columns, tableNameSpan);
         }
+        //droptable test
+        private static void DropTable(string command)
+        {
+            ReadOnlySpan<char> commandSpan = command;
+            int startAfterKeyword = ECliCommands.DropTable.ToString().Length;
+            ReadOnlySpan<char> tableNameSpan = commandSpan[startAfterKeyword..].CustomTrim();
+
+            bool isTableDeleted = DataPageManager.DropTable(tableNameSpan);
+            if (isTableDeleted)
+                Console.WriteLine($"Table {tableNameSpan} was deleted successfully");
+            else
+                Console.WriteLine($"Table {tableNameSpan} was not deleted successfully");
+        }
+
         //Insert INTO test (Id, Name) VALUES (1, “pepi”), (2, “mariq”), (3, “georgi”)
         private static void InsertIntoTable(string command)
         {
@@ -106,13 +120,7 @@ namespace DMS.Commands
 
         }
 
-        private static void DropTable(string command)
-        {
-        }
-
-        private static void ListTables()
-        {
-        }
+        private static void ListTables() => DataPageManager.ListTables();
 
         //схема и брой записи, заемано пространство и др.
         private static void TableInfo(string command)

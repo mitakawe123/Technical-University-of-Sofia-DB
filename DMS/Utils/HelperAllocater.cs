@@ -6,7 +6,7 @@ namespace DMS.Utils
     public static class HelperAllocater
     {
         //how much bytes for each data type
-        public static ulong AllocatedStorageForType(IReadOnlyList<Column> columns)
+        public static ulong AllocatedStorageForTypes(IReadOnlyList<Column> columns)
         {
             ulong allocatedBytes = 0;
             for (int i = 0; i < columns.Count; i++)
