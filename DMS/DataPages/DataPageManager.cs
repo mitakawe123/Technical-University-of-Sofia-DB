@@ -115,7 +115,7 @@ namespace DMS.DataPages
 
             FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open);
             BinaryWriter writer = new(binaryStream);
-            //This are the page number and by offset I can find them in the database.mdf file
+
             DKList<int> pageNumbers = tableOffsets[tableNameAsString];
 
             for (int i = 0; i < pageNumbers.Count; i++)
@@ -196,9 +196,28 @@ namespace DMS.DataPages
             return result;
         }
 
-        private static Dictionary<string, DKList<int>> DeleteOffsetMapperByKey(ReadOnlySpan<char> tableName)
+        private static void DeleteOffsetMapperByKey(ReadOnlySpan<char> tableName)
         {
-            return default;
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
+            using BinaryWriter writer = new(fs, Encoding.UTF8);
+            //think of a way to add a offset for the offset mapper maybe
+            char[] tableNameArray = tableName.ToArray();
+            bool entryFound = false;
+
+            foreach (char[] key in tableOffsets.Keys)
+            {
+                if (key.SequenceEqual(tableNameArray))
+                {
+                    //emtpy the space in the offset section and delete data pages
+
+                    tableOffsets.Remove(key);
+                    entryFound = true;
+                    break;
+                }
+            }
+
+            if (!entryFound)
+                Console.WriteLine("Table name not found in offset mapper.");
         }
 
         private static ulong FreeSpaceInDataPage(int pageNumber)
