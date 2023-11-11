@@ -10,7 +10,7 @@ namespace DMS.DataPages
     public class DataPageManager
     {
         private const int DataPageSize = 8192; //8KB
-        private const int HeaderSectionSize = 8; // 4 bytes for remaining space and 4 bytes for record count
+        private const int HeaderSectionSize = 8; // 4 bytes for data page number and 4 bytes for offset
 
         private static int DataPageNumberInMDFFile = 0;
         private static int SizeOfOffsetRecords = 0;
