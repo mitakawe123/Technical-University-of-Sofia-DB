@@ -451,6 +451,31 @@ namespace DMS.Extensions
 
             return true;
         }
+
+        public static T CustomLast<T>(this IEnumerable<T> source)
+        {
+            if (source is IList<T> list)
+            {
+                int count = list.Count;
+                if (count > 0)
+                    return list[count - 1];
+            }
+            else
+            {
+                using IEnumerator<T> e = source.GetEnumerator();
+                if (e.MoveNext())
+                {
+                    T result;
+                    do
+                        result = e.Current;
+                    while (e.MoveNext());
+                    
+                    return result;
+                }
+            }
+            throw new InvalidOperationException("Sequence contains no elements");
+        }
+
         #endregion
 
         #region readonly span extensions

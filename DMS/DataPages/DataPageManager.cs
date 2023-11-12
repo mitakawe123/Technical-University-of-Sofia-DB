@@ -1,5 +1,6 @@
 ﻿using DataStructures;
 using DMS.Constants;
+using DMS.Extensions;
 using DMS.Shared;
 using DMS.Utils;
 using System.Text;
@@ -7,13 +8,23 @@ using static DMS.Utils.ControlTypes;
 
 namespace DMS.DataPages
 {
+    //My logic
+    //8 bytes for data page count and offset page count
+    //8KB bytes for header section if i go over the 8KB I need to make buffer 4 bytes at the end of the header to point to the next free 8KB and so on
+    //Inside this 8KB will be 4 bytes integers for the offset of each offset table
+    //Inside each offset table will be header section with the name of the table and after that there will be the data page numbers if the offset table overflow make a buffer and point to the next
+    //Inside each data page will be header section with 4 byte free space, 4 byte record count then the content (here I will not make a buffer because the offset table will take care of pointing which data pages for which table are)
     public class DataPageManager
     {
-        private const int DataPageSize = 8192; //8KB
-        private const int HeaderSectionSize = 8; // 4 bytes for data page number and 4 bytes for offset
+        private const int DataPageSize = 8192; // 8KB
+        private const int BufferOverflowPointer = 4; //4 bytes for pointer to next page
 
-        private static int DataPageNumberInMDFFile = 0;
-        private static int SizeOfOffsetRecords = 0;
+        private static int CounterSection = 20; // 20 bytes for table count and data page count
+        private static int HeaderCounter = 0; // 4 bytes for header counter
+        private static int DataPageCounter = 0; // 4 bytes for data page count  
+        private static int OffsetPageCounter = 0; // 4 bytes for offset page count
+        private static int AllDataPagesCount = 0; // 4 bytes for data page count
+        private static int TablesCount = 0; // 4 bytes for table count
 
         private static Dictionary<char[], DKList<int>> tableOffsets = new();
 
@@ -21,7 +32,7 @@ namespace DMS.DataPages
 
         static DataPageManager()
         {
-            UpdateHeaderSection();
+            PagesCountSection();
 
             SetConsoleCtrlHandler(new HandlerRoutine(ConsoleCtrlCheck), true);
         }
@@ -29,24 +40,21 @@ namespace DMS.DataPages
         //createtable test1(id int primary key, name string(max) null, name1 string(max) null)
         public static void CreateTable(IReadOnlyList<Column> columns, ReadOnlySpan<char> tableName)
         {
-            char[] table = tableName.ToArray();
-            if (tableOffsets.ContainsKey(table))
-                throw new Exception($"Table {table} already exists");
-
-            using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Append);
-            using BinaryWriter writer = new(binaryStream);
-
+            char[] table = tableName.CustomToArray();
             ulong totalSpaceForColumnTypes = HelperAllocater.AllocatedStorageForTypes(columns);
-            int numberOfPagesNeeded = (int)Math.Ceiling((double)totalSpaceForColumnTypes / DataPageSize);
+            int numberOfDataPagesNeeded = (int)Math.Ceiling((double)totalSpaceForColumnTypes / DataPageSize);
 
-            int currentPage = DataPageNumberInMDFFile;
+            InitHeader(table);
+
+            TablesCount++;
+            /*int currentPage = TablesCount;
             int columnIndex = 0;
             int freeSpace = DataPageSize;
             bool firstDataPageForTable = true;
 
             while (numberOfPagesNeeded > 0)
             {
-                binaryStream.Seek((currentPage * DataPageSize) + HeaderSectionSize, SeekOrigin.Begin);
+                binaryStream.Seek((currentPage * DataPageSize) + PagesCountSize + HeaderSize, SeekOrigin.Begin);
 
                 // Write table name and column count on the first page only
                 if (firstDataPageForTable)
@@ -71,7 +79,7 @@ namespace DMS.DataPages
                 if (columnIndex < columns.Count)
                 {
                     // Last 4 bytes of each page store the next page number
-                    binaryStream.Seek(((currentPage + 1) * DataPageSize - 4) + HeaderSectionSize, SeekOrigin.Begin);
+                    binaryStream.Seek(((currentPage + 1) * DataPageSize - 4) + PagesCountSize, SeekOrigin.Begin);
                     writer.Write(currentPage + 1); // Next page number
                     freeSpace = DataPageSize;
                     tableOffsets[table].Add(currentPage + 1);
@@ -79,54 +87,43 @@ namespace DMS.DataPages
 
                 currentPage++;
                 numberOfPagesNeeded--;
-            }
-
-            DataPageNumberInMDFFile = currentPage;
-            binaryStream.Close();
-            writer.Close();
-
-            //Write the offset for the data pages for the given table
-            WriteOffsetMapper(tableOffsets.Last());
-
-            //this is maybe for the insert
-            /*if (totalSpaceForColumnTypes > DataPageSize)
-            {
-                int numberOfPagesNeeded = (int)Math.Ceiling((double)totalSpaceForColumnTypes / DataPageSize);
-
-                for (int page = 1; page <= numberOfPagesNeeded; page++)
-                {
-                    // Determine the space left in the current page
-                    ulong spaceLeftInPage = page == 1 ? DataPageSize - (ulong)binaryStream.Position : DataPageSize;
-
-                    // Write data to the current page up to its limit
-                    WriteDataToPage(tableName, binaryStream, columns, ref spaceLeftInPage);
-                }
-
-                DataPageNumberInMDFFile += numberOfPagesNeeded;
-                return;
             }*/
+
         }
 
         public static bool DropTable(ReadOnlySpan<char> tableName)
         {
-            char[] tableNameAsString = tableName.ToArray();
-            if (!tableOffsets.ContainsKey(tableNameAsString))
+            char[] tableNameAsChars = tableName.CustomToArray();
+            char[]? matchingKey = null;
+
+            foreach (KeyValuePair<char[], DKList<int>> keyValuePair in tableOffsets)
+            {
+                if (tableName.SequenceEqual(keyValuePair.Key))
+                {
+                    matchingKey = keyValuePair.Key;
+                    break;
+                }
+            }
+
+            if (matchingKey is null)
                 return false;
 
             FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open);
             BinaryWriter writer = new(binaryStream);
 
-            DKList<int> pageNumbers = tableOffsets[tableNameAsString];
+            DKList<int> pageNumbers = tableOffsets[matchingKey];
 
             for (int i = 0; i < pageNumbers.Count; i++)
             {
-                binaryStream.Seek((pageNumbers[i] * DataPageSize) + HeaderSectionSize, SeekOrigin.Begin);
+                //binaryStream.Seek((pageNumbers[i] * DataPageSize) + PagesCountSize, SeekOrigin.Begin);
                 writer.Write(new byte[DataPageSize]);
             }
 
-            tableOffsets.Remove(tableNameAsString);
+            tableOffsets.Remove(matchingKey);
 
-            //here I need to update the offset file also
+            binaryStream.Close();
+            writer.Close();
+
             DeleteOffsetMapperByKey(tableName);
 
             return true;
@@ -134,8 +131,136 @@ namespace DMS.DataPages
 
         public static void ListTables()
         {
+            if (tableOffsets.Count == 0)
+            {
+                Console.WriteLine("There is no tables in the DB");
+                return;
+            }
+
             foreach (char[] table in tableOffsets.Keys)
                 Console.WriteLine(table);
+        }
+
+        private static void InitHeader(char[] table)
+        {
+            if (table.Length > 50)
+                throw new Exception("Table name is too long");
+
+            int requiredSpace = table.Length + sizeof(int) + sizeof(int);
+            if (HeaderCounter == 0)
+            {
+                using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Append);
+                using BinaryWriter writer = new(binaryStream, Encoding.UTF8);
+
+                HeaderCounter++;
+                AllDataPagesCount++;
+                binaryStream.Seek(CounterSection, SeekOrigin.Begin);
+
+                writer.Write(DataPageSize - requiredSpace); // 4 bytes for free space
+                writer.Write(table.Length); // 4 bytes
+                writer.Write(table); // 1 byte per char
+
+                binaryStream.Seek(CounterSection + DataPageSize - BufferOverflowPointer, SeekOrigin.Begin);
+                writer.Write(-1); // 4 bytes for pointer to next header
+                return;
+            }
+
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
+            using BinaryReader reader = new(fs, Encoding.UTF8);
+            fs.Seek(CounterSection, SeekOrigin.Begin);
+
+            int freeSpace = reader.ReadInt32();
+            fs.Seek(CounterSection + DataPageSize - BufferOverflowPointer, SeekOrigin.Begin);
+            int nextHeaderPointer = reader.ReadInt32();
+            if (freeSpace < requiredSpace + BufferOverflowPointer)
+            {
+                if (nextHeaderPointer == -1)
+                {
+                    int offset = CounterSection + (DataPageSize * AllDataPagesCount);
+                    fs.Close();
+                    reader.Close();
+
+                    using FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Append);
+                    using BinaryWriter writer = new(fileStream, Encoding.UTF8);
+
+                    fileStream.Seek(CounterSection + DataPageSize - BufferOverflowPointer, SeekOrigin.Begin);
+                    writer.Write(offset); // 4 bytes for pointer to next header
+
+                    fileStream.Seek(offset, SeekOrigin.Begin);
+                    HeaderCounter++;
+                    AllDataPagesCount++;
+
+                    writer.Write(DataPageSize - requiredSpace); // 4 bytes for free space for the new data page
+                    writer.Write(table.Length); // 4 bytes for table name length
+                    writer.Write(table); // 1 byte per char for table name
+                }
+            }
+            else
+            {
+                fs.Close();
+                reader.Close();
+
+                using FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Append);
+                using BinaryWriter binaryWriter = new(fileStream, Encoding.UTF8);
+
+                fileStream.Seek(nextHeaderPointer, SeekOrigin.Begin);
+
+                binaryWriter.Write(freeSpace - requiredSpace); // 4 bytes for free space
+                binaryWriter.Write(table.Length); // 4 bytes for table name length
+                binaryWriter.Write(table); // 1 byte per char for table name
+            }
+        }
+
+        private static void InitOffsetSection(char[] table, int dataPagesCount) //<- number of pages * sizeof(int)
+        {
+            InitHeader(table);
+
+            int startingPositionOfOffset = (AllDataPagesCount * DataPageSize) + CounterSection + (DataPageSize * (HeaderCounter + 1));
+            AllDataPagesCount++;
+
+            if ((dataPagesCount * sizeof(int)) + BufferOverflowPointer > DataPageSize)
+            {
+                int freeSpaceInOffsetTable = DataPageSize;
+                int pageCounter = 0;
+                bool firstOffsetTablePage = true;
+
+
+
+                using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Append);
+                using BinaryWriter writer = new(binaryStream);
+
+                while (dataPagesCount != pageCounter)
+                {
+                    binaryStream.Seek(startingPositionOfOffset, SeekOrigin.Begin);
+
+                    if (firstOffsetTablePage)
+                    {
+                        writer.Write(freeSpaceInOffsetTable); // 4 bytes for free space
+                        firstOffsetTablePage = false;
+                    }
+
+                    // Write as many data page numbers as fit on the offset table
+                    while (freeSpaceInOffsetTable > BufferOverflowPointer - sizeof(int)) // check if there is space for the pointer and data page number which both are integers
+                    {
+                        writer.Write(pageCounter);
+                        freeSpaceInOffsetTable -= sizeof(int);
+                        pageCounter++;
+                    }
+
+                    /*// If there are more data page number, store a reference to the next page
+                    if (dataPagesCount > pageCounter)
+                    {
+                        // Last 4 bytes of each page store the next page number
+                        binaryStream.Seek((currentPage + 1) * DataPageSize - sizeof(int) + PagesCountSize + HeaderSize, SeekOrigin.Begin);
+                        writer.Write(currentPage + 1); // Next offset page number pointer
+                        freeSpaceInOffsetTable = DataPageSize;
+                    }
+
+                    currentPage++;*/
+                }
+
+                //TablesCount = currentPage;
+            }
         }
 
         private static int CalculateColumnSize(Column column)
@@ -152,26 +277,33 @@ namespace DMS.DataPages
             using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Append);
             using BinaryWriter writer = new(binaryStream, Encoding.UTF8);
 
-            // Writing the string and its count
-            writer.Write(entry.Key.Length);
-            SizeOfOffsetRecords += sizeof(int); // 4 bytes for int
+            int sizeOfCurrentRecord = sizeof(int) + entry.Key.Length + sizeof(int) + (sizeof(int) * entry.Value.Count);
+            //header of offset page
+            writer.Write(entry.Key.Length); // 4 bytes
+            writer.Write(entry.Key); // 1 byte per char
 
-            writer.Write(entry.Key);
-            SizeOfOffsetRecords += entry.Key.Length; // 1 bytes for each char
+            // Writing data pages for the given table
+            writer.Write(entry.Value.Count);// 4 bytes
 
-            writer.Write(entry.Value.Count);
-            SizeOfOffsetRecords += sizeof(int); // 4 bytes for int
+            //case where the content is bigger than 4 KB
+            if ((entry.Value.Count * sizeof(int)) + sizeof(int) + entry.Key.Length - 4 > DataPageSize)
+            {
+                int currentOffsetPage = 0;
+                int freeSpace = DataPageSize - entry.Key.Length - sizeof(int);
+                bool firstOffsetPageForTable = true;
+                DKList<int> dataPageNumbers = entry.Value;
+
+
+            }
 
             foreach (int value in entry.Value)
-            {
-                writer.Write(value);
-                SizeOfOffsetRecords += sizeof(int); // 4 bytes for each int
-            }
+                writer.Write(value); // 4 bytes per value
         }
 
         private static Dictionary<char[], DKList<int>> ReadOffsetMapper()
         {
-            Dictionary<char[], DKList<int>> result = new();
+            return default;
+            /*Dictionary<char[], DKList<int>> result = new();
 
             using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryReader reader = new(binaryStream, Encoding.UTF8);
@@ -182,7 +314,7 @@ namespace DMS.DataPages
             {
                 int tableNameLength = reader.ReadInt32();
                 byte[] tableNameAsBytes = reader.ReadBytes(tableNameLength);
-                char[] tableName = Encoding.UTF8.GetString(tableNameAsBytes).ToArray();
+                char[] tableName = Encoding.UTF8.GetString(tableNameAsBytes).CustomToArray();
 
                 int listCount = reader.ReadInt32();
                 DKList<int> list = new(listCount);
@@ -193,15 +325,15 @@ namespace DMS.DataPages
                 result.Add(tableName, list);
             }
 
-            return result;
+            return result;*/
         }
 
         private static void DeleteOffsetMapperByKey(ReadOnlySpan<char> tableName)
         {
             using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryWriter writer = new(fs, Encoding.UTF8);
-            //think of a way to add a offset for the offset mapper maybe
-            char[] tableNameArray = tableName.ToArray();
+
+            char[] tableNameArray = tableName.CustomToArray();
             bool entryFound = false;
 
             foreach (char[] key in tableOffsets.Keys)
@@ -220,7 +352,7 @@ namespace DMS.DataPages
                 Console.WriteLine("Table name not found in offset mapper.");
         }
 
-        private static ulong FreeSpaceInDataPage(int pageNumber)
+        private static ulong FreeSpaceDataPage(int pageNumber)
         {
             byte[] buffer = new byte[DataPageSize];
 
@@ -234,7 +366,8 @@ namespace DMS.DataPages
             return DataPageSize - bytesRead;
         }
 
-        private static void UpdateHeaderSection()
+        // 8 bytes for data page count and offset page count
+        private static void PagesCountSection()
         {
             try
             {
@@ -242,17 +375,23 @@ namespace DMS.DataPages
                 using BinaryReader reader = new(fs);
                 fs.Seek(0, SeekOrigin.Begin);
 
-                DataPageNumberInMDFFile = reader.ReadInt32();
-                SizeOfOffsetRecords = reader.ReadInt32();
+                TablesCount = reader.ReadInt32();
+                AllDataPagesCount = reader.ReadInt32();
+                OffsetPageCounter = reader.ReadInt32();
+                DataPageCounter = reader.ReadInt32();
+                HeaderCounter = reader.ReadInt32();
             }
             catch (Exception)
             {
-                using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.OpenOrCreate);
+                using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.CreateNew);
                 using BinaryWriter writer = new(fs);
                 fs.Seek(0, SeekOrigin.Begin);
 
-                writer.Write(DataPageNumberInMDFFile);
-                writer.Write(SizeOfOffsetRecords);
+                writer.Write(TablesCount);
+                writer.Write(AllDataPagesCount);
+                writer.Write(OffsetPageCounter);
+                writer.Write(DataPageCounter);
+                writer.Write(HeaderCounter);
             }
 
             tableOffsets = ReadOffsetMapper();
@@ -296,152 +435,11 @@ namespace DMS.DataPages
 
             binaryStream.Seek(0, SeekOrigin.Begin);
 
-            writer.Write(DataPageNumberInMDFFile);
-            writer.Write(SizeOfOffsetRecords);
+            writer.Write(TablesCount);
+            writer.Write(AllDataPagesCount);
+            writer.Write(OffsetPageCounter);
+            writer.Write(DataPageCounter);
+            writer.Write(HeaderCounter);
         }
-
-        //Insert INTO test (Id, Name) VALUES (1, “pepi”, 3), (2, “mariq”, 6), (3, “georgi”, 1)
-        /*        public static void InsertIntoTable(IReadOnlyList<string> columnValues, ReadOnlySpan<char> tableName)
-                {
-                    //add check if column values can be cast to columnDefinitions
-                    string[] columnTypes = DeserializeMetadata(tableName.ToString()).Item2;
-                    string[] filesInDir = Directory.GetFiles($"{Folders.DB_DATA_FOLDER}/{tableName}");
-
-                    ulong[] allocatedSpaceForColumnTypes = HelperAllocater.AllocatedStorageForType(columnTypes, columnValues);
-                    ulong allAlocatedSpaceForOneRecord = HelperAllocater.AllocatedSpaceForColumnTypes(allocatedSpaceForColumnTypes);
-
-                    int remainingSpace = DataPageSize - ((int)allAlocatedSpaceForOneRecord * columnValues.Count);
-                    int pageNumber = 1;
-                    int iamPageNumber = 1;
-
-                    //this is the first insertion to the current table
-                    if (filesInDir.Length == 1)
-                    {
-                        //need to assing IAM logical address
-                        string dataPageFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/datapage_{pageNumber}.bin";
-                        using FileStream dataPageStream = File.Open(dataPageFilePath, FileMode.CreateNew);
-                        using BinaryWriter dataPageWriter = new(dataPageStream);
-
-                        //this is the header section
-                        dataPageWriter.Write(remainingSpace);// 1 - 4 byte
-                        dataPageWriter.Write(columnValues.Count);// 5 - 8 byte
-
-                        dataPageWriter.Seek(0, SeekOrigin.End);
-
-                        //this is the value section
-                        foreach (string col in columnValues)
-                        {
-                            string[] values = col.CustomSplit(',');
-                            //here i need to add a check if this is nvarchar
-                            foreach (string value in values)
-                                dataPageWriter.Write(value.CustomTrim());//2bytes per char
-                        }
-
-                        //fill the reset with zeros so that the data page is 8KB
-                        dataPageWriter.Write(new byte[remainingSpace]);
-
-                        dataPageStream.Close();
-                        dataPageWriter.Close();
-
-                        //need to think about how to connect data pages and IAM file and catch the case when IAM file is over 4GB to extend it to new IAM file
-                        //need to add the bplustree here for managing the data pages
-                        string iamPageFilePath = $"{Folders.DB_IAM_FOLDER}/{tableName}/iam_{iamPageNumber}.bin";
-                        using FileStream iamPageStream = File.Open(iamPageFilePath, FileMode.OpenOrCreate);
-                        using BinaryWriter iamPageWriter = new(iamPageStream);
-
-                        iamPageWriter.Seek(0, SeekOrigin.End);
-                        iamPageWriter.Write(pageNumber);
-
-                        iamPageStream.Close();
-                        iamPageWriter.Close();
-
-                        return;
-                    }
-
-                    string lastFileNameInDir = filesInDir[^1];
-                    FileInfo fileInfo = new(lastFileNameInDir);
-
-                    int underScoreIndex = lastFileNameInDir.CustomLastIndexOf('_');
-                    int dotIndex = lastFileNameInDir.CustomLastIndexOf('.');
-
-                    long fileSize = fileInfo.Length;
-
-                    pageNumber = int.Parse(lastFileNameInDir[(underScoreIndex + 1)..dotIndex]);
-
-                    if (allAlocatedSpaceForOneRecord * (ulong)columnValues.CustomCount() + (ulong)fileSize > DataPageSize)
-                    {
-                        string dataPagesFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/datapage_{pageNumber}.bin";
-                        using FileStream dataPageStream = File.Open(dataPagesFilePath, FileMode.Append);
-                        using BinaryWriter dataPageWriter = new(dataPageStream);
-
-                        ulong tempFileSize = (ulong)fileSize;
-                        int currentIndexOfColumValues = 0;
-
-                        *//*while (allAlocatedSpaceForOneRecord + tempFileSize + BufferOverflowPage < PageSize)
-                        {
-                            foreach (string col in columnValues)
-                            {
-                                string[] values = col.CustomSplit(',');
-                                foreach (string value in values)
-                                    dataPageWriter.Write(value.CustomTrim());
-
-                                currentIndexOfColumValues++;
-                            }
-                            tempFileSize += allAlocatedSpaceForOneRecord;
-                        }*//*
-
-                        dataPageStream.Close();
-                        dataPageWriter.Close();
-
-                        pageNumber++;
-                        string nextDataPagesFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/datapage_{pageNumber}.bin";
-                        using FileStream nextDataPageStream = File.Open(nextDataPagesFilePath, FileMode.CreateNew);
-                        using BinaryWriter nextDataPageWriter = new(nextDataPageStream);
-
-                        IReadOnlyList<string> leftRecords = columnValues.CustomSkip(currentIndexOfColumValues);
-
-                        //this is the header section
-                        nextDataPageWriter.Write(remainingSpace);
-                        nextDataPageWriter.Write(leftRecords.Count);
-
-                        nextDataPageWriter.Close();
-                        nextDataPageWriter.Close();
-
-                        string iamPageFilePath = $"{Folders.DB_IAM_FOLDER}/{tableName}/iam_{iamPageNumber}.bin";
-                        using FileStream iamPageStream = File.Open(iamPageFilePath, FileMode.Append);
-                        using BinaryWriter iamPageWriter = new(iamPageStream);
-
-                        iamPageWriter.Write(pageNumber);
-
-                        iamPageStream.Close();
-                        iamPageWriter.Close();
-                    }
-                    else
-                    {
-                        //need to update Record count and Remaining space
-
-                        //just append the info to the current data page wihtout creating a new data page
-                        string dataPagesFilePath = $"{Folders.DB_DATA_FOLDER}/{tableName}/datapage_{pageNumber}.bin";
-                        using FileStream dataPageStream = File.Open(dataPagesFilePath, FileMode.Append);
-                        using BinaryWriter dataPageWriter = new(dataPageStream);
-
-                        //Marshal
-
-
-                        //this is the value section
-                        foreach (string col in columnValues)
-                        {
-                            string[] values = col.CustomSplit(',');
-                            foreach (string value in values)
-                                dataPageWriter.Write(value.CustomTrim());
-                        }
-
-                        dataPageStream.Close();
-                        dataPageWriter.Close();
-
-                        //FindAndReplaceRecord(dataPagesFilePath, "Record count:", )
-                    }
-                }
-        */
     }
 }
