@@ -211,10 +211,11 @@ namespace DMS.DataPages
             using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Append);
             using BinaryWriter writer = new(binaryStream, Encoding.UTF8);
 
-            binaryStream.Seek((AllDataPagesCount * DataPageSize) + CounterSection, SeekOrigin.End);
-
+            binaryStream.Seek((AllDataPagesCount * DataPageSize) + CounterSection, SeekOrigin.Begin);
+            int freeSpace = DataPageSize;// <- add this a metadata for the offset mapper at the start of the page read it and then increment offset page counter
             int sizeOfCurrentRecord = sizeof(int) + entry.Key.Length + sizeof(int);
 
+            //here you need to implement free space for the offset mapper and then icrement if needed
             if (sizeOfCurrentRecord + BufferOverflowPointer > DataPageSize)
             {
                 binaryStream.Seek(((AllDataPagesCount + 1) * DataPageSize) + CounterSection - BufferOverflowPointer, SeekOrigin.Begin);
@@ -227,6 +228,9 @@ namespace DMS.DataPages
 
                 binaryStream.Seek(((AllDataPagesCount + 2) * DataPageSize) + CounterSection - BufferOverflowPointer, SeekOrigin.Begin);
                 writer.Write(-1); // 4 bytes for the pointer to the next offset page (in this case -1 because there is no next page);
+
+                AllDataPagesCount++;
+                OffsetPageCounter++;
             }
             else
             {
