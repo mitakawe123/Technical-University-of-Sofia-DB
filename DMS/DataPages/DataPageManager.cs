@@ -215,17 +215,28 @@ namespace DMS.DataPages
 
             int sizeOfCurrentRecord = sizeof(int) + entry.Key.Length + sizeof(int);
 
-            if (sizeOfCurrentRecord > DataPageSize)
-                throw new Exception("Record size is bigger than the data page size."); // <- for now throw exception need to catch the case and overflow to the next page
+            if (sizeOfCurrentRecord + BufferOverflowPointer > DataPageSize)
+            {
+                binaryStream.Seek(((AllDataPagesCount + 1) * DataPageSize) + CounterSection - BufferOverflowPointer, SeekOrigin.Begin);
+                writer.Write(((AllDataPagesCount + 1) * DataPageSize) + CounterSection);
 
-            //header of offset page
-            writer.Write(entry.Key.Length); // 4 bytes for the length of the table name
-            writer.Write(entry.Key); // 1 byte per char
-            writer.Write(entry.Value);// 4 bytes for the start offset of the record
+                binaryStream.Seek(((AllDataPagesCount + 1) * DataPageSize) + CounterSection, SeekOrigin.Begin);
+                writer.Write(entry.Key.Length); // 4 bytes for the length of the table name
+                writer.Write(entry.Key); // 1 byte per char
+                writer.Write(entry.Value);// 4 bytes for the start offset of the record
 
-            binaryStream.Seek(((AllDataPagesCount + 1) * DataPageSize) + CounterSection - BufferOverflowPointer, SeekOrigin.Begin);
+                binaryStream.Seek(((AllDataPagesCount + 2) * DataPageSize) + CounterSection - BufferOverflowPointer, SeekOrigin.Begin);
+                writer.Write(-1); // 4 bytes for the pointer to the next offset page (in this case -1 because there is no next page);
+            }
+            else
+            {
+                writer.Write(entry.Key.Length); // 4 bytes for the length of the table name
+                writer.Write(entry.Key); // 1 byte per char
+                writer.Write(entry.Value);// 4 bytes for the start offset of the record
 
-            writer.Write(-1); // 4 bytes for the pointer to the next offset page (in this case -1 because there is no next page);
+                binaryStream.Seek(((AllDataPagesCount + 1) * DataPageSize) + CounterSection - BufferOverflowPointer, SeekOrigin.Begin);
+                writer.Write(-1); // 4 bytes for the pointer to the next offset page (in this case -1 because there is no next page);
+            }
 
             AllDataPagesCount++;
             OffsetPageCounter++;
