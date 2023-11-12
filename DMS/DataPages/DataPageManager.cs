@@ -33,10 +33,13 @@ namespace DMS.DataPages
         //createtable test1(id int primary key, name string(max) null, name1 string(max) null)
         public static void CreateTable(IReadOnlyList<Column> columns, ReadOnlySpan<char> tableName)
         {
+            char[] table = tableName.CustomToArray();
+            if (tableOffsets.ContainsKey(table))
+                throw new Exception("Table already exists");
+
             using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Append);
             using BinaryWriter writer = new(binaryStream, Encoding.UTF8);
 
-            char[] table = tableName.CustomToArray();
             ulong totalSpaceForColumnTypes = HelperAllocater.AllocatedStorageForTypes(columns);
             int numberOfPagesNeeded = (int)Math.Ceiling((double)totalSpaceForColumnTypes / DataPageSize);
 
@@ -77,7 +80,7 @@ namespace DMS.DataPages
                 if (columnIndex < columns.Count)
                 {
                     // Last 4 bytes of each page store the next page number
-                    binaryStream.Seek(((currentPage + 1) * DataPageSize - BufferOverflowPointer) + CounterSection, SeekOrigin.Begin);
+                    binaryStream.Seek((currentPage + 1) * DataPageSize - BufferOverflowPointer + CounterSection, SeekOrigin.Begin);
                     writer.Write(((currentPage + 1) * DataPageSize) + CounterSection); // Next page number
                     freeSpace = DataPageSize;
                 }
@@ -91,6 +94,8 @@ namespace DMS.DataPages
             TablesCount++;
             DataPageCounter += currentPage;
             AllDataPagesCount += currentPage;
+
+            WriteOffsetMapper(tableOffsets.CustomLast());
         }
 
         public static bool DropTable(ReadOnlySpan<char> tableName)
@@ -155,7 +160,6 @@ namespace DMS.DataPages
                 bool firstOffsetTablePage = true;
 
 
-
                 using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Append);
                 using BinaryWriter writer = new(binaryStream);
 
@@ -202,32 +206,29 @@ namespace DMS.DataPages
             return typeSize + nameSize + columnSize;
         }
         //createtable test(id int primary key, name string(max) null, name1 string(max) null)
-        private static void WriteOffsetMapper(KeyValuePair<char[], DKList<int>> entry)
+        private static void WriteOffsetMapper(KeyValuePair<char[], int> entry)
         {
             using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Append);
             using BinaryWriter writer = new(binaryStream, Encoding.UTF8);
 
-            int sizeOfCurrentRecord = sizeof(int) + entry.Key.Length + sizeof(int) + (sizeof(int) * entry.Value.Count);
+            binaryStream.Seek((AllDataPagesCount * DataPageSize) + CounterSection, SeekOrigin.End);
+
+            int sizeOfCurrentRecord = sizeof(int) + entry.Key.Length + sizeof(int);
+
+            if (sizeOfCurrentRecord > DataPageSize)
+                throw new Exception("Record size is bigger than the data page size."); // <- for now throw exception need to catch the case and overflow to the next page
+
             //header of offset page
-            writer.Write(entry.Key.Length); // 4 bytes
+            writer.Write(entry.Key.Length); // 4 bytes for the length of the table name
             writer.Write(entry.Key); // 1 byte per char
+            writer.Write(entry.Value);// 4 bytes for the start offset of the record
 
-            // Writing data pages for the given table
-            writer.Write(entry.Value.Count);// 4 bytes
+            binaryStream.Seek(((AllDataPagesCount + 1) * DataPageSize) + CounterSection - BufferOverflowPointer, SeekOrigin.Begin);
 
-            //case where the content is bigger than 4 KB
-            if ((entry.Value.Count * sizeof(int)) + sizeof(int) + entry.Key.Length - 4 > DataPageSize)
-            {
-                int currentOffsetPage = 0;
-                int freeSpace = DataPageSize - entry.Key.Length - sizeof(int);
-                bool firstOffsetPageForTable = true;
-                DKList<int> dataPageNumbers = entry.Value;
+            writer.Write(-1); // 4 bytes for the pointer to the next offset page (in this case -1 because there is no next page);
 
-
-            }
-
-            foreach (int value in entry.Value)
-                writer.Write(value); // 4 bytes per value
+            AllDataPagesCount++;
+            OffsetPageCounter++;
         }
 
         private static Dictionary<char[], DKList<int>> ReadOffsetMapper()
