@@ -32,26 +32,26 @@ namespace DMS.Commands
                     bool isValidCreateTableCommand = ValidateCreateTableCommand(command);
                     if (isValidCreateTableCommand)
                         return true;
-                    
+
                     Console.WriteLine("Please enter valid create table command!");
                     return false;
-                
+
                 case ECliCommands.DropTable:
                     bool isValidDropTableCommand = ValidateDropTableAndTableInfoCommands(command);
                     if (isValidDropTableCommand)
                         return true;
-                    
+
                     Console.WriteLine("Please enter a valid drop table command!");
                     return false;
-                
+
                 case ECliCommands.ListTables:
                     return true;
 
                 case ECliCommands.TableInfo:
                     /*bool isValidTableInfoCommand = ValidateDropTableAndTableInfoCommands(command);
                     if (isValidTableInfoCommand)*/
-                        return true;
-                    
+                    return true;
+
                     Console.WriteLine("Please enter a valid table info command!");
                     return false;
 
@@ -59,10 +59,10 @@ namespace DMS.Commands
                     bool isValidInsertCommand = ValidateInsertTableCommand(command);
                     if (isValidInsertCommand)
                         return true;
-                    
+
                     Console.WriteLine("Please enter a insert command!");
                     return false;
-                
+
                 default:
                     Console.WriteLine("Invalid command please enter a valid command");
                     return false;
@@ -86,6 +86,12 @@ namespace DMS.Commands
             }
 
             string tableName = command[(firstWhiteSpace + 1)..openingBracket];
+
+            if (tableName.Length > 128)
+            {
+                Console.WriteLine("Table name length is too long");
+                return false;
+            }
 
             if (tableName.CustomAny(x => InvalidTableNameCharacters.CustomContains(x)) ||
                 SqlDataTypes.CustomAny(x => tableName.CustomToLower() == x.CustomToLower()))
@@ -114,13 +120,13 @@ namespace DMS.Commands
                     return false;
                 }
 
-              /*  int secondWhiteSpaceAfterColumnName = commandTrimmed.CustomIndexOf(' ', firstWhiteSpaceAfterColumnName + 1);
-                string columnType = commandTrimmed[firstWhiteSpaceAfterColumnName..secondWhiteSpaceAfterColumnName].CustomTrim();
-                if (!SupportedSqlDataTypes.CustomAny(x => x.CustomToLower().CustomContains(columnType)))
-                {
-                    Console.WriteLine("Not supported data type curretly we support STRING/INT/DATE");
-                    return false;
-                }*/
+                /*  int secondWhiteSpaceAfterColumnName = commandTrimmed.CustomIndexOf(' ', firstWhiteSpaceAfterColumnName + 1);
+                  string columnType = commandTrimmed[firstWhiteSpaceAfterColumnName..secondWhiteSpaceAfterColumnName].CustomTrim();
+                  if (!SupportedSqlDataTypes.CustomAny(x => x.CustomToLower().CustomContains(columnType)))
+                  {
+                      Console.WriteLine("Not supported data type curretly we support STRING/INT/DATE");
+                      return false;
+                  }*/
             }
 
             return true;
