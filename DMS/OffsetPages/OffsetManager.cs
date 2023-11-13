@@ -1,6 +1,7 @@
 ﻿using DMS.Constants;
 using DMS.DataPages;
 using System.Linq;
+using System.Reflection.PortableExecutable;
 using System.Text;
 
 namespace DMS.OffsetPages
@@ -113,6 +114,7 @@ namespace DMS.OffsetPages
             int freeSpace = reader.ReadInt32();
 
             long stopPosition = DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
+            //here i need to extend this if i dont find the record in the first offset page i need to continue the search
             while (binaryStream.Position < stopPosition)
             {
                 int tableNameLength = reader.ReadInt32();
@@ -128,6 +130,51 @@ namespace DMS.OffsetPages
                     return;
                 }
             }
+        }
+
+        public static byte[] GetDataPageOffsetByTableName(char[] tableName)
+        {
+            using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open);
+            using BinaryReader reader = new(binaryStream, Encoding.UTF8);
+
+            binaryStream.Seek(DataPageManager.FirstOffsetPageStart, SeekOrigin.Begin);
+
+            binaryStream.Seek(DataPageManager.FirstOffsetPageStart, SeekOrigin.Begin);
+            int freeSpace = reader.ReadInt32();
+
+            long stopPosition = DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
+            //here i need to extend this if i dont find the record in the first offset page i need to continue the search
+            while (binaryStream.Position < stopPosition)
+            {
+                int tableNameLength = reader.ReadInt32();
+                char[] currentTableName = reader.ReadChars(tableNameLength);
+                int offsetValue = reader.ReadInt32();
+
+                if (currentTableName.SequenceEqual(tableName) && tableNameLength == tableName.Length)
+                {
+                    int recordSizeInBytes = tableNameLength + sizeof(int) + sizeof(int);
+                    binaryStream.Seek(binaryStream.Position - recordSizeInBytes, SeekOrigin.Begin);
+                    
+                    byte[] result = new byte[recordSizeInBytes];
+                    int position = 0;
+
+                    // Copy tableNameLength to result
+                    Array.Copy(BitConverter.GetBytes(tableNameLength), 0, result, position, sizeof(int));
+                    position += sizeof(int);
+
+                    // Copy tableName to result
+                    byte[] tableNameBytes = Encoding.UTF8.GetBytes(currentTableName);
+                    Array.Copy(tableNameBytes, 0, result, position, tableNameBytes.Length);
+                    position += tableNameBytes.Length;
+
+                    // Copy offsetValue to result
+                    Array.Copy(BitConverter.GetBytes(offsetValue), 0, result, position, sizeof(int));
+
+                    return result;
+                }
+            }
+
+            return Array.Empty<byte>();
         }
 
         private static long PointerToNextPage()

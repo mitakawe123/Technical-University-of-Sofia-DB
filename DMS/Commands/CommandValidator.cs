@@ -15,13 +15,13 @@ namespace DMS.Commands
         static CommandValidator()
         {
             foreach (ESQLCommands keyword in Enum.GetValues<ESQLCommands>())
-                AllowedKeywords.Add(keyword.ToString());
+                AllowedKeywords.Add(keyword.ToString().CustomToLower());
 
             foreach (EInvalidTableNameCharacters keyword in Enum.GetValues<EInvalidTableNameCharacters>())
                 InvalidTableNameCharacters.Add((char)keyword);
 
             foreach (EDataTypes keyword in Enum.GetValues<EDataTypes>())
-                SqlDataTypes.Add(keyword.ToString());
+                SqlDataTypes.Add(keyword.ToString().CustomToLower());
         }
 
         public static bool ValidateQuery(ECliCommands commandType, string command)
@@ -48,12 +48,12 @@ namespace DMS.Commands
                     return true;
 
                 case ECliCommands.TableInfo:
-                    /*bool isValidTableInfoCommand = ValidateDropTableAndTableInfoCommands(command);
-                    if (isValidTableInfoCommand)*/
-                    return true;
+                    bool isValidTableInfoCommand = ValidateTableInfoCommand(command);
+                    if (isValidTableInfoCommand)
+                        return true;
 
                     Console.WriteLine("Please enter a valid table info command!");
-                    return false;
+                    return true;
 
                 case ECliCommands.Insert:
                     bool isValidInsertCommand = ValidateInsertTableCommand(command);
@@ -94,7 +94,7 @@ namespace DMS.Commands
             }
 
             if (tableName.CustomAny(x => InvalidTableNameCharacters.CustomContains(x)) ||
-                SqlDataTypes.CustomAny(x => tableName.CustomToLower() == x.CustomToLower()))
+                SqlDataTypes.CustomAny(x => tableName == x))
             {
                 Console.WriteLine("Invalid table name");
                 return false;
@@ -103,30 +103,17 @@ namespace DMS.Commands
             string columnDefinition = command[(openingBracket + 1)..closingBracketForColumns].CustomTrim();
             string[] columnDefinitions = columnDefinition.CustomSplit(',');
 
-            foreach (string item in columnDefinitions)
+            foreach (string columnDef in columnDefinitions)
             {
-                string commandTrimmed = item.CustomTrim();
-                /* if (!SqlDataTypes.CustomAny(x => item.CustomToLower().Contains(x.CustomToLower())))
-                 {
-                     Console.WriteLine("Invalid data type in create table command");
-                     return false;
-                 }*/
+                string itemTrimmed = columnDef.CustomTrim();
 
-                int firstWhiteSpaceAfterColumnName = commandTrimmed.CustomIndexOf(' ');
-                string columnName = commandTrimmed[..firstWhiteSpaceAfterColumnName].CustomTrim();
-                if (SqlDataTypes.CustomAny(x => columnName.CustomToLower() == x.CustomToLower()))
+                int firstWhiteSpaceAfterColumnName = itemTrimmed.CustomIndexOf(' ');
+                string columnName = itemTrimmed[..firstWhiteSpaceAfterColumnName].CustomTrim();
+                if (SqlDataTypes.CustomAny(x => columnName == x))
                 {
                     Console.WriteLine("Invalid column name");
                     return false;
                 }
-
-                /*  int secondWhiteSpaceAfterColumnName = commandTrimmed.CustomIndexOf(' ', firstWhiteSpaceAfterColumnName + 1);
-                  string columnType = commandTrimmed[firstWhiteSpaceAfterColumnName..secondWhiteSpaceAfterColumnName].CustomTrim();
-                  if (!SupportedSqlDataTypes.CustomAny(x => x.CustomToLower().CustomContains(columnType)))
-                  {
-                      Console.WriteLine("Not supported data type curretly we support STRING/INT/DATE");
-                      return false;
-                  }*/
             }
 
             return true;
@@ -134,8 +121,11 @@ namespace DMS.Commands
 
         private static bool ValidateDropTableAndTableInfoCommands(string command)
         {
-            int firstWhiteSpace = command.CustomIndexOf(' ');
-            string tableName = command[firstWhiteSpace..].CustomTrim();
+            command = command.CustomTrim();
+            string[] parts = command.CustomSplit(' ');
+
+            if (parts.Length != 2)
+                return false;
 
             return true;
         }
@@ -169,6 +159,17 @@ namespace DMS.Commands
                 if (deserializedMetadata.Item1[i].CustomToLower() != splitedColumnDefinitions[i].CustomTrim())
                     throw new Exception($"Invalid column {splitedColumnDefinitions[i]}");
             }*/
+
+            return true;
+        }
+
+        private static bool ValidateTableInfoCommand(string command)
+        {
+            command = command.CustomTrim();
+            string[] parts = command.CustomSplit(' ');
+
+            if (parts.Length != 2)
+                return false;
 
             return true;
         }

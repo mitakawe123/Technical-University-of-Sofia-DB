@@ -175,6 +175,55 @@ namespace DMS.DataPages
                 Console.WriteLine(table);
         }
 
+        public static void TableInfo(ReadOnlySpan<char> tableName)
+        {
+            char[] table = tableName.CustomToArray();
+            byte[] values = OffsetManager.GetDataPageOffsetByTableName(table);
+
+            if (values.Length == 0)
+            {
+                Console.WriteLine($"No table with the given name {tableName}");
+                return;
+            }
+
+            int tableNameLength = BitConverter.ToInt32(values, 0);
+            string tempTableName = Encoding.UTF8.GetString(values, sizeof(int), tableNameLength);
+            char[] extractedTableName = tempTableName.ToCharArray();
+
+            /*int offsetValueStartPosition = sizeof(int) + tableNameLength;
+            int offsetValue = BitConverter.ToInt32(values, offsetValueStartPosition);*/
+            char[]? tableFromOffset = null;
+            foreach (KeyValuePair<char[], long> item in tableOffsets)
+            {
+                if (item.Key.SequenceEqual(extractedTableName))
+                {
+                    tableFromOffset = item.Key;
+                    break;
+                }
+            }
+
+            if(tableFromOffset is null)
+            {
+                Console.WriteLine("No table found with this name");
+                return;
+            }
+
+            long offset = tableOffsets[tableFromOffset];
+            int numberOfDataPagesForTable = FindDataPageNumberForTable(offset);
+
+            using FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
+            using BinaryReader reader = new(fileStream, Encoding.UTF8);
+
+            fileStream.Seek(offset, SeekOrigin.Begin);
+
+            int freeSpace = reader.ReadInt32();
+            ulong recordSize = reader.ReadUInt64();
+            string tableNameFromFile = Encoding.UTF8.GetString(reader.ReadBytes(tableNameLength), 0, tableNameLength);
+            int columnsCount = reader.ReadInt32();
+
+            Console.WriteLine($"Table name: {tableNameFromFile} \nOccupied space in bytes: {recordSize} \nThe table spans accross {numberOfDataPagesForTable} data pages \nColumns count is {columnsCount}");
+        }
+
         private static int CalculateColumnSize(Column column)
         {
             int typeSize = (sizeof(char) * column.Type.Length); // 2 bytes per char

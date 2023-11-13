@@ -66,9 +66,7 @@ namespace DataStructures
                     {
                         T[] newItems = new T[value];
                         if (_size > 0)
-                        {
                             Array.Copy(_items, newItems, _size);
-                        }
                         _items = newItems;
                     }
                     else

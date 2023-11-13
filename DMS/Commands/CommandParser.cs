@@ -74,7 +74,7 @@ namespace DMS.Commands
 
             DataPageManager.CreateTable(columns, tableNameSpan);
         }
-        //droptable test
+
         private static void DropTable(string command)
         {
             ReadOnlySpan<char> commandSpan = command;
@@ -86,6 +86,17 @@ namespace DMS.Commands
                 Console.WriteLine($"Table {tableNameSpan} was deleted successfully");
             else
                 Console.WriteLine($"Table {tableNameSpan} was not deleted successfully");
+        }
+
+        private static void ListTables() => DataPageManager.ListTables();
+
+        //схема и брой записи, заемано пространство и др.
+        private static void TableInfo(string command)
+        {
+            command = command.CustomTrim();
+            string tableName = command[(ECliCommands.TableInfo.ToString().Length + 1)..];
+            ReadOnlySpan<char> table = tableName;
+            DataPageManager.TableInfo(table);
         }
 
         //Insert INTO test (Id, Name) VALUES (1, “pepi”), (2, “mariq”), (3, “georgi”)
@@ -117,38 +128,6 @@ namespace DMS.Commands
                     ? valuesSpan[(bracketIndex + 1)..].CustomTrim()
                     : ReadOnlySpan<char>.Empty;
             }
-
-        }
-
-        private static void ListTables() => DataPageManager.ListTables();
-
-        //схема и брой записи, заемано пространство и др.
-        private static void TableInfo(string command)
-        {
-            //how many columns are there in the table
-            //how many records are there
-            string tableName = command[command.CustomIndexOf(' ')..].CustomTrim();
-
-
-            /*long totalTableSize = FolderSize(directoryTableSize);
-            long totalFolderSizeDataPages = FolderSize(directoryInfoDataPages);
-            long totalFolderSizeIAM = FolderSize(directoryInfoIAM);
-            long totalSizeMetadata = directoryInfoMetadata.Length;*/
-        }
-
-        private static long FolderSize(DirectoryInfo folder)
-        {
-            long totalSizeOfDir = 0;
-
-            FileInfo[] allFiles = folder.GetFiles();
-            foreach (FileInfo file in allFiles)
-                totalSizeOfDir += file.Length;
-
-            DirectoryInfo[] subFolders = folder.GetDirectories();
-            foreach (DirectoryInfo dir in subFolders)
-                totalSizeOfDir += FolderSize(dir);
-
-            return totalSizeOfDir;
         }
     }
 }
