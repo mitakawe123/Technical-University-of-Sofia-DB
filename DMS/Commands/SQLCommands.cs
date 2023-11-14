@@ -36,30 +36,29 @@ namespace DMS.Commands
 
             fileStream.Seek(offset[matchingKey], SeekOrigin.Begin);
 
+            //16 bytes + 2 bytes per char for table
             int freeSpace = reader.ReadInt32();
             ulong recordSizeInBytes = reader.ReadUInt64();
             string table = reader.ReadString();
             int columnCount = reader.ReadInt32();
 
+            ulong currentFreeSpace = (ulong)freeSpace;
+
             if (columnCount != columns.Count)
                 throw new Exception("Column count mismatch");// <- catch the case when there is default value
 
-            //take the free space see how much space each record takes and fill while you can
-            //if starts to overflow create new data page and link to the prev one
-
-            /*fileStream.Seek(offset[matchingKey] + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
-            
-            int pointer = reader.ReadInt32();
-
-            fileStream.Seek(offset[matchingKey], SeekOrigin.Begin);
-
-            while(pointer is not DataPageManager.DefaultBufferForDP)
+            for (int i = 0; i < columnCount; i++)
             {
-                //first fill info here
+                string columnName = reader.ReadString();
+                string columnType = reader.ReadString();
+            }
 
-                fileStream.Seek(pointer, SeekOrigin.Begin);
-                pointer = reader.ReadInt32();
-            }*/
+            while (currentFreeSpace + DataPageManager.BufferOverflowPointer > recordSizeInBytes)
+            {
+                currentFreeSpace -= recordSizeInBytes;
+
+
+            }
         }
     }
 }

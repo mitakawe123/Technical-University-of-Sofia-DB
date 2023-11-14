@@ -43,5 +43,16 @@ namespace DMS.Utils
 
             return allocatedBytes;
         }
+
+        public static int SpaceTakenByColumnsDefinitions(IReadOnlyList<Column> columns)
+        {
+            int space = 0;
+            foreach (Column column in columns)
+                space += (2 * column.Name.Length) + (2 * column.Type.Length);
+
+            return space;
+        }
+
+        public static int SpaceTakenByColumnsDefinition(Column column) => (2 * column.Name.Length) + (2 * column.Type.Length);
     }
 }

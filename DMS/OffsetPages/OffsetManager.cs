@@ -49,12 +49,12 @@ namespace DMS.OffsetPages
             Dictionary<char[], long> offsetMap = new();
             ReadOffsetTable(binaryStream, reader, offsetMap);
 
-            int nextPagePointer = reader.ReadInt32();
+            long nextPagePointer = reader.ReadInt64();
             while (nextPagePointer != DefaultBufferValue)
             {
                 binaryStream.Seek(nextPagePointer, SeekOrigin.Begin);
                 ReadOffsetTable(binaryStream, reader, offsetMap);
-                nextPagePointer = reader.ReadInt32();
+                nextPagePointer = reader.ReadInt64();
             }
 
             return offsetMap;
@@ -88,7 +88,7 @@ namespace DMS.OffsetPages
             while (binaryStream.Position < stopPosition)
                 EraseRecordIfMatch();
 
-            int pointer = reader.ReadInt32();
+            long pointer = reader.ReadInt64();
             while (pointer != DefaultBufferValue)
             {
                 binaryStream.Seek(pointer, SeekOrigin.Begin);
@@ -98,7 +98,7 @@ namespace DMS.OffsetPages
                 while (binaryStream.Position < stopPosition)
                     EraseRecordIfMatch();
 
-                pointer = reader.ReadInt32();
+                pointer = reader.ReadInt64();
             }
         }
 
@@ -144,7 +144,7 @@ namespace DMS.OffsetPages
                     return result;
             }
 
-            int pointer = reader.ReadInt32();
+            long pointer = reader.ReadInt64();
             while (pointer != DefaultBufferValue)
             {
                 binaryStream.Seek(pointer, SeekOrigin.Begin);
@@ -157,7 +157,7 @@ namespace DMS.OffsetPages
                         return result;
                 }
 
-                pointer = reader.ReadInt32();
+                pointer = reader.ReadInt64();
             }
 
             return Array.Empty<byte>();
@@ -227,11 +227,11 @@ namespace DMS.OffsetPages
             binaryStream.Seek(DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
             try
             {
-                int pointer = reader.ReadInt32();
+                long pointer = reader.ReadInt64();
                 while (pointer != DefaultBufferValue)
                 {
                     binaryStream.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
-                    pointer = reader.ReadInt32();
+                    pointer = reader.ReadInt64();
                 }
 
                 return binaryStream.Position;

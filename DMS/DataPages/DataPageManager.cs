@@ -18,9 +18,9 @@ namespace DMS.DataPages
         private static Dictionary<char[], long> tableOffsets = new();// <-name of the table and start of the offset for the first data page
         private static bool isclosing = false;
 
-        public const int DefaultBufferForDP = -1;// Default pointer to the next page
-        public const int BufferOverflowPointer = 4; //4 bytes for pointer to next page
-        public const int DataPageSize = 8192; // 8KB
+        public const long DefaultBufferForDP = -1;// Default pointer to the next page
+        public const long BufferOverflowPointer = 8; //8 bytes for pointer to next page
+        public const int DataPageSize = 60; // 8KB
 
         public static int TablesCount = 0; // 4 bytes for table count
         public static int DataPageCounter = 0; // 4 bytes for data page count  
@@ -32,7 +32,7 @@ namespace DMS.DataPages
         static DataPageManager()
         {
             SetConsoleCtrlHandler(new HandlerRoutine(ConsoleCtrlCheck), true);
-            
+
             PagesCountSection();
         }
 
@@ -47,13 +47,13 @@ namespace DMS.DataPages
             using BinaryWriter writer = new(binaryStream, Encoding.UTF8);
 
             ulong totalSpaceForColumnTypes = HelperAllocater.AllocatedStorageForTypes(columns);//<- this will calc how much space one record will take
-            int numberOfPagesNeeded = (int)Math.Ceiling((double)totalSpaceForColumnTypes / DataPageSize);//<- this will calc how many pages we need to store all the columns
+            int spaceTakenByColumnsDefinitions = HelperAllocater.SpaceTakenByColumnsDefinitions(columns);
+            int numberOfPagesNeeded = (int)Math.Ceiling((double)spaceTakenByColumnsDefinitions / DataPageSize);//<- this will calc how many pages we need to store all the columns
 
-            int currentPage = AllDataPagesCount;
             int pageNum = 0;
             int columnIndex = 0;
-            int freeSpaceTemp = DataPageSize;
             int freeSpace = DataPageSize;
+            int currentPage = AllDataPagesCount;
 
             if (DataPageCounter == 0)
                 FirstOffsetPageStart = (numberOfPagesNeeded * DataPageSize) + CounterSection;
@@ -62,40 +62,41 @@ namespace DMS.DataPages
             {
                 binaryStream.Seek((currentPage * DataPageSize) + CounterSection, SeekOrigin.Begin);
 
-                freeSpace -= 16 + (2 * tableName.Length);
-
-                //header section for the table data page is 16 bytes plus 2 bytes per char for the table name
-                writer.Write(freeSpace);// 4 bytes for free space
-                writer.Write(HelperAllocater.AllocatedStorageForTypes(columns));// 8 bytes for record size
-                writer.Write(tableName);// 2 bytes per char
-                writer.Write(columns.Count);// 4 bytes for column count
-
-                if (!tableOffsets.ContainsKey(table))
-                    tableOffsets.Add(table, (currentPage * DataPageSize) + CounterSection);
+                //this is the first Data page for the table and we need to write the header section only in this data page
+                if (currentPage == AllDataPagesCount)
+                {
+                    freeSpace -= 16 + (2 * tableName.Length);//<- minus the header section
+                    
+                    //header section for the table data page is 16 bytes plus 2 bytes per char for the table name
+                    writer.Write(freeSpace);// 4 bytes for free space
+                    writer.Write(totalSpaceForColumnTypes);// 8 bytes for record size
+                    writer.Write(tableName);// 2 bytes per char
+                    writer.Write(columns.Count);// 4 bytes for column count
+                    
+                    if (!tableOffsets.ContainsKey(table))
+                        tableOffsets.Add(table, (currentPage * DataPageSize) + CounterSection);
+                }
 
                 // Write as many columns as fit on the current page
-                while (columnIndex < columns.Count &&
-                    (freeSpaceTemp - 4) > CalculateColumnSize(columns[columnIndex]))
+                while (freeSpace - 4 > HelperAllocater.SpaceTakenByColumnsDefinition(columns[columnIndex]))
                 {
                     writer.Write(columns[columnIndex].Type);//2 bytes per char
                     writer.Write(columns[columnIndex].Name);//2 bytes per char
 
                     freeSpace -= (2 * columns[columnIndex].Type.Length) + (2 * columns[columnIndex].Name.Length);
-                    freeSpaceTemp -= CalculateColumnSize(columns[columnIndex]);
                     columnIndex++;
                 }
 
                 // If there are more columns to write, store a reference to the next page
                 if (columnIndex < columns.Count)
                 {
-                    //update free space in DP
+                    //update free space in the current data page
                     binaryStream.Seek((currentPage * DataPageSize) + CounterSection, SeekOrigin.Begin);
                     writer.Write(freeSpace);
 
                     // Last 4 bytes of each page store the next page number
                     binaryStream.Seek((currentPage + 1) * DataPageSize + CounterSection - BufferOverflowPointer, SeekOrigin.Begin);
                     writer.Write(((currentPage + 1) * DataPageSize) + CounterSection); // Next page number
-                    freeSpaceTemp = DataPageSize;
                     freeSpace = DataPageSize;
                 }
 
@@ -239,12 +240,12 @@ namespace DMS.DataPages
             fileStream.Seek(startingPosition + DataPageSize - BufferOverflowPointer, SeekOrigin.Begin);
 
             int counter = 1;
-            int pointer = reader.ReadInt32();
+            long pointer = reader.ReadInt64();
 
             while (pointer != DefaultBufferForDP)
             {
                 fileStream.Seek(pointer + DataPageSize - BufferOverflowPointer, SeekOrigin.Begin);
-                pointer = reader.ReadInt32();
+                pointer = reader.ReadInt64();
                 counter++;
             }
 
