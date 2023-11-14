@@ -6,7 +6,7 @@ namespace DMS.OffsetPages
 {
     public static class OffsetManager
     {
-        private const int DefaultBufferValue = -5;
+        private const long DefaultBufferValue = -5;
 
         //createtable test(id int primary key, name string(max) null, name1 string(max) null)
         public static void WriteOffsetMapper(KeyValuePair<char[], long> entry)
@@ -230,7 +230,7 @@ namespace DMS.OffsetPages
                 long pointer = reader.ReadInt64();
                 while (pointer != DefaultBufferValue)
                 {
-                    binaryStream.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+                    binaryStream.Seek(pointer, SeekOrigin.Begin);
                     pointer = reader.ReadInt64();
                 }
 
@@ -252,7 +252,7 @@ namespace DMS.OffsetPages
             if (requiredSpace + DataPageManager.BufferOverflowPointer < freeSpace)
                 return freeSpace;
 
-            return DefaultBufferValue;
+            return (int)DefaultBufferValue;
         }
 
         private static void ReadOffsetTable(FileStream stream, BinaryReader reader, Dictionary<char[], long> offsetMap)
