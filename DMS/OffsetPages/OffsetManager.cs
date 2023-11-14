@@ -38,6 +38,7 @@ namespace DMS.OffsetPages
             WriteToCurrentOffsetTable(entry, fs, binaryWriter, startOfFreeOffset, sizeOfCurrentRecord, ref freeSpace);
         }
 
+        //!!!!THIS IS NOT WORKING CORRECTLY!!!!
         public static Dictionary<char[], long> ReadTableOffsets()
         {
             using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open, FileAccess.Read);

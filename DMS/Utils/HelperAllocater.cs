@@ -54,5 +54,15 @@ namespace DMS.Utils
         }
 
         public static int SpaceTakenByColumnsDefinition(Column column) => (2 * column.Name.Length) + (2 * column.Type.Length);
+
+        public static ulong CalculateSpaceForInsertRecords(IReadOnlyList<Column> columns)
+        {
+            //2 bytes for each char in type and name
+            ulong space = 0;
+            foreach (Column column in columns)
+                space += (ulong)((column.Name.Length * 2) + (column.Type.Length * 2));
+
+            return space;
+        }
     }
 }

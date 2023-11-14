@@ -115,19 +115,34 @@ namespace DMS.Commands
 
             DKList<Column> columns = new();
 
-            /*while (valuesSpan.Length > 0)
+            int currentIndex = 0;
+
+            while (currentIndex < valuesSpan.Length)
             {
-                int bracketIndex = valuesSpan.CustomIndexOf(')');
-                ReadOnlySpan<char> vals = bracketIndex != -1
-                    ? valuesSpan[..bracketIndex]
-                    : valuesSpan;
+                int start = valuesSpan[currentIndex..].CustomIndexOf('(');
+                if (start == -1) 
+                    break;
+                start += currentIndex;
 
-                columns.Add(new Column());
+                int comma = valuesSpan[start..].CustomIndexOf(',');
+                if (comma == -1) 
+                    break;
+                comma += start;
 
-                valuesSpan = bracketIndex != -1
-                    ? valuesSpan[(bracketIndex + 1)..].CustomTrim()
-                    : ReadOnlySpan<char>.Empty;
-            }*/
+                int end = valuesSpan[comma..].CustomIndexOf(')');
+                if (end == -1) 
+                    break;
+                end += comma;
+
+                // Extract the type and name
+                ReadOnlySpan<char> typeSpan = valuesSpan.Slice(start + 1, comma - start - 1).Trim();
+                ReadOnlySpan<char> nameSpan = valuesSpan.Slice(comma + 1, end - comma - 1).Trim().Trim('\"');
+
+                if (int.TryParse(typeSpan, out int type) && !nameSpan.IsEmpty)
+                    columns.Add(new Column(type.ToString(), nameSpan.ToString()));
+
+                currentIndex = end + 1;
+            }
 
             SQLCommands.InsertIntoTable(columns, tableNameSpan);
         }
