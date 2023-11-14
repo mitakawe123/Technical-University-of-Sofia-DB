@@ -20,7 +20,7 @@ namespace DMS.DataPages
 
         public const long DefaultBufferForDP = -1;// Default pointer to the next page
         public const long BufferOverflowPointer = 8; //8 bytes for pointer to next page
-        public const int DataPageSize = 60; // 8KB
+        public const int DataPageSize = 8192; // 8KB
 
         public static int TablesCount = 0; // 4 bytes for table count
         public static int DataPageCounter = 0; // 4 bytes for data page count  
