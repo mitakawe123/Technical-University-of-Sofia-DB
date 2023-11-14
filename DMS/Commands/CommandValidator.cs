@@ -1,8 +1,6 @@
 ﻿using DataStructures;
 using DMS.Constants;
-using DMS.DataPages;
 using DMS.Extensions;
-using DMS.Shared;
 
 namespace DMS.Commands
 {
@@ -133,8 +131,8 @@ namespace DMS.Commands
         //Insert INTO test (Id, Name) VALUES (1, “pepi”), (2, “mariq”), (3, “georgi”)
         private static bool ValidateInsertTableCommand(string command)
         {
-            if (!command.CustomToLower().CustomContains("INSERT INTO".CustomToLower())
-                || !command.CustomToLower().CustomContains("VALUES".CustomToLower()))
+            if (!command.CustomToLower().CustomContains("insert into")
+                || !command.CustomToLower().CustomContains("values"))
                 throw new Exception("Not a valid insert into command");
 
             string loweredCommand = command.CustomToLower();

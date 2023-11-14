@@ -27,6 +27,8 @@ namespace DMS.DataPages
         public static int AllDataPagesCount = 0; // 4 bytes for data page count
         public static int FirstOffsetPageStart = 0; // 4 bytes for offset table 
 
+        public static Dictionary<char[], long> TableOffsets => tableOffsets;
+
         static DataPageManager()
         {
             SetConsoleCtrlHandler(new HandlerRoutine(ConsoleCtrlCheck), true);
