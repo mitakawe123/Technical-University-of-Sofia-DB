@@ -72,6 +72,9 @@ namespace DMS.Commands
                 values = commaIndex != -1 ? values[(commaIndex + 1)..].CustomTrim() : ReadOnlySpan<char>.Empty;
             }
 
+            if (columns.CustomAny(x => x.Name.Length > 128))
+                throw new Exception("Column name is too long");
+
             DataPageManager.CreateTable(columns, tableNameSpan);
         }
 
@@ -90,7 +93,6 @@ namespace DMS.Commands
 
         private static void ListTables() => DataPageManager.ListTables();
 
-        //схема и брой записи, заемано пространство и др.
         private static void TableInfo(string command)
         {
             command = command.CustomTrim();

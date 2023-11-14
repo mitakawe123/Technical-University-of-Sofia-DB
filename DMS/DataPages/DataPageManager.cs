@@ -14,25 +14,24 @@ namespace DMS.DataPages
     public class DataPageManager
     {
         private const int CounterSection = 16; // 16 bytes for table count, data page count, all data pages count and offset table start
-        private const int DefaultBufferForDP = -1;
+        private const int DefaultBufferForDP = -1;// Default pointer to the next page
+
+        private static Dictionary<char[], long> tableOffsets = new();// <-name of the table and start of the offset for the first data page
+        private static bool isclosing = false;
 
         public const int BufferOverflowPointer = 4; //4 bytes for pointer to next page
         public const int DataPageSize = 8192; // 8KB
-        
+
         public static int TablesCount = 0; // 4 bytes for table count
         public static int DataPageCounter = 0; // 4 bytes for data page count  
         public static int AllDataPagesCount = 0; // 4 bytes for data page count
         public static int FirstOffsetPageStart = 0; // 4 bytes for offset table 
 
-        private static Dictionary<char[], long> tableOffsets = new();// <-name of the table and start of the offset for the first data page
-
-        private static bool isclosing = false;
-
         static DataPageManager()
         {
-            PagesCountSection();
-
             SetConsoleCtrlHandler(new HandlerRoutine(ConsoleCtrlCheck), true);
+            
+            PagesCountSection();
         }
 
         //createtable test1(id int primary key, name string(max) null, name1 string(max) null)
@@ -42,14 +41,11 @@ namespace DMS.DataPages
             if (tableOffsets.ContainsKey(table))
                 throw new Exception("Table already exists");
 
-            if (columns.CustomAny(x => x.Name.Length > 128))
-                throw new Exception("Column name is too long");
-
             using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Append);
             using BinaryWriter writer = new(binaryStream, Encoding.UTF8);
 
-            ulong totalSpaceForColumnTypes = HelperAllocater.AllocatedStorageForTypes(columns);
-            int numberOfPagesNeeded = (int)Math.Ceiling((double)totalSpaceForColumnTypes / DataPageSize);
+            ulong totalSpaceForColumnTypes = HelperAllocater.AllocatedStorageForTypes(columns);//<- this will calc how much space one record will take
+            int numberOfPagesNeeded = (int)Math.Ceiling((double)totalSpaceForColumnTypes / DataPageSize);//<- this will calc how many pages we need to store all the columns
 
             int currentPage = AllDataPagesCount;
             int pageNum = 0;
@@ -202,7 +198,7 @@ namespace DMS.DataPages
                 }
             }
 
-            if(tableFromOffset is null)
+            if (tableFromOffset is null)
             {
                 Console.WriteLine("No table found with this name");
                 return;
@@ -237,7 +233,7 @@ namespace DMS.DataPages
         {
             using FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryReader reader = new(fileStream, Encoding.UTF8);
-            
+
             fileStream.Seek(startingPosition + DataPageSize - BufferOverflowPointer, SeekOrigin.Begin);
 
             int counter = 1;
