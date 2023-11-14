@@ -115,21 +115,19 @@ namespace DMS.Commands
 
             DKList<Column> columns = new();
 
-            while (valuesSpan.Length > 0)
+            /*while (valuesSpan.Length > 0)
             {
-                /*int bracketIndex = valuesSpan.CustomIndexOf(')');
+                int bracketIndex = valuesSpan.CustomIndexOf(')');
                 ReadOnlySpan<char> vals = bracketIndex != -1
                     ? valuesSpan[..bracketIndex]
                     : valuesSpan;
 
-                int openingBracket = vals.CustomIndexOf('(');
-
-                columns.Add(vals[(openingBracket + 1)..].ToString());
+                columns.Add(new Column());
 
                 valuesSpan = bracketIndex != -1
                     ? valuesSpan[(bracketIndex + 1)..].CustomTrim()
-                    : ReadOnlySpan<char>.Empty;*/
-            }
+                    : ReadOnlySpan<char>.Empty;
+            }*/
 
             SQLCommands.InsertIntoTable(columns, tableNameSpan);
         }

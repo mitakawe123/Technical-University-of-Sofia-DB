@@ -14,11 +14,11 @@ namespace DMS.DataPages
     public class DataPageManager
     {
         private const int CounterSection = 16; // 16 bytes for table count, data page count, all data pages count and offset table start
-        private const int DefaultBufferForDP = -1;// Default pointer to the next page
 
         private static Dictionary<char[], long> tableOffsets = new();// <-name of the table and start of the offset for the first data page
         private static bool isclosing = false;
 
+        public const int DefaultBufferForDP = -1;// Default pointer to the next page
         public const int BufferOverflowPointer = 4; //4 bytes for pointer to next page
         public const int DataPageSize = 8192; // 8KB
 

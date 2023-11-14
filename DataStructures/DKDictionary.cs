@@ -5,11 +5,14 @@ namespace DataStructures
     //https://www.youtube.com/watch?v=wJ2Ajqjhl_4
     public class DKDictionary<TKey, TValue> : ICollection<KeyValuePair<TKey, TValue>>, IEnumerable<KeyValuePair<TKey, TValue>>, IDictionary<TKey, TValue>, IReadOnlyCollection<KeyValuePair<TKey, TValue>> where TKey : notnull
     {
+        private int count;
+        private int freeCount;
+
         public TValue this[TKey key] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
-        public int Count => throw new NotImplementedException();
+        public int Count => count - freeCount;
 
-        public bool IsReadOnly => throw new NotImplementedException();
+        public bool IsReadOnly => false;
 
         public ICollection<TKey> Keys => throw new NotImplementedException();
 
