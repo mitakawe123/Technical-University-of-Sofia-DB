@@ -1,6 +1,5 @@
 ﻿namespace DataStructures
 {
-    //change this with B+TREE
     public class BTree<T> where T : IComparable<T>
     {
         private readonly int degree;

@@ -70,7 +70,8 @@ namespace DMS.Commands
             for (int i = 0; i < dataPagesNeeded; i++)
             {
                 InsertData(fileStream, recordSizeInBytes, columnsValues, columnNameAndType, ref currentFreeSpace);
-                fileStream.Seek(DataPageManager.AllDataPagesCount + DataPageManager.CounterSection, SeekOrigin.Begin);
+                fileStream.Seek((DataPageManager.AllDataPagesCount * DataPageManager.DataPageSize) + DataPageManager.CounterSection, SeekOrigin.Begin);
+
                 DataPageManager.AllDataPagesCount++;
                 DataPageManager.DataPageCounter++;
             }
