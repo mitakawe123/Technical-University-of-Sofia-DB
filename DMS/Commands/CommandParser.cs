@@ -114,7 +114,6 @@ namespace DMS.Commands
             ReadOnlySpan<char> valuesSpan = commandSpan[valuesKeyword..].CustomTrim();
 
             DKList<Column> columns = new();
-
             int currentIndex = 0;
 
             while (currentIndex < valuesSpan.Length)

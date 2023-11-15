@@ -543,6 +543,73 @@ namespace DMS.Extensions
             return result;
         }
 
+        public static bool CustomContains<T>(this ReadOnlySpan<T> span, T value) where T : IEquatable<T>
+        {
+            for (int i = 0; i < span.Length; i++)
+                if (span[i].Equals(value))
+                    return true;
+
+            return false;
+        }
+
+        public static bool CustomContains(this ReadOnlySpan<char> span, ReadOnlySpan<char> value, StringComparison comparisonType)
+        {
+            if (value.IsEmpty)
+                return false;
+
+            for (int i = 0; i <= span.Length - value.Length; i++)
+                if (span.Slice(i, value.Length).Equals(value, comparisonType))
+                    return true;
+
+            return false;
+        }
+
+        public static int CustomIndexOf(this ReadOnlySpan<char> span, ReadOnlySpan<char> value, StringComparison comparisonType)
+        {
+            if (value.IsEmpty || span.Length < value.Length)
+                return -1;
+
+            for (int i = 0; i <= span.Length - value.Length; i++)
+                if (span.CustomSlice(i, value.Length).Equals(value, comparisonType))
+                    return i;
+
+            return -1;
+        }
+
+        public static bool CustomStartsWith<T>(this ReadOnlySpan<T> span, ReadOnlySpan<T> value) where T : IEquatable<T>
+        {
+            if (value.Length > span.Length)
+                return false;
+
+            for (int i = 0; i < value.Length; i++)
+                if (!span[i].Equals(value[i]))
+                    return false;
+
+            return true;
+        }
+
+
+        public static bool CustomEndsWith<T>(this ReadOnlySpan<T> span, ReadOnlySpan<T> value) where T : IEquatable<T>?
+        {
+            if (value.Length > span.Length)
+                return false;
+
+            int startOffset = span.Length - value.Length;
+            for (int i = 0; i < value.Length; i++)
+                if (!span[startOffset + i].Equals(value[i]))
+                    return false;
+
+            return true;
+        }
+
+        public static ReadOnlySpan<char> CustomAsSpan(this string? text)
+        {
+            if (text == null)
+                return ReadOnlySpan<char>.Empty;
+
+            return new ReadOnlySpan<char>(text.CustomToCharArray());
+        }
+
         #endregion
     }
 }

@@ -1,6 +1,8 @@
 ﻿using DataStructures;
 using DMS.Constants;
 using DMS.Extensions;
+using DMS.Shared;
+using System;
 
 namespace DMS.Commands
 {
@@ -128,35 +130,71 @@ namespace DMS.Commands
             return true;
         }
 
-        //Insert INTO test (Id, Name) VALUES (1, “pepi”), (2, “mariq”), (3, “georgi”)
+        //Insert INTO test (Id, Name) VALUES (1, 2), (2, 2), (3, 2)
         private static bool ValidateInsertTableCommand(string command)
         {
-            if (!command.CustomToLower().CustomContains("insert into")
-                || !command.CustomToLower().CustomContains("values"))
+            ReadOnlySpan<char> commandSpan = command;
+            ReadOnlySpan<char> insetIntoText = "insert into";
+            ReadOnlySpan<char> valuesTest = "values";
+
+            if (!commandSpan.CustomContains(insetIntoText, StringComparison.OrdinalIgnoreCase)
+                || !commandSpan.CustomContains(valuesTest, StringComparison.OrdinalIgnoreCase))
                 throw new Exception("Not a valid insert into command");
 
-            string loweredCommand = command.CustomToLower();
-            string[] parts = loweredCommand.CustomSplit(' ');
-            string tableName = parts[2];
+            int firstBracket = commandSpan.CustomIndexOf('(');
 
-            string[] columnsAndValues = loweredCommand.CustomSplit($"{tableName.CustomToLower()}");
-            string[] values = columnsAndValues[1].CustomSplit("values");
+            ReadOnlySpan<char> vals = commandSpan.CustomSlice(insetIntoText.Length + 1, commandSpan.Length - insetIntoText.Length - 1);
+            ReadOnlySpan<char> tableName = vals[..firstBracket].CustomTrim();
 
-            if (!values[0].CustomContains('(') || !values[0].CustomContains(')'))
-                throw new Exception("No brackets for column definitions");
+            if (tableName.Length > 128)
+                throw new Exception("Table name is too long");
 
-            string columnDefinitions = values[0].CustomTrim();
-            columnDefinitions = columnDefinitions.CustomSubstring(1, columnDefinitions.Length - 2);
+            if (tableName.IsEmpty)
+                throw new Exception("Table name is empty");
 
-            //will open the metadata file and check for the column defined there
-            string[] splitedColumnDefinitions = columnDefinitions.CustomSplit(',');
-            //IReadOnlyList<Column> deserializedMetadata = DataPageManager.DeserializeMetadata(tableName);
+            int valuesKeyWordIndex = vals.CustomIndexOf(valuesTest);
+            ReadOnlySpan<char> valuesPart = vals[(valuesKeyWordIndex + valuesTest.Length + 1)..];
 
-            /*for (int i = 0; i < deserializedMetadata.Item1.Length; i++)
+
+            int start = 0;
+            while (start < valuesPart.Length)
             {
-                if (deserializedMetadata.Item1[i].CustomToLower() != splitedColumnDefinitions[i].CustomTrim())
-                    throw new Exception($"Invalid column {splitedColumnDefinitions[i]}");
-            }*/
+                int end = start;
+                int bracketCount = 0;
+                bool inQuote = false;
+
+                while (end < valuesPart.Length)
+                {
+                    if (valuesPart[end] == '\'' && (end == 0 || valuesPart[end - 1] != '\\'))
+                        inQuote = !inQuote;
+
+                    if (!inQuote)
+                    {
+                        if (valuesPart[end] == '(')
+                            bracketCount++;
+                        else if (valuesPart[end] == ')')
+                            bracketCount--;
+
+                        if (bracketCount == 0 && (valuesPart[end] == ',' || end == valuesPart.Length - 1))
+                        {
+                            ReadOnlySpan<char> segment = valuesPart.Slice(start, end - start + 1).Trim();
+                            if (!segment.CustomContains('(')
+                                || !segment.CustomContains(')'))
+                                throw new Exception("Invalid value format. Each value must be enclosed in parentheses.");
+
+                            start = end + 1;
+                            break;
+                        }
+                    }
+
+                    end++;
+                }
+
+                if (bracketCount != 0 || inQuote)
+                    throw new Exception("Unbalanced parentheses or quotes in values.");
+            }
+
+            //maybe it will be good idea to get the here to check if I can parse the values to the correct type that are defined in the data page
 
             return true;
         }
