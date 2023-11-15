@@ -13,11 +13,10 @@ namespace DMS.DataPages
     //This limit is applicable not just to table names but also to most other identifiers in SQL Server, such as column names, schema names, constraint names, and others.
     public class DataPageManager
     {
-        private const int CounterSection = 16; // 16 bytes for table count, data page count, all data pages count and offset table start
-
         private static Dictionary<char[], long> tableOffsets = new();// <-name of the table and start of the offset for the first data page
         private static bool isclosing = false;
 
+        public const int CounterSection = 16; // 16 bytes for table count, data page count, all data pages count and offset table start
         public const long DefaultBufferForDP = -1;// Default pointer to the next page
         public const long BufferOverflowPointer = 8; //8 bytes for pointer to next page
         public const int DataPageSize = 8192; // 8KB
@@ -67,12 +66,13 @@ namespace DMS.DataPages
                 //this is the first Data page for the table and we need to write the header section only in this data page
                 if (currentPage == AllDataPagesCount)
                 {
-                    freeSpace -= 16 + (2 * tableName.Length);//<- minus the header section
+                    freeSpace -= 20 + tableName.Length;//<- minus the header section
 
                     //header section for the table data page is 16 bytes plus 2 bytes per char for the table name
                     writer.Write(freeSpace);// 4 bytes for free space
                     writer.Write(totalSpaceForColumnTypes);// 8 bytes for record size
-                    writer.Write(tableName);// 2 bytes per char
+                    writer.Write(table.Length); //4 bytes for the table name length
+                    writer.Write(table);// 1 bytes per char
                     writer.Write(columns.Count);// 4 bytes for column count
 
                     if (!tableOffsets.ContainsKey(table))

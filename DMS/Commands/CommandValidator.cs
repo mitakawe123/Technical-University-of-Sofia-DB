@@ -1,8 +1,6 @@
 ﻿using DataStructures;
 using DMS.Constants;
 using DMS.Extensions;
-using DMS.Shared;
-using System;
 
 namespace DMS.Commands
 {
@@ -154,7 +152,6 @@ namespace DMS.Commands
 
             int valuesKeyWordIndex = vals.CustomIndexOf(valuesTest);
             ReadOnlySpan<char> valuesPart = vals[(valuesKeyWordIndex + valuesTest.Length + 1)..];
-
 
             int start = 0;
             while (start < valuesPart.Length)

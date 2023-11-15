@@ -113,37 +113,62 @@ namespace DMS.Commands
             ReadOnlySpan<char> tableNameSpan = commandSpan.CustomSlice(startAfterKeyword, endBeforeParenthesis).CustomTrim();
             ReadOnlySpan<char> valuesSpan = commandSpan[valuesKeyword..].CustomTrim();
 
-            DKList<Column> columns = new();
-            int currentIndex = 0;
-
-            while (currentIndex < valuesSpan.Length)
+            DKList<DKList<char[]>> valuesList = new();
+            bool inQuotes = false;
+            int start = 0;
+            for (int i = 0; i < valuesSpan.Length; i++)
             {
-                int start = valuesSpan[currentIndex..].CustomIndexOf('(');
-                if (start == -1) 
-                    break;
-                start += currentIndex;
+                if (valuesSpan[i] == '"' && (i == 0 || valuesSpan[i - 1] != '\\'))
+                    inQuotes = !inQuotes;
 
-                int comma = valuesSpan[start..].CustomIndexOf(',');
-                if (comma == -1) 
-                    break;
-                comma += start;
-
-                int end = valuesSpan[comma..].CustomIndexOf(')');
-                if (end == -1) 
-                    break;
-                end += comma;
-
-                // Extract the type and name
-                ReadOnlySpan<char> typeSpan = valuesSpan.Slice(start + 1, comma - start - 1).Trim();
-                ReadOnlySpan<char> nameSpan = valuesSpan.Slice(comma + 1, end - comma - 1).Trim().Trim('\"');
-
-                if (int.TryParse(typeSpan, out int type) && !nameSpan.IsEmpty)
-                    columns.Add(new Column(type.ToString(), nameSpan.ToString()));
-
-                currentIndex = end + 1;
+                if (!inQuotes && valuesSpan[i] == ')')
+                {
+                    ReadOnlySpan<char> tupleSpan = valuesSpan[start..i].CustomTrim();
+                    valuesList.Add(ProcessTuple(tupleSpan));
+                    start = i + 1;
+                }
+                else if (!inQuotes && valuesSpan[i] == '(')
+                    start = i + 1;
             }
 
-            SQLCommands.InsertIntoTable(columns, tableNameSpan);
+            SQLCommands.InsertIntoTable(valuesList, tableNameSpan);
         }
+
+        private static DKList<char[]> ProcessTuple(ReadOnlySpan<char> tuple)
+        {
+            DKList<char[]> values = new();
+            bool inQuotes = false;
+            int start = 0;
+
+            for (int i = 0; i < tuple.Length; i++)
+            {
+                if (tuple[i] == '"' && (i == 0 || tuple[i - 1] != '\\'))
+                    inQuotes = !inQuotes;
+
+                if (!inQuotes && tuple[i] == ',')
+                {
+                    ReadOnlySpan<char> valueSpan = tuple[start..i].CustomTrim();
+                    values.Add(ProcessValue(valueSpan));
+                    start = i + 1;
+                }
+            }
+
+            if (start < tuple.Length)
+            {
+                ReadOnlySpan<char> valueSpan = tuple[start..].CustomTrim();
+                values.Add(ProcessValue(valueSpan));
+            }
+
+            return values;
+        }
+
+        private static char[] ProcessValue(ReadOnlySpan<char> value)
+        {
+            if (value.Length >= 2 && value[0] == '"' && value[^1] == '"')
+                value = value[1..^1];
+
+            return value.ToString().Replace("\\\"", "\"").CustomToCharArray();
+        }
+
     }
 }
