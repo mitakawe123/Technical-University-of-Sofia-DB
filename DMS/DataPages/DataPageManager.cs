@@ -36,6 +36,8 @@ namespace DMS.DataPages
             PagesCountSection();
         }
 
+        public static void InitDataPageManager() => Console.WriteLine("Welcome to DMS");
+
         //createtable test1(id int primary key, name string(max) null, name1 string(max) null)
         public static void CreateTable(IReadOnlyList<Column> columns, ReadOnlySpan<char> tableName)
         {
@@ -66,13 +68,13 @@ namespace DMS.DataPages
                 if (currentPage == AllDataPagesCount)
                 {
                     freeSpace -= 16 + (2 * tableName.Length);//<- minus the header section
-                    
+
                     //header section for the table data page is 16 bytes plus 2 bytes per char for the table name
                     writer.Write(freeSpace);// 4 bytes for free space
                     writer.Write(totalSpaceForColumnTypes);// 8 bytes for record size
                     writer.Write(tableName);// 2 bytes per char
                     writer.Write(columns.Count);// 4 bytes for column count
-                    
+
                     if (!tableOffsets.ContainsKey(table))
                         tableOffsets.Add(table, (currentPage * DataPageSize) + CounterSection);
                 }
@@ -85,7 +87,7 @@ namespace DMS.DataPages
 
                     freeSpace -= (2 * columns[columnIndex].Type.Length) + (2 * columns[columnIndex].Name.Length);
                     columnIndex++;
-                    if(columnIndex == columns.Count)
+                    if (columnIndex == columns.Count)
                         break;
                 }
 

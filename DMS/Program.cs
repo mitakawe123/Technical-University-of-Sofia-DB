@@ -1,5 +1,6 @@
 ﻿using DMS.Commands;
 using DMS.Constants;
+using DMS.DataPages;
 using DMS.Extensions;
 
 namespace DMS
@@ -8,7 +9,7 @@ namespace DMS
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Welcome to DMS");
+            DataPageManager.InitDataPageManager();
 
             bool running = true;
 

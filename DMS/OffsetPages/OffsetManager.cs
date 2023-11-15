@@ -38,7 +38,6 @@ namespace DMS.OffsetPages
             WriteToCurrentOffsetTable(entry, fs, binaryWriter, startOfFreeOffset, sizeOfCurrentRecord, ref freeSpace);
         }
 
-        //!!!!THIS IS NOT WORKING CORRECTLY!!!!
         public static Dictionary<char[], long> ReadTableOffsets()
         {
             using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open, FileAccess.Read);
@@ -95,7 +94,7 @@ namespace DMS.OffsetPages
                 binaryStream.Seek(pointer, SeekOrigin.Begin);
                 freeSpace = reader.ReadInt32();
 
-                stopPosition = binaryStream.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer; 
+                stopPosition = binaryStream.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
                 while (binaryStream.Position < stopPosition)
                     EraseRecordIfMatch();
 
@@ -116,7 +115,7 @@ namespace DMS.OffsetPages
 
                 if (currentTableName.SequenceEqual(tableName) && tableNameLength == tableName.Length)
                     return CreateResultArray(tableNameLength, currentTableName, offsetValue);
-                
+
                 return null;
             }
 
@@ -141,7 +140,7 @@ namespace DMS.OffsetPages
             while (binaryStream.Position < stopPosition)
             {
                 byte[] result = CheckAndGetResult();
-                if (result is not null) 
+                if (result is not null)
                     return result;
             }
 
@@ -154,7 +153,7 @@ namespace DMS.OffsetPages
                 while (binaryStream.Position < stop)
                 {
                     byte[] result = CheckAndGetResult();
-                    if (result is not null) 
+                    if (result is not null)
                         return result;
                 }
 
@@ -258,7 +257,7 @@ namespace DMS.OffsetPages
 
         private static void ReadOffsetTable(FileStream stream, BinaryReader reader, Dictionary<char[], long> offsetMap)
         {
-            long stopPosition = stream.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer; //<- this sizeof(int) is free space variable
+            long stopPosition = stream.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer - sizeof(int); //<- this sizeof(int) is free space variable
 
             while (stream.Position < stopPosition)
             {
@@ -268,7 +267,7 @@ namespace DMS.OffsetPages
 
                 if (tableNameLength == 0)
                 {
-                    stream.Seek(stopPosition - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+                    stream.Seek(stopPosition, SeekOrigin.Begin);
                     return;
                 }
 
