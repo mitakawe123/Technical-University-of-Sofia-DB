@@ -3,6 +3,7 @@ using DMS.Extensions;
 using DMS.OffsetPages;
 using DMS.Shared;
 using DMS.Utils;
+using Microsoft.Win32;
 using System.Text;
 using static DMS.Utils.ControlTypes;
 
@@ -35,7 +36,12 @@ namespace DMS.DataPages
             PagesCountSection();
         }
 
-        public static void InitDataPageManager() => Console.WriteLine("Welcome to DMS");
+        public static void InitDataPageManager()
+        {
+            SystemEvents.SessionEnding += new SessionEndingEventHandler(SystemEvents_SessionEnding);
+
+            Console.WriteLine("Welcome to DMS");
+        }
 
         //createtable test1(id int primary key, name string(max) null, name1 string(max) null)
         public static void CreateTable(IReadOnlyList<Column> columns, ReadOnlySpan<char> tableName)
@@ -221,7 +227,9 @@ namespace DMS.DataPages
 
             int freeSpace = reader.ReadInt32();
             ulong recordSize = reader.ReadUInt64();
-            string tableNameFromFile = Encoding.UTF8.GetString(reader.ReadBytes(tableNameLength), 0, tableNameLength);
+            int tableNameLengthFromFile = reader.ReadInt32();
+            byte[] tableNameInBytes = reader.ReadBytes(tableNameLengthFromFile);
+            string tableNameFromFile = Encoding.UTF8.GetString(tableNameInBytes);
             int columnsCount = reader.ReadInt32();
 
             Console.WriteLine($"Table name: {tableNameFromFile} \nOccupied space in bytes: {recordSize} \nThe table spans accross {numberOfDataPagesForTable} data pages \nColumns count is {columnsCount}");
@@ -290,27 +298,13 @@ namespace DMS.DataPages
             switch (ctrlType)
             {
                 case CtrlTypes.CTRL_C_EVENT:
-                    isclosing = true;
-                    ConsoleEventCallback();
-                    Console.WriteLine("CTRL+C received!");
-                    break;
-
-                case CtrlTypes.CTRL_BREAK_EVENT:
-                    isclosing = true;
-                    ConsoleEventCallback();
-                    Console.WriteLine("CTRL+BREAK received!");
-                    break;
-
                 case CtrlTypes.CTRL_CLOSE_EVENT:
-                    isclosing = true;
-                    ConsoleEventCallback();
-                    break;
-
+                case CtrlTypes.CTRL_BREAK_EVENT:
                 case CtrlTypes.CTRL_LOGOFF_EVENT:
                 case CtrlTypes.CTRL_SHUTDOWN_EVENT:
-                    isclosing = true;
                     ConsoleEventCallback();
-                    Console.WriteLine("User is logging off!");
+                    isclosing = true;
+                    Console.WriteLine("Closing the program ....");
                     break;
             }
             return true;
@@ -327,6 +321,12 @@ namespace DMS.DataPages
             writer.Write(AllDataPagesCount);
             writer.Write(DataPageCounter);
             writer.Write(FirstOffsetPageStart);
+        }
+
+        private static void SystemEvents_SessionEnding(object sender, SessionEndingEventArgs e)
+        {
+            ConsoleEventCallback();
+            Console.WriteLine("System is logging off or shutting down...");
         }
     }
 }

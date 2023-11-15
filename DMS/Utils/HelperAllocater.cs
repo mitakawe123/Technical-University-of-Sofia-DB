@@ -66,6 +66,11 @@ namespace DMS.Utils
             return space;
         }
 
-        public static int NumberOfDataPagesForInsert(int recordCount, ulong recordSizeInBytes) => (int)Math.Ceiling((double)(recordSizeInBytes * ((ulong)recordCount) / DataPageManager.DataPageSize));
+        public static int NumberOfDataPagesForInsert(int recordCount, ulong recordSizeInBytes)
+        {
+            double res = (double)recordSizeInBytes * recordCount/DataPageManager.DataPageSize;
+            res = Math.Ceiling(res);    
+            return (int)res;
+        }
     }
 }

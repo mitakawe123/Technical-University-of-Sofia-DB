@@ -167,7 +167,7 @@ namespace DMS.Commands
             if (value.Length >= 2 && value[0] == '"' && value[^1] == '"')
                 value = value[1..^1];
 
-            return value.ToString().Replace("\\\"", "\"").CustomToCharArray();
+            return value.ToString().Replace("\\\"", "").CustomToCharArray();
         }
 
     }

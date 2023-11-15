@@ -70,6 +70,8 @@ namespace DMS.Commands
         //createtable test(id int primary key, name string null)
         private static bool ValidateCreateTableCommand(string command)
         {
+            //ReadOnlySpan<char> commandSpan = command;
+
             if (!command.CustomContains(ECliCommands.CreateTable.ToString()))
                 return false;
 
