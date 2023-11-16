@@ -59,8 +59,6 @@ namespace DMS.Commands
 
             byte[] allRecords = GetAllData(columnsValues);
             InsertIntoFreeSpace(allRecords, isMainDP, headerSectionForMainDP, firstFreeDP);
-
-            var aaaa = ReadAllData(allRecords);
         }
 
         private static void InsertIntoFreeSpace(byte[] allRecords, bool isMainDP, int headerSectionForMainDP, long firstFreeDP)
@@ -72,7 +70,10 @@ namespace DMS.Commands
             int recordLength = allRecords.Length;
 
             fs.Seek(firstFreeDP, SeekOrigin.Begin);
-            int freeSpace = fs.Read(new byte[4]);//<- free space
+
+            byte[] freeSpaceBytes = new byte[4];
+            fs.Read(freeSpaceBytes, 0, 4);//<- free space
+            int freeSpace = BitConverter.ToInt32(freeSpaceBytes, 0);
 
             if (isMainDP)
                 fs.Seek(firstFreeDP + headerSectionForMainDP, SeekOrigin.Begin);
@@ -82,7 +83,7 @@ namespace DMS.Commands
             while (recordIndex < recordLength)
             {
                 // Calculate the amount of data to write in this iteration
-                int dataToWrite = (int)Math.Min(recordLength - recordIndex, freeSpace - DataPageManager.BufferOverflowPointer);
+                int dataToWrite = (int)Math.Min(recordLength - recordIndex, freeSpace - DataPageManager.BufferOverflowPointer);//<- this is some times 0
                 freeSpace -= dataToWrite;
 
                 // Write the data
@@ -93,31 +94,31 @@ namespace DMS.Commands
                 fs.Seek(firstFreeDP, SeekOrigin.Begin);
                 writer.Write(freeSpace);
 
-                // Check if there's more data to write
-                if (recordIndex < recordLength)
+                if (dataToWrite == 0)
+                    return;
+
+                // Move to the end of the current page and read the pointer
+                fs.Seek(firstFreeDP + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+                byte[] pointerBytes = new byte[8];
+                fs.Read(pointerBytes, 0, 8);
+                long pointer = BitConverter.ToInt64(pointerBytes, 0);
+
+                // Check if the pointer is default, indicating a new page is needed
+                if (pointer == DataPageManager.DefaultBufferForDP)
                 {
-                    // Move to the end of the current page and read the pointer
-                    fs.Seek(firstFreeDP + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
-                    byte[] pointerBytes = new byte[8];
-                    fs.Read(pointerBytes, 0, 8);
-                    long pointer = BitConverter.ToInt64(pointerBytes, 0);
+                    // Allocate new page
+                    pointer = (DataPageManager.AllDataPagesCount + 1) * DataPageManager.DataPageSize;
 
-                    // Check if the pointer is default, indicating a new page is needed
-                    if (pointer == DataPageManager.DefaultBufferForDP)
-                    {
-                        // Allocate new page
-                        /*pointer = (DataPageManager.AllDataPagesCount + 1) * DataPageManager.DataPageSize;
-                        DataPageManager.AllDataPagesCount++;
-                        DataPageManager.DataPageCounter++;
+                    // Write the pointer to the current page
+                    fs.Seek(DataPageManager.AllDataPagesCount * DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+                    writer.Write(pointer);
 
-                        // Write the pointer to the current page
-                        fs.Seek(-DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
-                        writer.Write(pointer);*/
-                    }
-
-                    // Move to the new page
-                    fs.Seek(pointer, SeekOrigin.Begin);
+                    DataPageManager.DataPageCounter++;
+                    DataPageManager.AllDataPagesCount++;
                 }
+
+                // Move to the new page
+                fs.Seek(pointer, SeekOrigin.Begin);
             }
         }
 
@@ -125,7 +126,7 @@ namespace DMS.Commands
         {
             long startOfFreeDataPageOffset = currentPosition;
 
-            fs.Seek(currentPosition + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer - sizeof(int), SeekOrigin.Begin);
+            fs.Seek(currentPosition + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
 
             long pointer = reader.ReadInt64();
             while (pointer != DataPageManager.DefaultBufferForDP && pointer != 0)
