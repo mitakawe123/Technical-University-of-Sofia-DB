@@ -38,6 +38,10 @@ namespace DMS.Commands
                 case ECliCommands.Insert:
                     InsertIntoTable(command);
                     break;
+
+                case ECliCommands.Select:
+                    SelectFromTable(command);
+                    break;
             }
         }
         //createtable test(id int primary key, name string(50) null)
@@ -134,6 +138,27 @@ namespace DMS.Commands
             SQLCommands.InsertIntoTable(valuesList, tableNameSpan);
         }
 
+        //select * from test where id = 1 
+        private static void SelectFromTable(string command)
+        {
+            ReadOnlySpan<char> commandSpan = command;
+
+            // Find the indices of the keywords
+            int startAfterKeyword = commandSpan.CustomIndexOf("select") + "select".Length;
+            int startFrom = commandSpan.CustomIndexOf("from") + "from".Length;
+
+            ReadOnlySpan<char> values = commandSpan[startAfterKeyword..startFrom].CustomTrim();
+            ReadOnlySpan<char> tableSpan = commandSpan[startFrom..].CustomTrim();
+            
+            int endOfTableName = tableSpan.IndexOf(' ');
+            if (endOfTableName == -1)
+                endOfTableName = tableSpan.Length; // If no space, the table name goes till the end
+
+            ReadOnlySpan<char> tableName = tableSpan[..endOfTableName].CustomTrim();
+
+            SQLCommands.SelectFromTable(values, tableName);
+        }
+
         private static DKList<char[]> ProcessTuple(ReadOnlySpan<char> tuple)
         {
             DKList<char[]> values = new();
@@ -169,6 +194,5 @@ namespace DMS.Commands
 
             return value.ToString().Replace("\\\"", "").CustomToCharArray();
         }
-
     }
 }

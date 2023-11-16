@@ -6,29 +6,20 @@ using System.Text;
 
 namespace DMS.Commands
 {
+    //Code split this spaghetti code
     public static class SQLCommands
     {
+        private static Dictionary<char[], long> offset = DataPageManager.TableOffsets;
+
         //createtable test(id int primary key, name string(max) null)
         //insert into test (id, name) values (1, 'hellot123'), (2, 'test2main'), (3, 'test3')
+        //select * from test
         public static void InsertIntoTable(IReadOnlyList<IReadOnlyList<char[]>> columnsValues, ReadOnlySpan<char> tableName)
         {
-            Dictionary<char[], long> offset = DataPageManager.TableOffsets;
-
             using FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryReader reader = new(fileStream, Encoding.UTF8);
 
-            char[]? matchingKey = null;
-            foreach (KeyValuePair<char[], long> item in offset)
-            {
-                if (tableName.SequenceEqual(item.Key))
-                {
-                    matchingKey = item.Key;
-                    break;
-                }
-            }
-
-            if (matchingKey is null || !offset.ContainsKey(matchingKey))
-                throw new Exception("Cannot find table");
+            char[] matchingKey = FindTableWithThisName(tableName);
 
             fileStream.Seek(offset[matchingKey], SeekOrigin.Begin);
 
@@ -59,6 +50,79 @@ namespace DMS.Commands
 
             byte[] allRecords = GetAllData(columnsValues);
             InsertIntoFreeSpace(allRecords, isMainDP, headerSectionForMainDP, firstFreeDP);
+        }
+
+        public static void SelectFromTable(ReadOnlySpan<char> valuesToSelect, ReadOnlySpan<char> tableName)
+        {
+            char[] matchingKey = FindTableWithThisName(tableName);
+
+            using FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
+            using BinaryReader reader = new(fileStream, Encoding.UTF8);
+
+            fileStream.Seek(offset[matchingKey], SeekOrigin.Begin);
+
+            //20 bytes + 1 bytes per char for table
+            int freeSpace = reader.ReadInt32();//4 bytes
+            ulong recordSizeInBytes = reader.ReadUInt64();//<- validation purposes only/ 8 bytes
+            int tableLength = reader.ReadInt32();//4 bytes
+            byte[] bytes = reader.ReadBytes(tableLength);//1 byte per char
+            string table = Encoding.UTF8.GetString(bytes);
+            int columnCount = reader.ReadInt32();//4 bytes
+
+            int headerSectionForMainDP = 20 + tableLength;
+            DKList<Column> columnNameAndType = new();
+            for (int i = 0; i < columnCount; i++)
+            {
+                string columnName = reader.ReadString();//2 bytes per char
+                string columnType = reader.ReadString();//2 bytes per char
+
+                headerSectionForMainDP += columnName.Length * 2 + columnType.Length * 2;
+                columnNameAndType.Add(new Column(columnName, columnType));
+            }
+
+            long start = offset[matchingKey] + headerSectionForMainDP;
+            long end = offset[matchingKey] + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
+            long lengthToRead = end - start;
+
+            fileStream.Seek(start, SeekOrigin.Begin);
+
+            byte[] buffer = new byte[lengthToRead];
+            int bytesRead = fileStream.Read(buffer, 0, (int)lengthToRead);
+
+            fileStream.Seek(end, SeekOrigin.Begin);
+
+            IReadOnlyList<IReadOnlyList<char[]>> allData = ReadAllData(buffer);// <- test but it is working
+
+            long pointer = reader.ReadInt64();
+            DKList<byte[]> values = new();
+            /*while (pointer != DataPageManager.DefaultBufferForDP)
+            {
+                byte[] freeSpaceInBytes = new byte[4];
+                fileStream.Read(freeSpaceInBytes, 0, 4);//<- free space
+                freeSpace = BitConverter.ToInt32(freeSpaceInBytes, 0);
+
+                values.Add(new byte[freeSpace - DataPageManager.BufferOverflowPointer]);
+
+                fileStream.Seek(pointer, SeekOrigin.Begin);
+            }*/
+        }
+
+        private static char[] FindTableWithThisName(ReadOnlySpan<char> tableName)
+        {
+            char[]? matchingKey = null;
+            foreach (KeyValuePair<char[], long> item in offset)
+            {
+                if (tableName.SequenceEqual(item.Key))
+                {
+                    matchingKey = item.Key;
+                    break;
+                }
+            }
+
+            if (matchingKey is null || !offset.ContainsKey(matchingKey))
+                throw new Exception("Cannot find table");
+
+            return matchingKey;
         }
 
         private static void InsertIntoFreeSpace(byte[] allRecords, bool isMainDP, int headerSectionForMainDP, long firstFreeDP)

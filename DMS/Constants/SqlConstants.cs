@@ -8,6 +8,7 @@
         ListTables,
         TableInfo,
         Insert,
+        Select,
         Exit
     }
 

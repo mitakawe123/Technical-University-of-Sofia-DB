@@ -61,6 +61,14 @@ namespace DMS.Commands
                     Console.WriteLine("Please enter a insert command!");
                     return false;
 
+                case ECliCommands.Select:
+                    bool isValidSelectCommand = ValidateSelectFromTable(command);
+                    if (isValidSelectCommand)
+                        return true;
+
+                    Console.WriteLine("Please enter a insert command!");
+                    return false;
+
                 default:
                     Console.WriteLine("Invalid command please enter a valid command");
                     return false;
@@ -204,6 +212,28 @@ namespace DMS.Commands
             string[] parts = command.CustomSplit(' ');
 
             if (parts.Length != 2)
+                return false;
+
+            return true;
+        }
+
+        //Select * from test 
+        private static bool ValidateSelectFromTable(string command)
+        {
+            if (string.IsNullOrWhiteSpace(command))
+                return false;
+
+            string[] parts = command.CustomSplit(' ');
+
+            if(parts.Length < 4)
+                return false;
+
+            ReadOnlySpan<char> commandSpan = command;
+
+            if (!commandSpan.CustomStartsWith("select"))
+                return false;
+
+            if (!commandSpan.CustomContains("from", StringComparison.OrdinalIgnoreCase))
                 return false;
 
             return true;
