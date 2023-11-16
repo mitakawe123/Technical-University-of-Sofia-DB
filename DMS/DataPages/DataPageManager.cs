@@ -111,7 +111,7 @@ namespace DMS.DataPages
                         break;
                 }
 
-                // If there are more columns to write, store a reference to the next page
+                // If there are more columns to write, store a reference to the nex t page
                 if (columnIndex < columns.Count)
                 {
                     //update free space in the current data page

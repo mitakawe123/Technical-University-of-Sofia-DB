@@ -145,11 +145,11 @@ namespace DMS.Commands
 
             // Find the indices of the keywords
             int startAfterKeyword = commandSpan.CustomIndexOf("select") + "select".Length;
-            int startFrom = commandSpan.CustomIndexOf("from") + "from".Length;
+            int startFrom = commandSpan.CustomIndexOf("from");
 
             ReadOnlySpan<char> values = commandSpan[startAfterKeyword..startFrom].CustomTrim();
-            ReadOnlySpan<char> tableSpan = commandSpan[startFrom..].CustomTrim();
-            
+            ReadOnlySpan<char> tableSpan = commandSpan[(startFrom + "from".Length)..].CustomTrim();
+
             int endOfTableName = tableSpan.IndexOf(' ');
             if (endOfTableName == -1)
                 endOfTableName = tableSpan.Length; // If no space, the table name goes till the end

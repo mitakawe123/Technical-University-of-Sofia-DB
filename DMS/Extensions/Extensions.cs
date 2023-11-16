@@ -10,6 +10,18 @@ namespace DMS.Extensions
         #region nomal extensions
         public static DKList<T> CustomToList<T>(this T[] array) => new(array);
 
+        public static DKList<T> CustomToList<T>(this IEnumerable<T> source)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            DKList<T> customList = new();
+            foreach (T? item in source)
+                customList.Add(item);
+            
+            return customList;
+        }
+
         public static string CustomToLower(this string input)
         {
             if (input is null)

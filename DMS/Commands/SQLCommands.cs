@@ -8,24 +8,22 @@ namespace DMS.Commands
 {
     public static class SQLCommands
     {
-        private static Dictionary<char[], long> offset = DataPageManager.TableOffsets;
-
         //createtable test(id int primary key, name string(max) null)
         //insert into test (id, name) values (1, 'hellot123'), (2, 'test2main'), (3, 'test3')
         //select * from test
         public static void InsertIntoTable(IReadOnlyList<IReadOnlyList<char[]>> columnsValues, ReadOnlySpan<char> tableName)
         {
             (FileStream fileStream, BinaryReader reader) = OpenFileAndReader();
-            char[] matchingKey = FindTableWithThisName(tableName);
+            char[] matchingKey = FindTableWithName(tableName);
 
-            fileStream.Seek(offset[matchingKey], SeekOrigin.Begin);
+            fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
 
             (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) = ReadTableMetadata(reader);
             int headerSectionForMainDP = 20 + tableLength;
             (headerSectionForMainDP, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDP, columnCount);
 
-            long firstFreeDP = FindFirstFreeDataPageOffsetStart(fileStream, reader, offset[matchingKey]);
-            bool isMainDP = firstFreeDP == offset[matchingKey];
+            long firstFreeDP = FindFirstFreeDataPageOffsetStart(fileStream, reader, DataPageManager.TableOffsets[matchingKey]);
+            bool isMainDP = firstFreeDP == DataPageManager.TableOffsets[matchingKey];
 
             fileStream.Close();
             reader.Close();
@@ -37,16 +35,16 @@ namespace DMS.Commands
         public static void SelectFromTable(ReadOnlySpan<char> valuesToSelect, ReadOnlySpan<char> tableName)
         {
             (FileStream fileStream, BinaryReader reader) = OpenFileAndReader();
-            char[] matchingKey = FindTableWithThisName(tableName);
+            char[] matchingKey = FindTableWithName(tableName);
 
-            fileStream.Seek(offset[matchingKey], SeekOrigin.Begin);
+            fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
 
             (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) = ReadTableMetadata(reader);
             int headerSectionForMainDP = 20 + tableLength;
             (headerSectionForMainDP, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDP, columnCount);
 
-            long start = offset[matchingKey] + headerSectionForMainDP;
-            long end = offset[matchingKey] + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
+            long start = DataPageManager.TableOffsets[matchingKey] + headerSectionForMainDP;
+            long end = DataPageManager.TableOffsets[matchingKey] + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
             long lengthToRead = end - start;
 
             fileStream.Seek(start, SeekOrigin.Begin);
@@ -57,11 +55,33 @@ namespace DMS.Commands
             fileStream.Seek(end, SeekOrigin.Begin);
 
             IReadOnlyList<IReadOnlyList<char[]>> allData = ReadAllData(buffer);
-
             long pointer = reader.ReadInt64();
+
+            while (pointer != DataPageManager.DefaultBufferForDP)
+            {
+                fileStream.Seek(pointer, SeekOrigin.Begin);
+                reader.ReadInt32();//<- free space
+                start = pointer + sizeof(int);
+                end = pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
+                lengthToRead = end - start;
+
+                allData = allData.Concat(ReadAllData(new byte[lengthToRead])).ToList().AsReadOnly();
+                fileStream.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+                pointer = reader.ReadInt64();
+            }
 
             fileStream.Close();
             reader.Close();
+
+            PrintSelectedValues(allData, valuesToSelect, columnNameAndType);
+        }
+
+        private static void PrintSelectedValues(IReadOnlyList<IReadOnlyList<char[]>> allData, ReadOnlySpan<char> valuesToSelect, IReadOnlyList<Column> columnNameAndType)
+        {
+            foreach (IReadOnlyList<char[]> value in allData)
+            {
+                IReadOnlyList<char[]> val = value;
+            }
         }
 
         private static (FileStream, BinaryReader) OpenFileAndReader()
@@ -90,8 +110,8 @@ namespace DMS.Commands
 
             for (int i = 0; i < columnCount; i++)
             {
-                string columnName = reader.ReadString();
                 string columnType = reader.ReadString();
+                string columnName = reader.ReadString();
                 headerSectionForMainDP += columnName.Length * 2 + columnType.Length * 2;
                 columnNameAndType.Add(new Column(columnName, columnType));
             }
@@ -99,10 +119,10 @@ namespace DMS.Commands
             return (headerSectionForMainDP, columnNameAndType);
         }
 
-        private static char[] FindTableWithThisName(ReadOnlySpan<char> tableName)
+        private static char[] FindTableWithName(ReadOnlySpan<char> tableName)
         {
             char[]? matchingKey = null;
-            foreach (KeyValuePair<char[], long> item in offset)
+            foreach (KeyValuePair<char[], long> item in DataPageManager.TableOffsets)
             {
                 if (tableName.SequenceEqual(item.Key))
                 {
@@ -111,7 +131,7 @@ namespace DMS.Commands
                 }
             }
 
-            if (matchingKey is null || !offset.ContainsKey(matchingKey))
+            if (matchingKey is null || !DataPageManager.TableOffsets.ContainsKey(matchingKey))
                 throw new Exception("Cannot find table");
 
             return matchingKey;
