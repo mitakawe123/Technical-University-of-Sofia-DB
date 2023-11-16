@@ -18,7 +18,6 @@ namespace DMS.Commands
             using BinaryReader reader = new(fileStream, Encoding.UTF8);
 
             char[]? matchingKey = null;
-
             foreach (KeyValuePair<char[], long> item in offset)
             {
                 if (tableName.SequenceEqual(item.Key))
@@ -34,59 +33,71 @@ namespace DMS.Commands
             fileStream.Seek(offset[matchingKey], SeekOrigin.Begin);
 
             //20 bytes + 1 bytes per char for table
-            int freeSpace = reader.ReadInt32();
-            ulong recordSizeInBytes = reader.ReadUInt64();//<- validation purposes only
-            int tableLength = reader.ReadInt32();
-            byte[] bytes = reader.ReadBytes(tableLength);
+            int freeSpace = reader.ReadInt32();//4 bytes
+            ulong recordSizeInBytes = reader.ReadUInt64();//<- validation purposes only/ 8 bytes
+            int tableLength = reader.ReadInt32();//4 bytes
+            byte[] bytes = reader.ReadBytes(tableLength);//1 byte per char
             string table = Encoding.UTF8.GetString(bytes);
-            int columnCount = reader.ReadInt32();
+            int columnCount = reader.ReadInt32();//4 bytes
 
+            int headerSectionForMainDP = 20 + tableLength;
             DKList<Column> columnNameAndType = new();
-
             for (int i = 0; i < columnCount; i++)
             {
-                string columnName = reader.ReadString();
-                string columnType = reader.ReadString();
+                string columnName = reader.ReadString();//2 bytes per char
+                string columnType = reader.ReadString();//2 bytes per char
+
+                headerSectionForMainDP += columnName.Length * 2 + columnType.Length * 2;
                 columnNameAndType.Add(new Column(columnName, columnType));
             }
 
-            long currentPosition = fileStream.Position;
+            long firstFreeDP = FindFirstFreeDataPageOffsetStart(fileStream, reader, offset[matchingKey]);
+            bool isMainDP = firstFreeDP == offset[matchingKey];
 
             fileStream.Close();
             reader.Close();
 
+            byte[] allRecords = GetAllData(columnsValues);
+            InsertIntoFreeSpace(allRecords, isMainDP, headerSectionForMainDP, firstFreeDP);
+
+            var aaaa = ReadAllData(allRecords);
+        }
+
+        private static void InsertIntoFreeSpace(byte[] allRecords, bool isMainDP, int headerSectionForMainDP, long firstFreeDP)
+        {
             using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);// <- initiate new file stream because the old one is not writable even through I gave full permissions for the stream
             using BinaryWriter writer = new(fs, Encoding.UTF8);
 
-            fs.Seek(currentPosition, SeekOrigin.Begin);
-
-            byte[] allRecords = GetAllData(columnsValues);
-            InsertIntoFreeSpace(fs, writer, allRecords, currentPosition, ref freeSpace);
-
-            var a = ReadAllData(allRecords);
-        }
-
-        private static void InsertIntoFreeSpace(FileStream fs, BinaryWriter writer, byte[] allRecords, long firstFreeDataPageOffset, ref int freeSpaceInCurrentPage)
-        {
-            //!update the free space in the data page
             int recordIndex = 0;
             int recordLength = allRecords.Length;
 
-/*            while (recordIndex < recordLength)
+            fs.Seek(firstFreeDP, SeekOrigin.Begin);
+            int freeSpace = fs.Read(new byte[4]);//<- free space
+
+            if (isMainDP)
+                fs.Seek(firstFreeDP + headerSectionForMainDP, SeekOrigin.Begin);
+            else
+                fs.Seek(firstFreeDP + sizeof(int), SeekOrigin.Begin);
+
+            while (recordIndex < recordLength)
             {
                 // Calculate the amount of data to write in this iteration
-                int dataToWrite = (int)Math.Min(recordLength - recordIndex, freeSpaceInCurrentPage - DataPageManager.BufferOverflowPointer);
-                freeSpaceInCurrentPage -= dataToWrite;
+                int dataToWrite = (int)Math.Min(recordLength - recordIndex, freeSpace - DataPageManager.BufferOverflowPointer);
+                freeSpace -= dataToWrite;
 
                 // Write the data
                 writer.Write(allRecords, recordIndex, dataToWrite);
                 recordIndex += dataToWrite;
 
+                //go back and update free space in the current data page
+                fs.Seek(firstFreeDP, SeekOrigin.Begin);
+                writer.Write(freeSpace);
+
                 // Check if there's more data to write
                 if (recordIndex < recordLength)
                 {
                     // Move to the end of the current page and read the pointer
-                    fs.Seek(-DataPageManager.BufferOverflowPointer, SeekOrigin.Current);
+                    fs.Seek(firstFreeDP + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
                     byte[] pointerBytes = new byte[8];
                     fs.Read(pointerBytes, 0, 8);
                     long pointer = BitConverter.ToInt64(pointerBytes, 0);
@@ -95,36 +106,36 @@ namespace DMS.Commands
                     if (pointer == DataPageManager.DefaultBufferForDP)
                     {
                         // Allocate new page
-                        pointer = (DataPageManager.AllDataPagesCount + 1) * DataPageManager.DataPageSize;
+                        /*pointer = (DataPageManager.AllDataPagesCount + 1) * DataPageManager.DataPageSize;
                         DataPageManager.AllDataPagesCount++;
                         DataPageManager.DataPageCounter++;
 
                         // Write the pointer to the current page
-                        fs.Seek(-DataPageManager.BufferOverflowPointer, SeekOrigin.Current);
-                        writer.Write(pointer);
+                        fs.Seek(-DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+                        writer.Write(pointer);*/
                     }
 
                     // Move to the new page
                     fs.Seek(pointer, SeekOrigin.Begin);
                 }
-            }*/
+            }
         }
 
         private static long FindFirstFreeDataPageOffsetStart(FileStream fs, BinaryReader reader, long currentPosition)
         {
             long startOfFreeDataPageOffset = currentPosition;
 
-            fs.Seek(currentPosition + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+            fs.Seek(currentPosition + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer - sizeof(int), SeekOrigin.Begin);
 
             long pointer = reader.ReadInt64();
             while (pointer != DataPageManager.DefaultBufferForDP && pointer != 0)
             {
                 startOfFreeDataPageOffset = pointer;
-                fs.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+                fs.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer - sizeof(int), SeekOrigin.Begin);
                 pointer = reader.ReadInt64();
             }
 
-            return startOfFreeDataPageOffset;
+            return startOfFreeDataPageOffset == DataPageManager.DefaultBufferForDP ? currentPosition : startOfFreeDataPageOffset;
         }
 
         private static byte[] GetAllData(IReadOnlyList<IReadOnlyList<char[]>> columnsValues)
