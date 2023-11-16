@@ -93,6 +93,7 @@ namespace DMS.DataPages
 
                     freeSpace -= (2 * columns[columnIndex].Type.Length) + (2 * columns[columnIndex].Name.Length);
                     columnIndex++;
+
                     if (columnIndex == columns.Count)
                         break;
                 }

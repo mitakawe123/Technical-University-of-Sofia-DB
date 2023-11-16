@@ -3,7 +3,6 @@ using DMS.Constants;
 using DMS.DataPages;
 using DMS.Shared;
 using System.Text;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace DMS.Commands
 {
@@ -62,60 +61,70 @@ namespace DMS.Commands
             fs.Seek(currentPosition, SeekOrigin.Begin);
 
             byte[] allRecords = GetAllData(columnsValues);
-            InsertIntoFreeSpace(fs, writer, allRecords, freeSpace);
+            InsertIntoFreeSpace(fs, writer, allRecords, currentPosition, ref freeSpace);
+
+            var a = ReadAllData(allRecords);
         }
 
-        private static void InsertIntoFreeSpace(FileStream fs, BinaryWriter writer, byte[] allRecords, int freeSpaceInCurrentPage)
+        private static void InsertIntoFreeSpace(FileStream fs, BinaryWriter writer, byte[] allRecords, long firstFreeDataPageOffset, ref int freeSpaceInCurrentPage)
         {
-            if (allRecords.Length <= freeSpaceInCurrentPage - DataPageManager.BufferOverflowPointer)
+            //!update the free space in the data page
+            int recordIndex = 0;
+            int recordLength = allRecords.Length;
+
+/*            while (recordIndex < recordLength)
             {
-                writer.Write(allRecords, 0, (int)(freeSpaceInCurrentPage - DataPageManager.BufferOverflowPointer));
-                return;
-            }
+                // Calculate the amount of data to write in this iteration
+                int dataToWrite = (int)Math.Min(recordLength - recordIndex, freeSpaceInCurrentPage - DataPageManager.BufferOverflowPointer);
+                freeSpaceInCurrentPage -= dataToWrite;
 
-            int totalLength = allRecords.Length;
-            int writtenBytes = 0;
-            int initialFreeSpaceInNotMainDP = 8180;
-            while (writtenBytes < totalLength)
-            {
-                //first page to write
-                writer.Write(allRecords, 0, (int)(freeSpaceInCurrentPage - DataPageManager.BufferOverflowPointer));
-                writtenBytes += (int)(freeSpaceInCurrentPage - DataPageManager.BufferOverflowPointer);
+                // Write the data
+                writer.Write(allRecords, recordIndex, dataToWrite);
+                recordIndex += dataToWrite;
 
-                fs.Seek(DataPageManager.AllDataPagesCount * DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
-                long pointer = fs.Read(new byte[8], 0, 8);//<- pointer to next page
-
-                if (pointer == DataPageManager.DefaultBufferForDP)
+                // Check if there's more data to write
+                if (recordIndex < recordLength)
                 {
-                    fs.Seek(DataPageManager.AllDataPagesCount * DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
-                    writer.Write((DataPageManager.AllDataPagesCount + 1) * DataPageManager.DataPageSize);
+                    // Move to the end of the current page and read the pointer
+                    fs.Seek(-DataPageManager.BufferOverflowPointer, SeekOrigin.Current);
+                    byte[] pointerBytes = new byte[8];
+                    fs.Read(pointerBytes, 0, 8);
+                    long pointer = BitConverter.ToInt64(pointerBytes, 0);
 
-                    DataPageManager.AllDataPagesCount++;
-                    DataPageManager.DataPageCounter++;
-
-                    fs.Seek(DataPageManager.AllDataPagesCount * DataPageManager.DataPageSize, SeekOrigin.Begin);
-
-                    writer.Write(initialFreeSpaceInNotMainDP);
-                }
-                else
-                {
-                    fs.Seek(pointer, SeekOrigin.Begin);
-                    int freeSpace = fs.Read(new byte[4], 0, 4);//<- free space in data page
-
-                    //Here whats need to happend
-                    //While there is bytes left i need to find empty data pages / or create new ones to fill the bytes
-                    /*if (freeSpace >= totalLength - writtenBytes)
+                    // Check if the pointer is default, indicating a new page is needed
+                    if (pointer == DataPageManager.DefaultBufferForDP)
                     {
-                        writer.Write(allRecords, writtenBytes, totalLength - writtenBytes);
-                        return;
+                        // Allocate new page
+                        pointer = (DataPageManager.AllDataPagesCount + 1) * DataPageManager.DataPageSize;
+                        DataPageManager.AllDataPagesCount++;
+                        DataPageManager.DataPageCounter++;
+
+                        // Write the pointer to the current page
+                        fs.Seek(-DataPageManager.BufferOverflowPointer, SeekOrigin.Current);
+                        writer.Write(pointer);
                     }
-                    else
-                    {
-                        writer.Write(allRecords, writtenBytes, freeSpace);
-                        writtenBytes += freeSpace;
-                    }*/
+
+                    // Move to the new page
+                    fs.Seek(pointer, SeekOrigin.Begin);
                 }
+            }*/
+        }
+
+        private static long FindFirstFreeDataPageOffsetStart(FileStream fs, BinaryReader reader, long currentPosition)
+        {
+            long startOfFreeDataPageOffset = currentPosition;
+
+            fs.Seek(currentPosition + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+
+            long pointer = reader.ReadInt64();
+            while (pointer != DataPageManager.DefaultBufferForDP && pointer != 0)
+            {
+                startOfFreeDataPageOffset = pointer;
+                fs.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+                pointer = reader.ReadInt64();
             }
+
+            return startOfFreeDataPageOffset;
         }
 
         private static byte[] GetAllData(IReadOnlyList<IReadOnlyList<char[]>> columnsValues)
