@@ -32,6 +32,7 @@ namespace DMS
                         break;
 
                     case ECliCommands.Exit:
+                        DataPageManager.ConsoleEventCallback();
                         running = false;
                         break;
 

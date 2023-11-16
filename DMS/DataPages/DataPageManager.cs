@@ -43,6 +43,19 @@ namespace DMS.DataPages
             Console.WriteLine("Welcome to DMS");
         }
 
+        public static void ConsoleEventCallback()
+        {
+            using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open, FileAccess.ReadWrite);
+            using BinaryWriter writer = new(binaryStream, Encoding.UTF8);
+
+            binaryStream.Seek(0, SeekOrigin.Begin);
+
+            writer.Write(TablesCount);
+            writer.Write(AllDataPagesCount);
+            writer.Write(DataPageCounter);
+            writer.Write(FirstOffsetPageStart);
+        }
+
         //createtable test1(id int primary key, name string(max) null, name1 string(max) null)
         public static void CreateTable(IReadOnlyList<Column> columns, ReadOnlySpan<char> tableName)
         {
@@ -236,15 +249,6 @@ namespace DMS.DataPages
             Console.WriteLine($"Table name: {tableNameFromFile} \nOccupied space in bytes: {recordSize} \nThe table spans accross {numberOfDataPagesForTable} data pages \nColumns count is {columnsCount}");
         }
 
-        private static int CalculateColumnSize(Column column)
-        {
-            int typeSize = (sizeof(char) * column.Type.Length); // 2 bytes per char
-            int nameSize = (sizeof(char) * column.Name.Length); // 2 bytes per char
-            int columnSize = (int)HelperAllocater.CalculateColumnSize(column);
-
-            return typeSize + nameSize + columnSize;
-        }
-
         private static int FindDataPageNumberForTable(long startingPosition)
         {
             using FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
@@ -309,19 +313,6 @@ namespace DMS.DataPages
                     break;
             }
             return true;
-        }
-
-        private static void ConsoleEventCallback()
-        {
-            using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open, FileAccess.ReadWrite);
-            using BinaryWriter writer = new(binaryStream, Encoding.UTF8);
-
-            binaryStream.Seek(0, SeekOrigin.Begin);
-
-            writer.Write(TablesCount);
-            writer.Write(AllDataPagesCount);
-            writer.Write(DataPageCounter);
-            writer.Write(FirstOffsetPageStart);
         }
 
         private static void SystemEvents_SessionEnding(object sender, SessionEndingEventArgs e)
