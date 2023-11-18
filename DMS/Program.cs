@@ -9,6 +9,7 @@ namespace DMS
     {
         static void Main(string[] args)
         {
+            File.Delete(Files.MDF_FILE_NAME);
             DataPageManager.InitDataPageManager();
 
             bool running = true;

@@ -3,6 +3,7 @@ using DMS.Constants;
 using DMS.DataPages;
 using DMS.Shared;
 using System.Text;
+using DMS.Extensions;
 
 namespace DMS.Commands
 {
@@ -10,6 +11,7 @@ namespace DMS.Commands
     {
         //createtable test(id int primary key, name string(max) null)
         //insert into test (id, name) values (1, 'hellot123'), (2, 'test2main'), (3, 'test3')
+        //select id, name from test
         //select * from test
         public static void InsertIntoTable(IReadOnlyList<IReadOnlyList<char[]>> columnsValues, ReadOnlySpan<char> tableName)
         {
@@ -18,11 +20,14 @@ namespace DMS.Commands
 
             fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
 
-            (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) = ReadTableMetadata(reader);
+            (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) =
+                ReadTableMetadata(reader);
             int headerSectionForMainDP = 20 + tableLength;
-            (headerSectionForMainDP, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDP, columnCount);
+            (headerSectionForMainDP, DKList<Column> columnNameAndType) =
+                ReadColumns(reader, headerSectionForMainDP, columnCount);
 
-            long firstFreeDP = FindFirstFreeDataPageOffsetStart(fileStream, reader, DataPageManager.TableOffsets[matchingKey]);
+            long firstFreeDP =
+                FindFirstFreeDataPageOffsetStart(fileStream, reader, DataPageManager.TableOffsets[matchingKey]);
             bool isMainDP = firstFreeDP == DataPageManager.TableOffsets[matchingKey];
 
             fileStream.Close();
@@ -32,19 +37,22 @@ namespace DMS.Commands
             InsertIntoFreeSpace(allRecords, isMainDP, headerSectionForMainDP, firstFreeDP);
         }
 
-        public static void SelectFromTable(ReadOnlySpan<char> valuesToSelect, ReadOnlySpan<char> tableName)
+        public static void SelectFromTable(IReadOnlyList<string> valuesToSelect, ReadOnlySpan<char> tableName)
         {
             (FileStream fileStream, BinaryReader reader) = OpenFileAndReader();
             char[] matchingKey = FindTableWithName(tableName);
 
             fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
 
-            (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) = ReadTableMetadata(reader);
+            (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) =
+                ReadTableMetadata(reader);
             int headerSectionForMainDP = 20 + tableLength;
-            (headerSectionForMainDP, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDP, columnCount);
+            (headerSectionForMainDP, DKList<Column> columnTypeAndName) =
+                ReadColumns(reader, headerSectionForMainDP, columnCount);
 
             long start = DataPageManager.TableOffsets[matchingKey] + headerSectionForMainDP;
-            long end = DataPageManager.TableOffsets[matchingKey] + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
+            long end = DataPageManager.TableOffsets[matchingKey] + DataPageManager.DataPageSize -
+                       DataPageManager.BufferOverflowPointer;
             long lengthToRead = end - start;
 
             fileStream.Seek(start, SeekOrigin.Begin);
@@ -54,34 +62,73 @@ namespace DMS.Commands
 
             fileStream.Seek(end, SeekOrigin.Begin);
 
-            IReadOnlyList<IReadOnlyList<char[]>> allData = ReadAllData(buffer);
+            IReadOnlyList<char[]> allData = ReadAllData(buffer);
             long pointer = reader.ReadInt64();
 
             while (pointer != DataPageManager.DefaultBufferForDP)
             {
                 fileStream.Seek(pointer, SeekOrigin.Begin);
-                reader.ReadInt32();//<- free space
+                reader.ReadInt32(); //<- free space
                 start = pointer + sizeof(int);
                 end = pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
                 lengthToRead = end - start;
 
                 allData = allData.Concat(ReadAllData(new byte[lengthToRead])).ToList().AsReadOnly();
-                fileStream.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+                fileStream.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer,
+                    SeekOrigin.Begin);
                 pointer = reader.ReadInt64();
             }
 
             fileStream.Close();
             reader.Close();
 
-            PrintSelectedValues(allData, valuesToSelect, columnNameAndType);
+            PrintSelectedValues(allData, valuesToSelect, columnTypeAndName);
         }
 
-        private static void PrintSelectedValues(IReadOnlyList<IReadOnlyList<char[]>> allData, ReadOnlySpan<char> valuesToSelect, IReadOnlyList<Column> columnNameAndType)
+        private static void PrintSelectedValues(IReadOnlyList<char[]> allData, IReadOnlyList<string> valuesToSelect, IReadOnlyList<Column> columnTypeAndName)
         {
-            foreach (IReadOnlyList<char[]> value in allData)
+            DKList<Column> selectedColumns = columnTypeAndName.CustomWhere(c => valuesToSelect.CustomContains(c.Name) || valuesToSelect.CustomContains("*")).CustomToList();
+            int tableWidth = selectedColumns.CustomSum(c => c.Name.Length) + (selectedColumns.Count - 1) * 3 + 4;
+
+            Console.WriteLine(new string('-', tableWidth));
+
+            Console.Write("| ");
+            foreach (var column in selectedColumns)
             {
-                IReadOnlyList<char[]> val = value;
+                Console.Write(column.Name);
+                if (!column.Equals(selectedColumns[^1]))
+                    Console.Write(" | ");
+                else
+                    Console.Write(" |");
             }
+            Console.WriteLine();
+
+            Console.WriteLine(new string('-', tableWidth));
+
+            int columnCount = selectedColumns.Count;
+            for (int i = 0, columnIndex = 0; i < allData.Count; i++)
+            {
+                if (allData[i].Length <= 0)
+                    continue;
+
+                string columnName = columnTypeAndName[columnIndex % columnTypeAndName.Count].Name;
+                if (valuesToSelect.CustomContains(columnName) || valuesToSelect.CustomContains("*"))
+                {
+                    if (columnIndex % columnCount is 0)
+                        Console.Write("| ");
+
+                    Console.Write(new string(allData[i]));
+
+                    if ((columnIndex + 1) % columnCount is not 0)
+                        Console.Write(" | ");
+                    else
+                        Console.WriteLine(" |");
+                }
+
+                columnIndex++;
+            }
+
+            Console.WriteLine(new string('-', tableWidth));
         }
 
         private static (FileStream, BinaryReader) OpenFileAndReader()
@@ -139,7 +186,9 @@ namespace DMS.Commands
 
         private static void InsertIntoFreeSpace(byte[] allRecords, bool isMainDP, int headerSectionForMainDP, long firstFreeDP)
         {
-            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);// <- initiate new file stream because the old one is not writable even through I gave full permissions for the stream
+            using FileStream
+                fs = new(Files.MDF_FILE_NAME,
+                    FileMode.Open); // <- initiate new file stream because the old one is not writable even through I gave full permissions for the stream
             using BinaryWriter writer = new(fs, Encoding.UTF8);
 
             int recordIndex = 0;
@@ -148,7 +197,7 @@ namespace DMS.Commands
             fs.Seek(firstFreeDP, SeekOrigin.Begin);
 
             byte[] freeSpaceBytes = new byte[4];
-            fs.Read(freeSpaceBytes, 0, 4);//<- free space
+            fs.Read(freeSpaceBytes, 0, 4); //<- free space
             int freeSpace = BitConverter.ToInt32(freeSpaceBytes, 0);
 
             if (isMainDP)
@@ -159,7 +208,8 @@ namespace DMS.Commands
             while (recordIndex < recordLength)
             {
                 // Calculate the amount of data to write in this iteration
-                int dataToWrite = (int)Math.Min(recordLength - recordIndex, freeSpace - DataPageManager.BufferOverflowPointer);//<- this is some times 0
+                int dataToWrite = (int)Math.Min(recordLength - recordIndex,
+                    freeSpace - DataPageManager.BufferOverflowPointer); //<- this is some times 0
                 freeSpace -= dataToWrite;
 
                 // Write the data
@@ -174,7 +224,8 @@ namespace DMS.Commands
                     return;
 
                 // Move to the end of the current page and read the pointer
-                fs.Seek(firstFreeDP + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+                fs.Seek(firstFreeDP + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer,
+                    SeekOrigin.Begin);
                 byte[] pointerBytes = new byte[8];
                 fs.Read(pointerBytes, 0, 8);
                 long pointer = BitConverter.ToInt64(pointerBytes, 0);
@@ -186,7 +237,9 @@ namespace DMS.Commands
                     pointer = (DataPageManager.AllDataPagesCount + 1) * DataPageManager.DataPageSize;
 
                     // Write the pointer to the current page
-                    fs.Seek(DataPageManager.AllDataPagesCount * DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+                    fs.Seek(
+                        DataPageManager.AllDataPagesCount * DataPageManager.DataPageSize -
+                        DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
                     writer.Write(pointer);
 
                     DataPageManager.DataPageCounter++;
@@ -202,17 +255,21 @@ namespace DMS.Commands
         {
             long startOfFreeDataPageOffset = currentPosition;
 
-            fs.Seek(currentPosition + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+            fs.Seek(currentPosition + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer,
+                SeekOrigin.Begin);
 
             long pointer = reader.ReadInt64();
             while (pointer != DataPageManager.DefaultBufferForDP && pointer != 0)
             {
                 startOfFreeDataPageOffset = pointer;
-                fs.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer - sizeof(int), SeekOrigin.Begin);
+                fs.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer - sizeof(int),
+                    SeekOrigin.Begin);
                 pointer = reader.ReadInt64();
             }
 
-            return startOfFreeDataPageOffset == DataPageManager.DefaultBufferForDP ? currentPosition : startOfFreeDataPageOffset;
+            return startOfFreeDataPageOffset == DataPageManager.DefaultBufferForDP
+                ? currentPosition
+                : startOfFreeDataPageOffset;
         }
 
         private static byte[] GetAllData(IReadOnlyList<IReadOnlyList<char[]>> columnsValues)
@@ -248,9 +305,9 @@ namespace DMS.Commands
             return allBytes;
         }
 
-        private static IReadOnlyList<IReadOnlyList<char[]>> ReadAllData(byte[] allBytes)//<- this will come in handy for the Select 
+        private static IReadOnlyList<char[]> ReadAllData(byte[] allBytes) //<- this will come in handy for the Select 
         {
-            DKList<DKList<char[]>> columnsValues = new();
+            DKList<char[]> columnsValues = new();
             int currentPosition = 0;
 
             while (currentPosition < allBytes.Length)
@@ -271,7 +328,7 @@ namespace DMS.Commands
                     column.Add(charArray);
                 }
 
-                columnsValues.Add(column);
+                columnsValues.AddRange(column);
             }
 
             return columnsValues.AsReadOnly();

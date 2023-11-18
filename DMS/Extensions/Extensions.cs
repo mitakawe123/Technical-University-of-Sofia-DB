@@ -18,8 +18,35 @@ namespace DMS.Extensions
             DKList<T> customList = new();
             foreach (T? item in source)
                 customList.Add(item);
-            
+
             return customList;
+        }
+
+        public static int CustomSum<T>(this IEnumerable<T> source, Func<T, int> selector)
+        {
+            if (source is null)
+                throw new ArgumentNullException(nameof(source));
+
+            int sum = 0;
+            foreach (T item in source)
+                sum += selector(item);
+
+            return sum;
+        }
+
+        public static IEnumerable<T> CustomWhere<T>(this IEnumerable<T> source, Func<T, bool> predicate)
+        {
+            if(source is null)
+                throw new ArgumentNullException(nameof(source));
+
+            DKList<T> result = new(); 
+            foreach (T item in source)
+            {
+                if(predicate(item))
+                    result.Add(item);
+            }
+
+            return result;
         }
 
         public static string CustomToLower(this string input)
@@ -48,7 +75,7 @@ namespace DMS.Extensions
             return chars;
         }
 
-        public static bool CustomIsUpper(this char input) => input >= 'A' && input <= 'Z';
+        public static bool CustomIsUpper(this char input) => input is >= 'A' and <= 'Z';
 
         public static string[] CustomSplit(this string input, char[] separators)
         {
@@ -481,7 +508,7 @@ namespace DMS.Extensions
                     do
                         result = e.Current;
                     while (e.MoveNext());
-                    
+
                     return result;
                 }
             }
@@ -557,8 +584,8 @@ namespace DMS.Extensions
 
         public static bool CustomContains<T>(this ReadOnlySpan<T> span, T value) where T : IEquatable<T>
         {
-            for (int i = 0; i < span.Length; i++)
-                if (span[i].Equals(value))
+            foreach (T item in span)
+                if (item.Equals(value))
                     return true;
 
             return false;

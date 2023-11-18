@@ -143,7 +143,6 @@ namespace DMS.Commands
         {
             ReadOnlySpan<char> commandSpan = command;
 
-            // Find the indices of the keywords
             int startAfterKeyword = commandSpan.CustomIndexOf("select") + "select".Length;
             int startFrom = commandSpan.CustomIndexOf("from");
 
@@ -156,7 +155,28 @@ namespace DMS.Commands
 
             ReadOnlySpan<char> tableName = tableSpan[..endOfTableName].CustomTrim();
 
-            SQLCommands.SelectFromTable(values, tableName);
+            DKList<string> columnValues = new();
+            if (!values.CustomContains(','))
+                columnValues.Add(values.ToString());
+            else
+            {
+                int start = 0;
+                while (start < values.Length)
+                {
+                    int commaIndex = values[start..].CustomIndexOf(',');
+                    int end = commaIndex == -1 ? values.Length : start + commaIndex;
+
+                    ReadOnlySpan<char> column = values.CustomSlice(start, end - start).CustomTrim();
+                    columnValues.Add(column.ToString());
+
+                    if (commaIndex == -1)
+                        break;
+
+                    start = end + 1;
+                }
+            }
+
+            SQLCommands.SelectFromTable(columnValues, tableName);
         }
 
         private static DKList<char[]> ProcessTuple(ReadOnlySpan<char> tuple)
