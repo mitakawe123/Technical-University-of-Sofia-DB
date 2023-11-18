@@ -44,15 +44,13 @@ namespace DMS.Commands
 
             fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
 
-            (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) =
-                ReadTableMetadata(reader);
+            (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) = ReadTableMetadata(reader);
             int headerSectionForMainDP = 20 + tableLength;
-            (headerSectionForMainDP, DKList<Column> columnTypeAndName) =
-                ReadColumns(reader, headerSectionForMainDP, columnCount);
+
+            (headerSectionForMainDP, DKList<Column> columnTypeAndName) = ReadColumns(reader, headerSectionForMainDP, columnCount);
 
             long start = DataPageManager.TableOffsets[matchingKey] + headerSectionForMainDP;
-            long end = DataPageManager.TableOffsets[matchingKey] + DataPageManager.DataPageSize -
-                       DataPageManager.BufferOverflowPointer;
+            long end = DataPageManager.TableOffsets[matchingKey] + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
             long lengthToRead = end - start;
 
             fileStream.Seek(start, SeekOrigin.Begin);
@@ -74,8 +72,7 @@ namespace DMS.Commands
                 lengthToRead = end - start;
 
                 allData = allData.Concat(ReadAllData(new byte[lengthToRead])).ToList().AsReadOnly();
-                fileStream.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer,
-                    SeekOrigin.Begin);
+                fileStream.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
                 pointer = reader.ReadInt64();
             }
 
@@ -186,9 +183,7 @@ namespace DMS.Commands
 
         private static void InsertIntoFreeSpace(byte[] allRecords, bool isMainDP, int headerSectionForMainDP, long firstFreeDP)
         {
-            using FileStream
-                fs = new(Files.MDF_FILE_NAME,
-                    FileMode.Open); // <- initiate new file stream because the old one is not writable even through I gave full permissions for the stream
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open); // <- initiate new file stream because the old one is not writable even through I gave full permissions for the stream
             using BinaryWriter writer = new(fs, Encoding.UTF8);
 
             int recordIndex = 0;
@@ -200,16 +195,17 @@ namespace DMS.Commands
             fs.Read(freeSpaceBytes, 0, 4); //<- free space
             int freeSpace = BitConverter.ToInt32(freeSpaceBytes, 0);
 
+            int firstOccuranceOfFreeSpace = DataPageManager.DataPageSize - freeSpace;
+
             if (isMainDP)
-                fs.Seek(firstFreeDP + headerSectionForMainDP, SeekOrigin.Begin);
+                fs.Seek(firstFreeDP + headerSectionForMainDP + firstOccuranceOfFreeSpace, SeekOrigin.Begin);
             else
-                fs.Seek(firstFreeDP + sizeof(int), SeekOrigin.Begin);
+                fs.Seek(firstFreeDP + sizeof(int) + firstOccuranceOfFreeSpace, SeekOrigin.Begin);
 
             while (recordIndex < recordLength)
             {
                 // Calculate the amount of data to write in this iteration
-                int dataToWrite = (int)Math.Min(recordLength - recordIndex,
-                    freeSpace - DataPageManager.BufferOverflowPointer); //<- this is some times 0
+                int dataToWrite = (int)Math.Min(recordLength - recordIndex, freeSpace - DataPageManager.BufferOverflowPointer);
                 freeSpace -= dataToWrite;
 
                 // Write the data
@@ -224,8 +220,7 @@ namespace DMS.Commands
                     return;
 
                 // Move to the end of the current page and read the pointer
-                fs.Seek(firstFreeDP + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer,
-                    SeekOrigin.Begin);
+                fs.Seek(firstFreeDP + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
                 byte[] pointerBytes = new byte[8];
                 fs.Read(pointerBytes, 0, 8);
                 long pointer = BitConverter.ToInt64(pointerBytes, 0);
@@ -237,9 +232,7 @@ namespace DMS.Commands
                     pointer = (DataPageManager.AllDataPagesCount + 1) * DataPageManager.DataPageSize;
 
                     // Write the pointer to the current page
-                    fs.Seek(
-                        DataPageManager.AllDataPagesCount * DataPageManager.DataPageSize -
-                        DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+                    fs.Seek(DataPageManager.AllDataPagesCount * DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
                     writer.Write(pointer);
 
                     DataPageManager.DataPageCounter++;

@@ -84,6 +84,17 @@
         GraveAccent = '`'
     }
 
+    public enum ELogicalOperators
+    {
+        WHERE, 
+        AND, 
+        NOT, 
+        OR, 
+        ORDERBY, 
+        DISTINCT, 
+        JOIN
+    }
+
     public enum StringCompare
     {
         IgnoreCaseSensitivity
