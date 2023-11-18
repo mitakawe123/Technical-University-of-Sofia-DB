@@ -1,4 +1,6 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
+using System.Runtime.CompilerServices;
 
 namespace DataStructures
 {
@@ -146,6 +148,34 @@ namespace DataStructures
 
             if (index < _size)
                 Array.Copy(_items, index + 1, _items, index, _size - index);
+        }
+
+        public int RemoveAll(Predicate<T> match)
+        {
+            if (match is null)
+                throw new ArgumentNullException(nameof(match));
+
+            int removedCount = 0;
+            int shiftIndex = 0;
+
+            for (int i = 0; i < _size; i++)
+            {
+                if (match(_items[i]))
+                    removedCount++;
+                else
+                {
+                    _items[shiftIndex] = _items[i];
+                    shiftIndex++;
+                }
+            }
+
+            _size -= removedCount;
+
+            // Clear the removed elements to free references
+            for (int i = _size; i < _items.Length; i++)
+                _items[i] = default(T);
+
+            return removedCount;
         }
 
         public void Add(T item)

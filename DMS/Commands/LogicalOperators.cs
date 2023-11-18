@@ -1,5 +1,4 @@
 ﻿using DataStructures;
-using DMS.Constants;
 using DMS.Extensions;
 using DMS.Shared;
 
@@ -10,12 +9,13 @@ namespace DMS.Commands
     public static class LogicalOperators
     {
         private static readonly string[] SqlKeywords = { "JOIN", "WHERE", "ORDER BY", "AND", "OR" };
-        private static DKList<string> operators = new();
-        private static DKList<string> operations = new();
+        private static readonly DKList<string> Operators = new();
+        private static DKList<string> Operations = new();
 
         public static void Parse(
-            ref DKList<char[]> allData,
-            ref DKList<Column> selectedColumns,
+            ref IReadOnlyList<char[]> allData,
+            IReadOnlyList<Column> selectedColumns,
+            IReadOnlyList<Column> allColumnsForTable,
             ReadOnlySpan<char> logicalOperator,
             int colCount)
         {
@@ -31,33 +31,33 @@ namespace DMS.Commands
                 switch (token)
                 {
                     case "where":
-                        operators.Add("where");
+                        Operators.Add("where");
                         break;
                     case "and":
-                        operators.Add("and");
+                        Operators.Add("and");
                         break;
                     case "or":
-                        operators.Add("or");
+                        Operators.Add("or");
                         break;
                     case "not":
-                        operators.Add("not");
+                        Operators.Add("not");
                         break;
                     case "join":
-                        operators.Add("join");
+                        Operators.Add("join");
                         break;
                     case "distinct":
-                        operators.Add("distinct");
+                        Operators.Add("distinct");
                         break;
                     case "order":
                         if (tokens.CustomContains("by"))
-                            operators.Add("order by");
+                            Operators.Add("order by");
                         break;
                 }
             }
 
-            operations = SplitSqlQuery(logicalOperator);
+            Operations = SplitSqlQuery(logicalOperator);
 
-            ExecuteQuery(ref allData, ref selectedColumns, colCount);
+            ExecuteQuery(ref allData, selectedColumns, allColumnsForTable, colCount);
         }
 
         private static DKList<string> SplitSqlQuery(ReadOnlySpan<char> sqlQuery)
@@ -107,36 +107,29 @@ namespace DMS.Commands
             return earliestIndex == int.MaxValue ? -1 : earliestIndex;
         }
 
-        private static void ExecuteQuery(
-            ref DKList<char[]> allData,
-            ref DKList<Column> selectedColumns,
-            int colCount)
+        private static void ExecuteQuery(ref IReadOnlyList<char[]> allData, IReadOnlyList<Column> allColumnsForTable, IReadOnlyList<Column> selectedColumns, int colCount)
         {
-            for (int i = 0; i < operators.Count; i++)
+            for (int i = 0; i < Operators.Count; i++)
             {
-                switch (operators[i])
+                switch (Operators[i])
                 {
                     case "where":
-                        WhereCondition(ref allData, operations[i], colCount);
+                        WhereCondition(ref allData, colCount, Operations[i]);
                         break;
                     case "order by":
+                        OrderByCondition(ref allData, selectedColumns, colCount, Operations[i]);
                         break;
                     case "distinct":
                         DistinctCondition(ref allData);
                         break;
-                    default:
-                        break;
                 }
             }
 
-            operators.Clear();
-            operations.Clear();
+            Operators.Clear();
+            Operations.Clear();
         }
 
-        private static void WhereCondition(
-            ref DKList<char[]> allData,
-            string operation, //<- id = 1
-            int colCount)
+        private static void WhereCondition(ref IReadOnlyList<char[]> allData, int colCount, string operation) //<- id = 1
         {
             int equalsIndex = operation.IndexOf('=');
             DKList<int> blockIndexes = new();
@@ -194,8 +187,9 @@ namespace DMS.Commands
 
             allData = result;
         }
+
         //select * from test where id = 2 distinct
-        private static void DistinctCondition(ref DKList<char[]> allData)
+        private static void DistinctCondition(ref IReadOnlyList<char[]> allData)
         {
             DKList<char[]> result = new();
 
@@ -204,6 +198,49 @@ namespace DMS.Commands
                     result.Add(rowValue);
 
             allData = result;
+        }
+
+        private static void OrderByCondition(ref IReadOnlyList<char[]> allData, IReadOnlyList<Column> selectedColumns, int colCount, string operation)
+        {
+            DKList<char[]> result = new();
+            bool isAsc = !operation.CustomContains("desc") && !operation.CustomContains("descending");
+
+            int indexOfOrderType = isAsc ? operation.CustomIndexOf("asc") : operation.CustomIndexOf("desc");
+            string columnNames = operation[..indexOfOrderType].CustomTrim();
+            DKList<char[]> cols = new();
+
+            if (!columnNames.CustomContains(','))
+                cols.Add(columnNames.ToCharArray());
+            else
+            {
+                string[] spitedColumns = columnNames.CustomSplit(',');
+                foreach (string colName in spitedColumns)
+                    cols.Add(colName.CustomTrim().ToCharArray());
+            }
+
+            foreach (char[] col in cols)
+            {
+                if (!selectedColumns.CustomAny(x => x.Name.SequenceEqual(col)))
+                {
+                    Console.WriteLine($"Invalid column in order by condition {col}");
+                    return;
+                }
+            }
+
+            DKList<DKList<char[]>> records = new();
+            int dataIndex = 0;
+            while (dataIndex < allData.Count)
+            {
+                DKList<char[]> innerList = new();
+
+                for (int i = 0; i < colCount && dataIndex < allData.Count; i++)
+                {
+                    innerList.Add(allData[dataIndex]);
+                    dataIndex++;
+                }
+
+                records.Add(innerList);
+            }
         }
     }
 }

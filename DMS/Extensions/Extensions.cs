@@ -242,6 +242,18 @@ namespace DMS.Extensions
             return -1;
         }
 
+        public static int CustomIndexOf(this string input, string value)
+        {
+            if (string.IsNullOrEmpty(input) || string.IsNullOrEmpty(value))
+                return -1;
+
+            for (int i = 0; i <= input.Length - value.Length; i++)
+                if (input.CustomSubstring(i, value.Length) == value)
+                    return i;
+
+            return -1;
+        }
+
         public static int CustomIndexOf(this string input, char value, int startPosition)
         {
             for (int i = startPosition; i < input.Length; i++)
@@ -526,6 +538,18 @@ namespace DMS.Extensions
             }
             throw new InvalidOperationException("Sequence contains no elements");
         }
+
+/*        public static IOrderedEnumerable<TSource> OrderBy<TSource, TKey>(this IEnumerable<TSource> source,
+            Func<TSource, TKey> keySelector)
+        {
+
+        }
+
+        public static IOrderedEnumerable<TSource> ThenBy<TSource, TKey>(this IOrderedEnumerable<TSource> source,
+            Func<TSource, TKey> keySelector, IComparer<TKey>? comparer)
+        {
+
+        }*/
 
         #endregion
 

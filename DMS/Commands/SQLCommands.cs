@@ -12,7 +12,7 @@ namespace DMS.Commands
         //createtable test(id int primary key, name string(max) null)
         //insert into test (id, name) values (1, 'hellot123'), (2, 'test2main'), (3, 'test3')
         //select id, name from test
-        //select * from test where id = 2 distinct
+        //select * from test order by id desc
         public static void InsertIntoTable(IReadOnlyList<IReadOnlyList<char[]>> columnsValues, ReadOnlySpan<char> tableName)
         {
             (FileStream fileStream, BinaryReader reader) = OpenFileAndReader();
@@ -83,16 +83,16 @@ namespace DMS.Commands
         }
 
         private static void PrintSelectedValues(
-            DKList<char[]> allData, DKList<string> valuesToSelect, 
-            DKList<Column> columnTypeAndName, 
-            ReadOnlySpan<char> logicalOperator, 
+            IReadOnlyList<char[]> allData, DKList<string> valuesToSelect,
+            IReadOnlyList<Column> columnTypeAndName,
+            ReadOnlySpan<char> logicalOperator,
             int colCount)
         {
             DKList<Column> selectedColumns = columnTypeAndName.CustomWhere(c => valuesToSelect.CustomContains(c.Name) || valuesToSelect.CustomContains("*")).CustomToList();
             int tableWidth = selectedColumns.CustomSum(c => c.Name.Length) + (selectedColumns.Count - 1) * 3 + 4;
 
-            LogicalOperators.Parse(ref allData ,  ref selectedColumns, logicalOperator, colCount);
-            
+            LogicalOperators.Parse(ref allData, selectedColumns, columnTypeAndName, logicalOperator, colCount);
+
             Console.WriteLine(new string('-', tableWidth));
 
             Console.Write("| ");
@@ -326,6 +326,8 @@ namespace DMS.Commands
 
                 columnsValues.AddRange(column);
             }
+
+            columnsValues.RemoveAll(x => x.Length == 0);
 
             return columnsValues;
         }
