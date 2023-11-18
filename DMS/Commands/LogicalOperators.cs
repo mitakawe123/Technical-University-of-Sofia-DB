@@ -121,6 +121,9 @@ namespace DMS.Commands
                         break;
                     case "order by":
                         break;
+                    case "distinct":
+                        DistinctCondition(ref allData);
+                        break;
                     default:
                         break;
                 }
@@ -137,7 +140,32 @@ namespace DMS.Commands
         {
             int equalsIndex = operation.IndexOf('=');
             DKList<int> blockIndexes = new();
-            char[] value = operation[(equalsIndex + 1)..].CustomTrim().CustomToCharArray();
+
+            int startIndex = equalsIndex + 1;
+            int endIndex = operation[startIndex..].IndexOf(' ');
+            if (endIndex == -1)
+                endIndex = operation.Length;
+            else
+            {
+                endIndex += startIndex;
+
+                if (startIndex == endIndex)
+                {
+                    for (int i = endIndex + 1; i < operation.Length; i++)
+                    {
+                        if (char.IsWhiteSpace(operation[i]))
+                        {
+                            endIndex = i;
+                            break;
+                        }
+                    }
+
+                    if (startIndex == endIndex)
+                        endIndex = operation.Length;
+                }
+            }
+
+            char[] value = operation[startIndex..endIndex].CustomTrim().CustomToCharArray();
 
             // Find the block index that contains the target char[]
             for (int i = 0; i < allData.Count; i++)
@@ -152,6 +180,7 @@ namespace DMS.Commands
             if (blockIndexes.Count == 0)
             {
                 Console.WriteLine("Value not found");
+                allData = new DKList<char[]>();
                 return;
             }
 
@@ -162,6 +191,17 @@ namespace DMS.Commands
                 for (int i = blockStartIndex; i < blockStartIndex + colCount && i < allData.Count; i++)
                     result.Add(allData[i]);
             }
+
+            allData = result;
+        }
+        //select * from test where id = 2 distinct
+        private static void DistinctCondition(ref DKList<char[]> allData)
+        {
+            DKList<char[]> result = new();
+
+            foreach (char[] rowValue in allData)
+                if (!result.CustomAny(existingRow => existingRow.SequenceEqual(rowValue)))
+                    result.Add(rowValue);
 
             allData = result;
         }
