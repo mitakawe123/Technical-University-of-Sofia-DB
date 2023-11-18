@@ -155,6 +155,12 @@ namespace DMS.Commands
 
             ReadOnlySpan<char> tableName = tableSpan[..endOfTableName].CustomTrim();
 
+            bool isThereLogicalOperator = endOfTableName < tableSpan.Length;
+            ReadOnlySpan<char> logicalOperator = ReadOnlySpan<char>.Empty;
+
+            if (isThereLogicalOperator)
+                logicalOperator = tableSpan[(tableName.CustomIndexOf(tableName) + tableName.Length + 1)..];
+
             DKList<string> columnValues = new();
             if (!values.CustomContains(','))
                 columnValues.Add(values.ToString());
@@ -176,7 +182,7 @@ namespace DMS.Commands
                 }
             }
 
-            SQLCommands.SelectFromTable(columnValues, tableName);
+            SQLCommands.SelectFromTable(columnValues, tableName, logicalOperator);
         }
 
         private static DKList<char[]> ProcessTuple(ReadOnlySpan<char> tuple)

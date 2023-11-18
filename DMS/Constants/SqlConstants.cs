@@ -84,15 +84,16 @@
         GraveAccent = '`'
     }
 
-    public enum ELogicalOperators
+    public enum EOperatorType
     {
-        WHERE, 
-        AND, 
-        NOT, 
-        OR, 
-        ORDERBY, 
-        DISTINCT, 
-        JOIN
+        unknown,
+        where, 
+        and, 
+        not, 
+        or, 
+        orderby, 
+        distinct, 
+        join
     }
 
     public enum StringCompare

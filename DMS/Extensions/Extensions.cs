@@ -36,16 +36,28 @@ namespace DMS.Extensions
 
         public static IEnumerable<T> CustomWhere<T>(this IEnumerable<T> source, Func<T, bool> predicate)
         {
-            if(source is null)
+            if (source is null)
                 throw new ArgumentNullException(nameof(source));
 
-            DKList<T> result = new(); 
+            DKList<T> result = new();
             foreach (T item in source)
             {
-                if(predicate(item))
+                if (predicate(item))
                     result.Add(item);
             }
 
+            return result;
+        }
+
+        public static DKList<T> CustomReverse<T>(this IEnumerable<T> source)
+        {
+            if (source is null)
+                throw new ArgumentNullException(nameof(source));
+
+            DKList<T> result = new();
+            foreach (T item in source)
+                result.Insert(0, item);
+            
             return result;
         }
 
