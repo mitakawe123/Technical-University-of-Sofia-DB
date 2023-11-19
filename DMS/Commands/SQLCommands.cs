@@ -11,16 +11,15 @@ namespace DMS.Commands
     {
         public static void InsertIntoTable(IReadOnlyList<IReadOnlyList<char[]>> columnsValues, ReadOnlySpan<char> tableName)
         {
-            (FileStream fileStream, BinaryReader reader) = OpenFileAndReader();
             char[] matchingKey = FindTableWithName(tableName);
 
             if (matchingKey == Array.Empty<char>())
             {
                 Console.WriteLine("There is not table with the given name");
-                fileStream.Close();
-                reader.Close();
                 return;
             }
+
+            (FileStream fileStream, BinaryReader reader) = OpenFileAndReader();
 
             fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
 
@@ -59,7 +58,7 @@ namespace DMS.Commands
             fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
 
             (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) = ReadTableMetadata(reader);
-            int headerSectionForMainDP = 20+tableLength;
+            int headerSectionForMainDP = 20 + tableLength;
 
             (headerSectionForMainDP, DKList<Column> columnTypeAndName) = ReadColumns(reader, headerSectionForMainDP, columnCount);
 
@@ -93,6 +92,31 @@ namespace DMS.Commands
             allData.RemoveAll(x => x.Length == 0);
 
             PrintSelectedValues(allData, valuesToSelect, columnTypeAndName, logicalOperator, columnCount);
+        }
+        //delete from test where id = 1
+        public static void DeleteFromTable(ReadOnlySpan<char> tableName, ReadOnlySpan<char> whereConditions)
+        {
+            char[]? matchingKey = FindTableWithName(tableName);
+
+            if (matchingKey == Array.Empty<char>())
+            {
+                Console.WriteLine("There is not table with the given name");
+                return;
+            }
+
+            (FileStream fileStream, BinaryReader reader) = OpenFileAndReader();
+
+            fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
+
+            (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) = ReadTableMetadata(reader);
+            int headerSectionForMainDP = 20 + tableLength;
+
+            (int header, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDP, columnCount);
+
+            //what needs to happend here 
+            //first check if the given columns in the where are valid
+            //second split by operands is,not,or if they exist
+            //third find all the records that meet the criteria and replace them with empty bytes
         }
 
         public static DKList<char[]> ReadAllData(long lengthToRead, BinaryReader reader)
@@ -234,7 +258,7 @@ namespace DMS.Commands
             int freeSpace = BitConverter.ToInt32(freeSpaceBytes, 0);
 
             if (isMainDP)
-                fs.Seek(firstFreeDP + headerSectionForMainDP , SeekOrigin.Begin);
+                fs.Seek(firstFreeDP + headerSectionForMainDP, SeekOrigin.Begin);
             else
                 fs.Seek(firstFreeDP + sizeof(int), SeekOrigin.Begin);
 

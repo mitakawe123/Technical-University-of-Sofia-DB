@@ -11,6 +11,7 @@
         TableInfo,
         Insert,
         Select,
+        Delete,
         Exit
     }
 

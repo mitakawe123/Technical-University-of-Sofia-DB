@@ -42,9 +42,13 @@ namespace DMS.Commands
                 case ECliCommands.Select:
                     SelectFromTable(command);
                     break;
+
+                case ECliCommands.Delete:
+                    DeleteFromTable(command);
+                    break;
             }
         }
-        //createtable test(id int primary key, name string(50) null)
+
         private static void CreateTable(string command)
         {
             //add a case when there is default values
@@ -106,7 +110,6 @@ namespace DMS.Commands
             DataPageManager.TableInfo(table);
         }
 
-        //Insert INTO test (Id, Name) VALUES (1, “pepi”), (2, “mariq”), (3, “georgi”)
         private static void InsertIntoTable(string command)
         {
             ReadOnlySpan<char> commandSpan = command;
@@ -139,7 +142,6 @@ namespace DMS.Commands
             SQLCommands.InsertIntoTable(valuesList, tableNameSpan);
         }
 
-        //select * from test where id = 1 
         private static void SelectFromTable(string command)
         {
             ReadOnlySpan<char> commandSpan = command;
@@ -184,6 +186,19 @@ namespace DMS.Commands
             }
 
             SQLCommands.SelectFromTable(columnValues, tableName, logicalOperator);
+        }
+
+        private static void DeleteFromTable(string command)
+        {
+            ReadOnlySpan<char> commandSpan = command;
+
+            int startFrom = commandSpan.CustomIndexOf("from");
+            int whereIndex = commandSpan.CustomIndexOf("where");
+
+            ReadOnlySpan<char> tableSpan = commandSpan[(startFrom + "from".Length)..whereIndex].CustomTrim();
+            ReadOnlySpan<char> whereConditions = commandSpan[(whereIndex+"where".Length)..].CustomTrim();
+
+            SQLCommands.DeleteFromTable(tableSpan, whereConditions);
         }
 
         private static DKList<char[]> ProcessTuple(ReadOnlySpan<char> tuple)

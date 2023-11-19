@@ -69,13 +69,20 @@ namespace DMS.Commands
                     Console.WriteLine("Please enter a insert command!");
                     return false;
 
+                case ECliCommands.Delete:
+                    bool isValidDeleteCommand = ValidateDeleteFromTable(command);
+                    if (isValidDeleteCommand)
+                        return true;
+
+                    Console.WriteLine("Please enter a insert command!");
+                    return false;
+
                 default:
                     Console.WriteLine("Invalid command please enter a valid command");
                     return false;
             }
         }
 
-        //createtable test(id int primary key, name string null)
         private static bool ValidateCreateTableCommand(string command)
         {
             //ReadOnlySpan<char> commandSpan = command;
@@ -138,7 +145,6 @@ namespace DMS.Commands
             return true;
         }
 
-        //Insert INTO test (Id, Name) VALUES (1, 2), (2, 2), (3, 2)
         private static bool ValidateInsertTableCommand(string command)
         {
             ReadOnlySpan<char> commandSpan = command;
@@ -221,7 +227,6 @@ namespace DMS.Commands
             return true;
         }
 
-        //Select * from test 
         private static bool ValidateSelectFromTable(string command)
         {
             if (string.IsNullOrWhiteSpace(command))
@@ -238,6 +243,22 @@ namespace DMS.Commands
                 return false;
 
             if (!commandSpan.CustomContains("from", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return true;
+        }
+
+        private static bool ValidateDeleteFromTable(string command)
+        {
+            if (string.IsNullOrWhiteSpace(command))
+                return false;
+
+            string[] parts = command.CustomSplit(' ');
+
+            if (parts.Length < 4 || parts[0] != "delete" || parts[1] != "from")
+                return false;
+
+            if (!command.CustomContains("where"))
                 return false;
 
             return true;

@@ -29,10 +29,15 @@ namespace DMS.Commands
 
             string[] tokens = operatorStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
-            foreach (string token in tokens)
+            for (int i = 0; i < tokens.Length; i++)
             {
+                string token = tokens[i];
                 switch (token)
                 {
+                    case "delete":
+                        Operators.Add("delete");
+                        i = tokens.Length;
+                        break;
                     case "order":
                         if (tokens.CustomContains("by"))
                             Operators.Add("order by");
@@ -120,6 +125,9 @@ namespace DMS.Commands
             {
                 switch (Operators[i])
                 {
+                    case "delete":
+                        DeleteCondition(ref allData, _operations[i]);
+                        break;
                     case "where":
                         WhereCondition(ref allData, colCount, _operations[i]);
                         break;
@@ -137,6 +145,11 @@ namespace DMS.Commands
 
             Operators.Clear();
             _operations.Clear();
+        }
+
+        private static void DeleteCondition(ref IReadOnlyList<char[]> allData, string operation)
+        {
+
         }
 
         private static void WhereCondition(ref IReadOnlyList<char[]> allData, int colCount, string operation) //<- id = 1
