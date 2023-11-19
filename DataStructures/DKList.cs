@@ -222,6 +222,29 @@ namespace DataStructures
             _size = 0;
         }
 
+        public void Sort(Comparison<T> comparison)
+        {
+            if(comparison is null) 
+                throw new ArgumentNullException();
+
+            if (_size <= 1) 
+                return;
+            
+            bool swapped;
+            do
+            {
+                swapped = false;
+                for (int i = 0; i < _size - 1; i++)
+                {
+                    if (comparison(_items[i], _items[i + 1]) > 0)
+                    {
+                        (_items[i], _items[i + 1]) = (_items[i + 1], _items[i]);
+                        swapped = true;
+                    }
+                }
+            } while (swapped);
+        }
+
         public bool Contains(T item) => _size != 0 && IndexOf(item) >= 0;
 
         public void CopyTo(T[] array, int arrayIndex)

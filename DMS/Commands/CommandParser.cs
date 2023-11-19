@@ -69,7 +69,8 @@ namespace DMS.Commands
                 ReadOnlySpan<char> columnType = columnDefinition[(spaceIndex + 1)..].CustomTrim();
 
                 int typeSpaceIndex = columnType.CustomIndexOf(' ');
-                columnType = columnType[..typeSpaceIndex];
+                if (typeSpaceIndex != -1)
+                    columnType = columnType[..typeSpaceIndex];
 
                 columns.Add(new Column(new string(columnName), new string(columnType)));
 

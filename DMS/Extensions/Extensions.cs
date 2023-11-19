@@ -186,9 +186,6 @@ namespace DMS.Extensions
 
         public static string CustomTrim(this string input)
         {
-            if (input is null)
-                return "";
-
             int startIndex = 0;
             int endIndex = input.Length - 1;
 
@@ -539,17 +536,45 @@ namespace DMS.Extensions
             throw new InvalidOperationException("Sequence contains no elements");
         }
 
-/*        public static IOrderedEnumerable<TSource> OrderBy<TSource, TKey>(this IEnumerable<TSource> source,
-            Func<TSource, TKey> keySelector)
+        public static IEnumerable<T> CustomTake<T>(this IEnumerable<T> source, int count)
         {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
 
+            if (count <= 0)
+                yield break;
+
+            int taken = 0;
+            foreach (T item in source)
+            {
+                if (taken < count)
+                {
+                    yield return item;
+                    taken++;
+                }
+                else
+                    yield break;
+            }
         }
 
-        public static IOrderedEnumerable<TSource> ThenBy<TSource, TKey>(this IOrderedEnumerable<TSource> source,
-            Func<TSource, TKey> keySelector, IComparer<TKey>? comparer)
+        public static IEnumerable<TResult> CustomSelect<TSource, TResult>(this IEnumerable<TSource> source,
+            Func<TSource, int, TResult> selector)
         {
+            return default;
+        }
 
-        }*/
+        public static DKDictionary<TKey, TElement> CustomToDictionary<TSource, TKey, TElement>(this IEnumerable<TSource> source,
+            Func<TSource, TKey> keySelector, Func<TSource, TElement> elementSelector) where TKey : notnull
+        {
+            return default;
+        }
+
+        public static IEnumerable<TResult> CustomSelectMany<TSource, TResult>(this IEnumerable<TSource> source,
+            Func<TSource, IEnumerable<TResult>> selector)
+        {
+            return default;
+        }
+
 
         #endregion
 

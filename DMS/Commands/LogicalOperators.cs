@@ -30,6 +30,10 @@ namespace DMS.Commands
             {
                 switch (token)
                 {
+                    case "order":
+                        if (tokens.CustomContains("by"))
+                            Operators.Add("order by");
+                        break;
                     case "where":
                         Operators.Add("where");
                         break;
@@ -48,16 +52,12 @@ namespace DMS.Commands
                     case "distinct":
                         Operators.Add("distinct");
                         break;
-                    case "order":
-                        if (tokens.CustomContains("by"))
-                            Operators.Add("order by");
-                        break;
                 }
             }
 
             Operations = SplitSqlQuery(logicalOperator);
 
-            ExecuteQuery(ref allData, selectedColumns, allColumnsForTable, colCount);
+            ExecuteQuery(ref allData, allColumnsForTable, colCount);
         }
 
         private static DKList<string> SplitSqlQuery(ReadOnlySpan<char> sqlQuery)
@@ -107,7 +107,7 @@ namespace DMS.Commands
             return earliestIndex == int.MaxValue ? -1 : earliestIndex;
         }
 
-        private static void ExecuteQuery(ref IReadOnlyList<char[]> allData, IReadOnlyList<Column> allColumnsForTable, IReadOnlyList<Column> selectedColumns, int colCount)
+        private static void ExecuteQuery(ref IReadOnlyList<char[]> allData, IReadOnlyList<Column> allColumnsForTable, int colCount)
         {
             for (int i = 0; i < Operators.Count; i++)
             {
@@ -117,7 +117,7 @@ namespace DMS.Commands
                         WhereCondition(ref allData, colCount, Operations[i]);
                         break;
                     case "order by":
-                        OrderByCondition(ref allData, selectedColumns, colCount, Operations[i]);
+                        OrderByCondition(ref allData, allColumnsForTable, colCount, Operations[i]);
                         break;
                     case "distinct":
                         DistinctCondition(ref allData);
@@ -200,47 +200,55 @@ namespace DMS.Commands
             allData = result;
         }
 
-        private static void OrderByCondition(ref IReadOnlyList<char[]> allData, IReadOnlyList<Column> selectedColumns, int colCount, string operation)
+        private static void OrderByCondition(
+            ref IReadOnlyList<char[]> allData,
+            IReadOnlyList<Column> allColumnsForTable,
+            int colCount,
+            string operation)
         {
-            DKList<char[]> result = new();
-            bool isAsc = !operation.CustomContains("desc") && !operation.CustomContains("descending");
+            string[] multiColmOrdering = operation.CustomSplit(',');
 
-            int indexOfOrderType = isAsc ? operation.CustomIndexOf("asc") : operation.CustomIndexOf("desc");
-            string columnNames = operation[..indexOfOrderType].CustomTrim();
-            DKList<char[]> cols = new();
+            // Map column names to their indices
+            Dictionary<string, int> columnMap = allColumnsForTable.Select((col, index) => new { col.Name, Index = index })
+                .ToDictionary(x => new string(x.Name), x => x.Index);
 
-            if (!columnNames.CustomContains(','))
-                cols.Add(columnNames.ToCharArray());
-            else
+            DKList<(int Index, bool IsAscending)> sortingColumns = new();
+            foreach (var orderClause in multiColmOrdering)
             {
-                string[] spitedColumns = columnNames.CustomSplit(',');
-                foreach (string colName in spitedColumns)
-                    cols.Add(colName.CustomTrim().ToCharArray());
-            }
+                string trimmedOrderClause = orderClause.CustomTrim();
+                bool isAsc = !trimmedOrderClause.CustomContains("desc") && !trimmedOrderClause.CustomContains("descending");
+                string columnName = trimmedOrderClause.CustomSplit(' ')[0].CustomTrim();
 
-            foreach (char[] col in cols)
-            {
-                if (!selectedColumns.CustomAny(x => x.Name.SequenceEqual(col)))
+                if (!columnMap.TryGetValue(columnName, out int columnIndex))
                 {
-                    Console.WriteLine($"Invalid column in order by condition {col}");
+                    Console.WriteLine($"Invalid column in order by condition {columnName}");
                     return;
                 }
+                sortingColumns.Add((columnIndex, isAsc));
             }
 
-            DKList<DKList<char[]>> records = new();
-            int dataIndex = 0;
-            while (dataIndex < allData.Count)
+            DKList<DKList<char[]>> rows = new();
+            for (int i = 0; i < allData.Count; i += colCount)
+                rows.Add(allData.CustomSkip(i).CustomTake(colCount).CustomToList());
+
+            Comparison<DKList<char[]>> rowComparer = (row1, row2) =>
             {
-                DKList<char[]> innerList = new();
-
-                for (int i = 0; i < colCount && dataIndex < allData.Count; i++)
+                foreach ((int index, bool isAscending) in sortingColumns)
                 {
-                    innerList.Add(allData[dataIndex]);
-                    dataIndex++;
-                }
+                    string value1 = new(row1[index]);
+                    string value2 = new(row2[index]);
 
-                records.Add(innerList);
-            }
+                    int comparison = string.Compare(value1, value2, StringComparison.Ordinal);
+                    if (comparison != 0)
+                        return isAscending ? comparison : -comparison;
+                }
+                return 0;
+            };
+
+            rows.Sort(rowComparer);
+
+            DKList<char[]> sortedData = rows.SelectMany(row => row).CustomToList();
+            allData = sortedData.AsReadOnly();
         }
     }
 }
