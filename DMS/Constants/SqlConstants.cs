@@ -2,6 +2,8 @@
 {
     public enum ECliCommands
     {
+        Cls,
+        Clear,
         Help,
         CreateTable,
         DropTable,

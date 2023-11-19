@@ -9,14 +9,6 @@ namespace DMS.Commands
 {
     public static class SQLCommands
     {
-        //createtable test(id int primary key, name string(max) null)
-        //insert into test (id, name) values (1, 'hellot123'), (2, 'test2main'), (3, 'test3')
-        //select id, name from test
-        //select * from test order by id desc
-        //select * from test join test1 on test.id = test1.id 
-        //createtable main(id int)
-        //insert into main (id) values (1), (2), (3)
-        //select * from main
         public static void InsertIntoTable(IReadOnlyList<IReadOnlyList<char[]>> columnsValues, ReadOnlySpan<char> tableName)
         {
             (FileStream fileStream, BinaryReader reader) = OpenFileAndReader();
@@ -98,6 +90,8 @@ namespace DMS.Commands
             fileStream.Close();
             reader.Close();
 
+            allData.RemoveAll(x => x.Length == 0);
+
             PrintSelectedValues(allData, valuesToSelect, columnTypeAndName, logicalOperator, columnCount);
         }
 
@@ -137,6 +131,18 @@ namespace DMS.Commands
             }
 
             return (headerSectionForMainDP, columnNameAndType);
+        }
+
+        public static (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) ReadTableMetadata(BinaryReader reader)
+        {
+            int freeSpace = reader.ReadInt32();
+            ulong recordSizeInBytes = reader.ReadUInt64();
+            int tableLength = reader.ReadInt32();
+            byte[] bytes = reader.ReadBytes(tableLength);
+            string table = Encoding.UTF8.GetString(bytes);
+            int columnCount = reader.ReadInt32();
+
+            return (freeSpace, recordSizeInBytes, tableLength, table, columnCount);
         }
 
         private static void PrintSelectedValues(
@@ -193,18 +199,6 @@ namespace DMS.Commands
             FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
             BinaryReader reader = new(fileStream, Encoding.UTF8);
             return (fileStream, reader);
-        }
-
-        private static (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) ReadTableMetadata(BinaryReader reader)
-        {
-            int freeSpace = reader.ReadInt32();
-            ulong recordSizeInBytes = reader.ReadUInt64();
-            int tableLength = reader.ReadInt32();
-            byte[] bytes = reader.ReadBytes(tableLength);
-            string table = Encoding.UTF8.GetString(bytes);
-            int columnCount = reader.ReadInt32();
-
-            return (freeSpace, recordSizeInBytes, tableLength, table, columnCount);
         }
 
         private static char[] FindTableWithName(ReadOnlySpan<char> tableName)

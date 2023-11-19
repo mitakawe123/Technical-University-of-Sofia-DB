@@ -151,7 +151,8 @@ namespace DMS.Commands
 
             int firstBracket = commandSpan.CustomIndexOf('(');
 
-            ReadOnlySpan<char> vals = commandSpan.CustomSlice(insetIntoText.Length + 1, commandSpan.Length - insetIntoText.Length - 1);
+            ReadOnlySpan<char> vals = commandSpan.CustomSlice(insetIntoText.Length + 1,
+                commandSpan.Length - insetIntoText.Length - 1);
             ReadOnlySpan<char> tableName = vals[..firstBracket].CustomTrim();
 
             if (tableName.Length > 128)
@@ -187,7 +188,8 @@ namespace DMS.Commands
                             ReadOnlySpan<char> segment = valuesPart.Slice(start, end - start + 1).Trim();
                             if (!segment.CustomContains('(')
                                 || !segment.CustomContains(')'))
-                                throw new Exception("Invalid value format. Each value must be enclosed in parentheses.");
+                                throw new Exception(
+                                    "Invalid value format. Each value must be enclosed in parentheses.");
 
                             start = end + 1;
                             break;
@@ -198,9 +200,11 @@ namespace DMS.Commands
                 }
 
                 if (bracketCount != 0 || inQuote)
-                    throw new Exception("Unbalanced parentheses or quotes in values.");
+                {
+                    Console.WriteLine("Unbalanced parentheses or quotes in values.");
+                    return false;
+                }
             }
-
             //maybe it will be good idea to get the here to check if I can parse the values to the correct type that are defined in the data page
 
             return true;
@@ -225,7 +229,7 @@ namespace DMS.Commands
 
             string[] parts = command.CustomSplit(' ');
 
-            if(parts.Length < 4)
+            if (parts.Length < 4)
                 return false;
 
             ReadOnlySpan<char> commandSpan = command;

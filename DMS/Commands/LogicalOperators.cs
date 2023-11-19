@@ -13,11 +13,11 @@ namespace DMS.Commands
     {
         private static readonly string[] SqlKeywords = { "JOIN", "WHERE", "ORDER BY", "AND", "OR" };
         private static readonly DKList<string> Operators = new();
-        private static DKList<string> Operations = new();
+        private static DKList<string> _operations = new();
 
         public static void Parse(
             ref IReadOnlyList<char[]> allData,
-            IReadOnlyList<Column> selectedColumns,
+            DKList<Column> selectedColumns,
             IReadOnlyList<Column> allColumnsForTable,
             ReadOnlySpan<char> logicalOperator,
             int colCount)
@@ -58,9 +58,9 @@ namespace DMS.Commands
                 }
             }
 
-            Operations = SplitSqlQuery(logicalOperator);
+            _operations = SplitSqlQuery(logicalOperator);
 
-            ExecuteQuery(ref allData, allColumnsForTable, selectedColumns, colCount);
+            ExecuteConditionQuery(ref allData, allColumnsForTable, selectedColumns, colCount);
         }
 
         private static DKList<string> SplitSqlQuery(ReadOnlySpan<char> sqlQuery)
@@ -110,10 +110,10 @@ namespace DMS.Commands
             return earliestIndex == int.MaxValue ? -1 : earliestIndex;
         }
 
-        private static void ExecuteQuery(
+        private static void ExecuteConditionQuery(
             ref IReadOnlyList<char[]> allData,
             IReadOnlyList<Column> allColumnsForTable,
-            IReadOnlyList<Column> selectedColumns,
+            DKList<Column> selectedColumns,
             int colCount)
         {
             for (int i = 0; i < Operators.Count; i++)
@@ -121,13 +121,13 @@ namespace DMS.Commands
                 switch (Operators[i])
                 {
                     case "where":
-                        WhereCondition(ref allData, colCount, Operations[i]);
+                        WhereCondition(ref allData, colCount, _operations[i]);
                         break;
                     case "order by":
-                        OrderByCondition(ref allData, allColumnsForTable, colCount, Operations[i]);
+                        OrderByCondition(ref allData, allColumnsForTable, colCount, _operations[i]);
                         break;
                     case "join":
-                        JoinCondition(ref allData, selectedColumns, colCount, Operations[i]);
+                        JoinCondition(ref allData, selectedColumns, colCount, _operations[i]);
                         break;
                     case "distinct":
                         DistinctCondition(ref allData);
@@ -136,7 +136,7 @@ namespace DMS.Commands
             }
 
             Operators.Clear();
-            Operations.Clear();
+            _operations.Clear();
         }
 
         private static void WhereCondition(ref IReadOnlyList<char[]> allData, int colCount, string operation) //<- id = 1
@@ -198,7 +198,6 @@ namespace DMS.Commands
             allData = result;
         }
 
-        //select * from test where id = 2 distinct
         private static void DistinctCondition(ref IReadOnlyList<char[]> allData)
         {
             DKList<char[]> result = new();
@@ -263,7 +262,7 @@ namespace DMS.Commands
 
         private static void JoinCondition(
             ref IReadOnlyList<char[]> allDataFromMainTable,
-            IReadOnlyList<Column> selectedColumns,
+            DKList<Column> selectedColumns,
             int colCount,
             string operation)
         {
@@ -277,34 +276,92 @@ namespace DMS.Commands
                 return;
             }
 
-            char[] matchingKey = null;
-            foreach (char[] table in DataPageManager.TableOffsets.Keys)
-            {
-                if (tableToJoin.SequenceEqual(table))
-                {
-                    matchingKey = table;
-                    break;
-                }
-            }
+            char[]? matchingKey = DataPageManager.TableOffsets.Keys.CustomFirstOrDefault(table => tableToJoin.SequenceEqual(table)) ?? null;
 
             if (matchingKey is null)
             {
-                Console.WriteLine("Wrong table name to join");
+                Console.WriteLine("Wrong table name cannot use join on that table");
                 return;
             }
 
-            IReadOnlyList<char[]> joinedTableData = AllDataFromJoinedTable(DataPageManager.TableOffsets[matchingKey], matchingKey, colCount);
+            (IReadOnlyList<char[]> allDataFromJoinedTable, IReadOnlyList<Column> columnsForJoinedTable, int colCount) joinedTableData = 
+                AllDataFromJoinedTable(DataPageManager.TableOffsets[matchingKey], matchingKey);
+
+            string columnToJoin = operation[(indexOnKeyword + 2)..];
+            string[] propsToJoin = columnToJoin.CustomSplit('=');
+
+            string[] mainTableJoinProp = propsToJoin[0].CustomTrim().CustomSplit('.');
+            string[] joinedTableJoinProp = propsToJoin[1].CustomTrim().CustomSplit('.');
+
+            int mainTableJoinIndex = FindColumnIndex(allDataFromMainTable, mainTableJoinProp[1], selectedColumns);
+            int joinedTableJoinIndex = FindColumnIndex(joinedTableData.allDataFromJoinedTable, joinedTableJoinProp[1], selectedColumns);
+
+            DKList<DKList<char[]>> mainTableRows = new();
+            for (int i = 0; i < allDataFromMainTable.Count; i += colCount)
+                mainTableRows.Add(allDataFromMainTable.CustomSkip(i).CustomTake(colCount).CustomToList());
+
+            DKList<DKList<char[]>> joinedTableRows = new();
+            for (int i = 0; i < joinedTableData.allDataFromJoinedTable.Count; i += joinedTableData.colCount)
+                joinedTableRows.Add(joinedTableData.allDataFromJoinedTable.CustomSkip(i).CustomTake(joinedTableData.colCount).CustomToList());
+
+            selectedColumns.AddRange(joinedTableData.columnsForJoinedTable);
+
+            JoinRows(out allDataFromMainTable, mainTableRows, joinedTableRows, mainTableJoinIndex, joinedTableJoinIndex);
         }
 
-        private static IReadOnlyList<char[]> AllDataFromJoinedTable(long startOfOffsetForJoinedTable, char[] matchingKey, int colCount)
+        private static void JoinRows(
+            out IReadOnlyList<char[]> allDataFromMainTable,
+            DKList<DKList<char[]>> mainTableRows,
+            DKList<DKList<char[]>> joinedTableRows,
+            int mainTableJoinIndex,
+            int joinedTableJoinIndex)
+        {
+            DKList<DKList<char[]>> resultRows = new();
+
+            foreach (DKList<char[]> mainTableRow in mainTableRows)
+            {
+                foreach (DKList<char[]> joinedTableRow in joinedTableRows)
+                {
+                    if (!mainTableRow[mainTableJoinIndex].SequenceEqual(joinedTableRow[joinedTableJoinIndex]))
+                        continue;
+
+                    DKList<char[]> combinedRow = new();
+
+                    combinedRow.AddRange(mainTableRow);
+
+                    for (int i = 0; i < joinedTableRow.Count; i++)
+                            combinedRow.Add(joinedTableRow[i]);
+
+                    resultRows.Add(combinedRow);
+                }
+            }
+
+            allDataFromMainTable = resultRows.SelectMany(row => row).CustomToArray();
+        }
+
+        private static int FindColumnIndex(IReadOnlyList<char[]> tableData, string columnName, IReadOnlyList<Column> selectedColumns)
+        {
+            for (int i = 0; i < selectedColumns.Count; i++)
+                if (selectedColumns[i].Name == columnName)
+                    return i;
+
+            return -1;
+        }
+
+        private static (IReadOnlyList<char[]> allDataFromJoinedTable, IReadOnlyList<Column> columnsForJoinedTable, int colCount) 
+            AllDataFromJoinedTable(long startOfOffsetForJoinedTable, char[] matchingKey)
         {
             using FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryReader binaryReader = new(fileStream, Encoding.UTF8);
 
+            fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
+
+            (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) = SQLCommands.ReadTableMetadata(binaryReader);
+
             int headerSectionForMainDP = 20 + matchingKey.Length;
             fileStream.Seek(startOfOffsetForJoinedTable + headerSectionForMainDP, SeekOrigin.Begin);
 
-            (headerSectionForMainDP, DKList<Column> columnTypeAndName) = SQLCommands.ReadColumns(binaryReader, headerSectionForMainDP, colCount);
+            (headerSectionForMainDP, DKList<Column> columnTypeAndName) = SQLCommands.ReadColumns(binaryReader, headerSectionForMainDP, columnCount);
 
             long start = DataPageManager.TableOffsets[matchingKey] + headerSectionForMainDP;
             long end = DataPageManager.TableOffsets[matchingKey] + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
@@ -330,7 +387,8 @@ namespace DMS.Commands
                 pointer = binaryReader.ReadInt64();
             }
 
-            return allDataFromJoinedTable;
+            allDataFromJoinedTable.RemoveAll(x => x.Length == 0);
+            return (allDataFromJoinedTable, columnTypeAndName, columnCount);
         }
     }
 }

@@ -36,6 +36,10 @@ namespace DMS
                         DataPageManager.ConsoleEventCallback();
                         running = false;
                         break;
+                    case ECliCommands.Clear:
+                    case ECliCommands.Cls:
+                        Console.Clear();
+                        break;
 
                     default:
                         CommandParser.Parse(cliCommand, command);

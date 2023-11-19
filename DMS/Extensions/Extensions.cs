@@ -557,6 +557,18 @@ namespace DMS.Extensions
             }
         }
 
+        public static TSource? CustomFirstOrDefault<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate)
+        {
+            if(source is null)
+                throw new ArgumentNullException(nameof(source));
+
+            foreach (TSource? item in source)
+                if(predicate(item))
+                    return item;
+
+            return default;
+        }
+
         public static IEnumerable<TResult> CustomSelect<TSource, TResult>(this IEnumerable<TSource> source,
             Func<TSource, int, TResult> selector)
         {
