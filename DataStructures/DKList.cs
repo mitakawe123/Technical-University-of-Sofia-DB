@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections;
-using System.Runtime.CompilerServices;
+﻿using System.Collections;
 
 namespace DataStructures
 {
     public class DKList<T> : IList<T>, IReadOnlyList<T>
     {
-        private const int _defaultCapacity = 4;
+        private const int DefaultCapacity = 4;
         private T[] _items;
         private int _size;
 
@@ -199,14 +197,14 @@ namespace DataStructures
             if (collection is ICollection<T> c)
             {
                 int count = c.Count;
-                if (count > 0)
-                {
-                    if (_items.Length - _size < count)
-                        Grow(checked(_size + count));
+                if (count <= 0) 
+                    return;
+                
+                if (_items.Length - _size < count)
+                    Grow(checked(_size + count));
 
-                    c.CopyTo(_items, _size);
-                    _size += count;
-                }
+                c.CopyTo(_items, _size);
+                _size += count;
             }
             else
             {
@@ -320,7 +318,7 @@ namespace DataStructures
 
         private void Grow(int capacity)
         {
-            int newCapacity = _items.Length == 0 ? _defaultCapacity : 2 * _items.Length;
+            int newCapacity = _items.Length == 0 ? DefaultCapacity : 2 * _items.Length;
 
             // Allow the list to grow to maximum possible capacity (~2G elements) before encountering overflow.
             // Note that this check works even when _items.Length overflowed thanks to the (uint) cast
