@@ -339,7 +339,7 @@ namespace DMS.Extensions
         public static string[] CustomSplit(this string input, string[]? separators, StringSplitOptions options)
         {
             if (separators == null || separators.Length == 0)
-                return new string[] { input };
+                return new [] { input };
 
             DKList<string> results = new();
             string currentSegment = string.Empty;
@@ -353,31 +353,31 @@ namespace DMS.Extensions
             foreach (char character in input)
             {
                 bool matchedSeparator = false;
-                for (int sepIndex = 0; sepIndex < separators.Length; sepIndex++)
+                foreach (string separator in separators)
                 {
-                    string separator = separators[sepIndex];
-
                     if (character == separator[matchedSeparatorIndex])
                     {
                         if (potentialMatchIndex == -1)
                             potentialMatchIndex = currentSegment.Length;
+
                         matchedSeparatorIndex++;
 
-                        if (matchedSeparatorIndex == separator.Length)
-                        {
-                            results.Add(currentSegment.Substring(0, potentialMatchIndex));
-                            currentSegment = currentSegment.Substring(potentialMatchIndex + separator.Length);
-                            matchedSeparator = true;
-                            matchedSeparatorIndex = 0;
-                            potentialMatchIndex = -1;
-                            break;
-                        }
-                    }
-                    else if (matchedSeparatorIndex > 0)
-                    {
+                        if (matchedSeparatorIndex != separator.Length) 
+                            continue;
+                        
+                        results.Add(currentSegment[..potentialMatchIndex]);
+                        currentSegment = currentSegment[(potentialMatchIndex + separator.Length)..];
+                        matchedSeparator = true;
                         matchedSeparatorIndex = 0;
                         potentialMatchIndex = -1;
+                        break;
                     }
+
+                    if (matchedSeparatorIndex <= 0) 
+                        continue;
+                    
+                    matchedSeparatorIndex = 0;
+                    potentialMatchIndex = -1;
                 }
 
                 if (!matchedSeparator)

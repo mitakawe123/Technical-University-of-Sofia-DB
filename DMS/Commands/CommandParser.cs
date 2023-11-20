@@ -3,6 +3,7 @@ using DMS.Constants;
 using DMS.DataPages;
 using DMS.Extensions;
 using DMS.Shared;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace DMS.Commands
 {
@@ -187,7 +188,7 @@ namespace DMS.Commands
 
             SQLCommands.SelectFromTable(columnValues, tableName, logicalOperator);
         }
-
+        //delete from test where id>1 and name = ‘ivan’ and not namemain = ‘ivan’
         private static void DeleteFromTable(string command)
         {
             ReadOnlySpan<char> commandSpan = command;
@@ -196,9 +197,24 @@ namespace DMS.Commands
             int whereIndex = commandSpan.CustomIndexOf("where");
 
             ReadOnlySpan<char> tableSpan = commandSpan[(startFrom + "from".Length)..whereIndex].CustomTrim();
-            ReadOnlySpan<char> whereConditions = commandSpan[(whereIndex+"where".Length)..].CustomTrim();
+            ReadOnlySpan<char> whereCondition = commandSpan[(whereIndex + "where".Length)..].CustomTrim();
 
-            SQLCommands.DeleteFromTable(tableSpan, whereConditions);
+            string[] conditions = whereCondition.ToString().Split(new[] { "and" }, StringSplitOptions.RemoveEmptyEntries);
+
+            DKList<string> whereConditions = new();
+            DKList<string> columnsCondition = new();
+
+            foreach (string condition in conditions)
+            {
+                string[] columns = condition.Split(new[] { "=", ">", "<" }, StringSplitOptions.RemoveEmptyEntries);
+
+                columns[0] = columns[0].CustomTrim();
+
+                columnsCondition.Add(columns[0]);
+                whereConditions.Add(condition.CustomTrim());
+            }
+
+            SQLCommands.DeleteFromTable(tableSpan, whereConditions, columnsCondition);
         }
 
         private static DKList<char[]> ProcessTuple(ReadOnlySpan<char> tuple)

@@ -93,10 +93,10 @@ namespace DMS.Commands
 
             PrintSelectedValues(allData, valuesToSelect, columnTypeAndName, logicalOperator, columnCount);
         }
-        //delete from test where id = 1
-        public static void DeleteFromTable(ReadOnlySpan<char> tableName, ReadOnlySpan<char> whereConditions)
+
+        public static void DeleteFromTable(ReadOnlySpan<char> tableName, IReadOnlyList<string> logicalOperators, IReadOnlyList<string> columnsCondition)//<- can contains not keyword
         {
-            char[]? matchingKey = FindTableWithName(tableName);
+            char[] matchingKey = FindTableWithName(tableName);
 
             if (matchingKey == Array.Empty<char>())
             {
@@ -113,9 +113,20 @@ namespace DMS.Commands
 
             (int header, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDP, columnCount);
 
-            //what needs to happend here 
+            long start = DataPageManager.TableOffsets[matchingKey] + headerSectionForMainDP;
+            long end = DataPageManager.TableOffsets[matchingKey] + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
+            long lengthToRead = end - start;
+
+            for (int i = 0; i < logicalOperators.Count; i++)
+            {
+                string logicalOperator = logicalOperators[i].CustomTrim();
+
+
+            }
+
+            //what needs to happen here 
             //first check if the given columns in the where are valid
-            //second split by operands is,not,or if they exist
+            //second split by operands is,not,or,and if they exist
             //third find all the records that meet the criteria and replace them with empty bytes
         }
 
@@ -257,10 +268,7 @@ namespace DMS.Commands
             fs.Read(freeSpaceBytes, 0, 4); //<- free space
             int freeSpace = BitConverter.ToInt32(freeSpaceBytes, 0);
 
-            if (isMainDP)
-                fs.Seek(firstFreeDP + headerSectionForMainDP, SeekOrigin.Begin);
-            else
-                fs.Seek(firstFreeDP + sizeof(int), SeekOrigin.Begin);
+            fs.Seek(isMainDP ? firstFreeDP + headerSectionForMainDP : firstFreeDP + sizeof(int), SeekOrigin.Begin);
 
             while (recordIndex < recordLength)
             {

@@ -11,7 +11,7 @@ namespace DMS.Commands
     //The purpose of this class is only filtration  
     public static class LogicalOperators
     {
-        private static readonly string[] SqlKeywords = { "JOIN", "WHERE", "ORDER BY", "AND", "OR" };
+        private static readonly string[] SqlKeywords = { "join", "where", "order by", "and", "or" };
         private static readonly DKList<string> Operators = new();
         private static DKList<string> _operations = new();
 
@@ -34,10 +34,6 @@ namespace DMS.Commands
                 string token = tokens[i];
                 switch (token)
                 {
-                    case "delete":
-                        Operators.Add("delete");
-                        i = tokens.Length;
-                        break;
                     case "order":
                         if (tokens.CustomContains("by"))
                             Operators.Add("order by");
@@ -125,9 +121,6 @@ namespace DMS.Commands
             {
                 switch (Operators[i])
                 {
-                    case "delete":
-                        DeleteCondition(ref allData, _operations[i]);
-                        break;
                     case "where":
                         WhereCondition(ref allData, colCount, _operations[i]);
                         break;
@@ -145,11 +138,6 @@ namespace DMS.Commands
 
             Operators.Clear();
             _operations.Clear();
-        }
-
-        private static void DeleteCondition(ref IReadOnlyList<char[]> allData, string operation)
-        {
-
         }
 
         private static void WhereCondition(ref IReadOnlyList<char[]> allData, int colCount, string operation) //<- id = 1
@@ -297,7 +285,7 @@ namespace DMS.Commands
                 return;
             }
 
-            (IReadOnlyList<char[]> allDataFromJoinedTable, IReadOnlyList<Column> columnsForJoinedTable, int colCount) joinedTableData = 
+            (IReadOnlyList<char[]> allDataFromJoinedTable, IReadOnlyList<Column> columnsForJoinedTable, int colCount) joinedTableData =
                 AllDataFromJoinedTable(DataPageManager.TableOffsets[matchingKey], matchingKey);
 
             string columnToJoin = operation[(indexOnKeyword + 2)..];
@@ -343,7 +331,7 @@ namespace DMS.Commands
                     combinedRow.AddRange(mainTableRow);
 
                     for (int i = 0; i < joinedTableRow.Count; i++)
-                            combinedRow.Add(joinedTableRow[i]);
+                        combinedRow.Add(joinedTableRow[i]);
 
                     resultRows.Add(combinedRow);
                 }
@@ -361,7 +349,7 @@ namespace DMS.Commands
             return -1;
         }
 
-        private static (IReadOnlyList<char[]> allDataFromJoinedTable, IReadOnlyList<Column> columnsForJoinedTable, int colCount) 
+        private static (IReadOnlyList<char[]> allDataFromJoinedTable, IReadOnlyList<Column> columnsForJoinedTable, int colCount)
             AllDataFromJoinedTable(long startOfOffsetForJoinedTable, char[] matchingKey)
         {
             using FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);

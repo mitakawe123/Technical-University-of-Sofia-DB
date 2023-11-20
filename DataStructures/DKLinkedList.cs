@@ -4,75 +4,145 @@ namespace DataStructures
 {
     public class DKLinkedList<T> : ICollection<T>, IReadOnlyCollection<T>
     {
-        internal DKLinkedListNode<T> head;
-        private int count;
-
-        public int Count => count;
-
+        public Node<T> Head { get; private set; }
+        public Node<T> Tail { get; private set; }
+        public int Count { get; private set; }
         public bool IsReadOnly => false;
 
-        internal DKLinkedListNode<T>? First => head;
-
-        internal DKLinkedListNode<T>? Last => head?.prev;
-
-        public void Add(T item)
+        public void AddFirst(T value)
         {
-            throw new NotImplementedException();
+            var newNode = new Node<T>(value);
+
+            if (Head == null)
+            {
+                Head = Tail = newNode;
+            }
+            else
+            {
+                newNode.Next = Head;
+                Head.Previous = newNode;
+                Head = newNode;
+            }
+
+            Count++;
         }
 
-        public void Clear()
+        public void AddLast(T value)
         {
-            throw new NotImplementedException();
-        }
+            var newNode = new Node<T>(value);
 
-        public bool Contains(T item)
-        {
-            throw new NotImplementedException();
+            if (Head is null)
+            {
+                Head = Tail = newNode;
+            }
+            else
+            {
+                Tail.Next = newNode;
+                newNode.Previous = Tail;
+                Tail = newNode;
+            }
+
+            Count++;
         }
 
         public void CopyTo(T[] array, int arrayIndex)
         {
-            throw new NotImplementedException();
+            if (array is null)
+                throw new ArgumentNullException(nameof(array));
+
+            if (arrayIndex < 0)
+                throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+
+            if (array.Length - arrayIndex < Count)
+                throw new ArgumentException("The destination array is not large enough to contain the elements.");
+
+            Node<T> current = Head;
+            while (current is not null)
+            {
+                array[arrayIndex++] = current.Value;
+                current = current.Next;
+            }
         }
 
-        public bool Remove(T item)
+        public bool Remove(T value)
         {
-            throw new NotImplementedException();
+            var current = Head;
+
+            while (current is not null)
+            {
+                if (!current.Value.Equals(value))
+                    current = current.Next;
+                else
+                {
+                    if (current.Previous is not null)
+                        current.Previous.Next = current.Next;
+                    else
+                        Head = current.Next;
+
+                    if (current.Next is not null)
+                        current.Next.Previous = current.Previous;
+                    else
+                        Tail = current.Previous;
+
+                    Count--;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public void Add(T item)
+        {
+            AddLast(item);
+        }
+
+        public void Clear()
+        {
+            Head = null;
+            Tail = null;
+            Count = 0;
+        }
+
+        public bool Contains(T value)
+        {
+            var current = Head;
+            while (current is not null)
+            {
+                if (current.Value.Equals(value))
+                {
+                    return true;
+                }
+
+                current = current.Next;
+            }
+
+            return false;
         }
 
         public IEnumerator<T> GetEnumerator()
         {
-            throw new NotImplementedException();
+            Node<T> current = Head;
+            while (current is not null)
+            {
+                yield return current.Value;
+                current = current.Next;
+            }
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
-    internal class DKLinkedListNode<T>
+
+    public class Node<T>
     {
-        internal DKLinkedList<T>? list;
-        internal DKLinkedListNode<T>? next;
-        internal DKLinkedListNode<T>? prev;
-        internal T item;
+        public T Value { get; set; }
+        public Node<T> Next { get; set; }
+        public Node<T> Previous { get; set; }
 
-        public DKLinkedListNode(T value) => this.item = value;
-
-        internal DKLinkedListNode(DKLinkedList<T> list, T value)
+        public Node(T value)
         {
-            this.list = list;
-            this.item = value;
-        }
-
-        public DKLinkedList<T>? List => list;
-
-        public DKLinkedListNode<T>? Next => next == null || next == list.head ? null : next;
-
-        public DKLinkedListNode<T>? Previous => prev == null || this == list.head ? null : prev;
-
-        public T Value
-        {
-            get => item;
-            set => item = value;
+            Value = value;
         }
     }
 }
