@@ -1,4 +1,5 @@
-﻿using DMS.Constants;
+﻿using DataStructures;
+using DMS.Constants;
 using DMS.Extensions;
 using DMS.OffsetPages;
 using DMS.Shared;
@@ -14,7 +15,7 @@ namespace DMS.DataPages
     //This limit is applicable not just to table names but also to most other identifiers in SQL Server, such as column names, schema names, constraint names, and others.
     public class DataPageManager
     {
-        private static Dictionary<char[], long> tableOffsets = new();// <-name of the table and start of the offset for the first data page
+        private static DKDictionary<char[], long> tableOffsets = new();// <-name of the table and start of the offset for the first data page
         private static bool isclosing = false;
 
         public const int CounterSection = 16; // 16 bytes for table count, data page count, all data pages count and offset table start
@@ -27,7 +28,7 @@ namespace DMS.DataPages
         public static int AllDataPagesCount = 0; // 4 bytes for data page count
         public static int FirstOffsetPageStart = 0; // 4 bytes for offset table 
 
-        public static Dictionary<char[], long> TableOffsets => tableOffsets;
+        public static DKDictionary<char[], long> TableOffsets => tableOffsets;
 
         static DataPageManager()
         {

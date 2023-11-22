@@ -94,7 +94,7 @@ namespace DMS.Commands
             PrintSelectedValues(allData, valuesToSelect, columnTypeAndName, logicalOperator, columnCount);
         }
 
-        public static void DeleteFromTable(ReadOnlySpan<char> tableName, IReadOnlyList<string> logicalOperators, IReadOnlyList<string> columnsCondition)//<- can contains not keyword
+        public static void DeleteFromTable(ReadOnlySpan<char> tableName, IReadOnlyList<string> logicalOperators, IReadOnlyList<string> columns)//<- can contains not keyword
         {
             char[] matchingKey = FindTableWithName(tableName);
 
@@ -113,6 +113,15 @@ namespace DMS.Commands
 
             (int header, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDP, columnCount);
 
+            bool allElementsContained = columns.CustomAll(x => columnNameAndType.CustomAny(y => y.Name == x));
+            if (!allElementsContained)
+            {
+                Console.WriteLine("Wrong column in the where clause");
+                reader.Close();
+                fileStream.Close();
+                return;
+            }
+
             long start = DataPageManager.TableOffsets[matchingKey] + headerSectionForMainDP;
             long end = DataPageManager.TableOffsets[matchingKey] + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
             long lengthToRead = end - start;
@@ -121,8 +130,10 @@ namespace DMS.Commands
             {
                 string logicalOperator = logicalOperators[i].CustomTrim();
 
-
             }
+
+            reader.Close();
+            fileStream.Close();
 
             //what needs to happen here 
             //first check if the given columns in the where are valid
@@ -238,6 +249,9 @@ namespace DMS.Commands
 
         private static char[] FindTableWithName(ReadOnlySpan<char> tableName)
         {
+            if (DataPageManager.TableOffsets.Count is 0)
+                return Array.Empty<char>();
+
             char[]? matchingKey = null;
             foreach (KeyValuePair<char[], long> item in DataPageManager.TableOffsets)
             {
@@ -268,7 +282,9 @@ namespace DMS.Commands
             fs.Read(freeSpaceBytes, 0, 4); //<- free space
             int freeSpace = BitConverter.ToInt32(freeSpaceBytes, 0);
 
-            fs.Seek(isMainDP ? firstFreeDP + headerSectionForMainDP : firstFreeDP + sizeof(int), SeekOrigin.Begin);
+            long startingPosition = firstFreeDP + DataPageManager.DataPageSize - freeSpace;
+
+            fs.Seek(isMainDP ? startingPosition + headerSectionForMainDP : startingPosition + sizeof(int), SeekOrigin.Begin);
 
             while (recordIndex < recordLength)
             {
@@ -283,9 +299,6 @@ namespace DMS.Commands
                 //go back and update free space in the current data page
                 fs.Seek(firstFreeDP, SeekOrigin.Begin);
                 writer.Write(freeSpace);
-
-                if (recordIndex == recordLength)
-                    return;
 
                 // Move to the end of the current page and read the pointer
                 fs.Seek(firstFreeDP + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);

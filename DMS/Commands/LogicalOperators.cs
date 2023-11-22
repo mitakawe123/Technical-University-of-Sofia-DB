@@ -11,7 +11,7 @@ namespace DMS.Commands
     //The purpose of this class is only filtration  
     public static class LogicalOperators
     {
-        private static readonly string[] SqlKeywords = { "join", "where", "order by", "and", "or" };
+        private static readonly string[] SqlKeywords = { "join", "where", "order by", "and", "or", "distinct" };
         private static readonly DKList<string> Operators = new();
         private static DKList<string> _operations = new();
 
@@ -93,7 +93,7 @@ namespace DMS.Commands
             return parts;
         }
 
-        private static int FindNextKeywordIndex(ReadOnlySpan<char> span, out string foundKeyword)
+        private static int FindNextKeywordIndex(ReadOnlySpan<char> span, out string? foundKeyword)
         {
             foundKeyword = null;
             int earliestIndex = int.MaxValue;
@@ -140,43 +140,20 @@ namespace DMS.Commands
             _operations.Clear();
         }
 
-        private static void WhereCondition(ref IReadOnlyList<char[]> allData, int colCount, string operation) //<- id = 1
+        private static void WhereCondition(ref IReadOnlyList<char[]> allData, int colCount, string operation)
         {
-            int equalsIndex = operation.CustomIndexOf('=');
+            var operatorAndIndex = ParseOperation(operation);
+            string op = operatorAndIndex.Item1;
+            int operatorIndex = operatorAndIndex.Item2;
+
+            char[] value = GetValueFromOperation(operation, operatorIndex);
+
             DKList<int> blockIndexes = new();
-
-            int startIndex = equalsIndex + 1;
-            int endIndex = operation[startIndex..].CustomIndexOf(' ');
-            if (endIndex == -1)
-                endIndex = operation.Length;
-            else
-            {
-                endIndex += startIndex;
-
-                if (startIndex == endIndex)
-                {
-                    for (int i = endIndex + 1; i < operation.Length; i++)
-                    {
-                        if (operation[i].CustomIsWhiteSpace())
-                        {
-                            endIndex = i;
-                            break;
-                        }
-                    }
-
-                    if (startIndex == endIndex)
-                        endIndex = operation.Length;
-                }
-            }
-
-            char[] value = operation[startIndex..endIndex].CustomTrim().CustomToCharArray();
-
-            // Find the block index that contains the target char[]
             for (int i = 0; i < allData.Count; i++)
             {
-                if (value.SequenceEqual(allData[i]))
+                if (CompareValues(allData[i], value, op))
                 {
-                    int blockIndex = i / colCount; // Determine the block index
+                    int blockIndex = i / colCount;
                     blockIndexes.Add(blockIndex);
                 }
             }
@@ -294,8 +271,8 @@ namespace DMS.Commands
             string[] mainTableJoinProp = propsToJoin[0].CustomTrim().CustomSplit('.');
             string[] joinedTableJoinProp = propsToJoin[1].CustomTrim().CustomSplit('.');
 
-            int mainTableJoinIndex = FindColumnIndex(allDataFromMainTable, mainTableJoinProp[1], selectedColumns);
-            int joinedTableJoinIndex = FindColumnIndex(joinedTableData.allDataFromJoinedTable, joinedTableJoinProp[1], selectedColumns);
+            int mainTableJoinIndex = FindColumnIndex(mainTableJoinProp[1], selectedColumns);
+            int joinedTableJoinIndex = FindColumnIndex(joinedTableJoinProp[1], selectedColumns);
 
             DKList<DKList<char[]>> mainTableRows = new();
             for (int i = 0; i < allDataFromMainTable.Count; i += colCount)
@@ -340,7 +317,7 @@ namespace DMS.Commands
             allDataFromMainTable = resultRows.SelectMany(row => row).CustomToArray();
         }
 
-        private static int FindColumnIndex(IReadOnlyList<char[]> tableData, string columnName, IReadOnlyList<Column> selectedColumns)
+        private static int FindColumnIndex(string columnName, IReadOnlyList<Column> selectedColumns)
         {
             for (int i = 0; i < selectedColumns.Count; i++)
                 if (selectedColumns[i].Name == columnName)
@@ -390,6 +367,51 @@ namespace DMS.Commands
 
             allDataFromJoinedTable.RemoveAll(x => x.Length == 0);
             return (allDataFromJoinedTable, columnTypeAndName, columnCount);
+        }
+
+        private static (string, int) ParseOperation(string operation)
+        {
+            string[] operators = { ">=", "<=", "!=", "=", ">", "<" };
+            Array.Sort(operators, (x, y) => y.Length.CompareTo(x.Length));
+
+            foreach (string op in operators)
+            {
+                int index = operation.CustomIndexOf(op);
+                if (index != -1)
+                    return (op, index + op.Length);
+            }
+            throw new InvalidOperationException("No valid operator found.");
+        }
+
+        private static char[] GetValueFromOperation(string operation, int operatorIndex) => operation[operatorIndex..].CustomTrim().CustomToCharArray();
+
+        private static bool CompareValues(char[] value1, char[] value2, string op)
+        {
+            bool isValue1Int = int.TryParse(new string(value1), out int intValue1);
+            bool isValue2Int = int.TryParse(new string(value2), out int intValue2);
+
+            if (isValue1Int && isValue2Int)
+            {
+                return op switch
+                {
+                    "=" => intValue1 == intValue2,
+                    ">" => intValue1 > intValue2,
+                    "<" => intValue1 < intValue2,
+                    ">=" => intValue1 >= intValue2,
+                    "<=" => intValue1 <= intValue2,
+                    _ => false
+                };
+            }
+
+            // If either value is not an integer, fall back to string comparison
+            int comparison = string.Compare(new string(value1), new string(value2));
+            switch (op)
+            {
+                case "=":
+                    return comparison == 0;
+                default:
+                    return false;
+            }
         }
     }
 }

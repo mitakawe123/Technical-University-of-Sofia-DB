@@ -1,4 +1,5 @@
-﻿using DMS.Constants;
+﻿using DataStructures;
+using DMS.Constants;
 using DMS.DataPages;
 using System.Text;
 
@@ -8,7 +9,6 @@ namespace DMS.OffsetPages
     {
         private const long DefaultBufferValue = -5;
 
-        //createtable test(id int primary key, name string(max) null, name1 string(max) null)
         public static void WriteOffsetMapper(KeyValuePair<char[], long> entry)
         {
             int freeSpace = DataPageManager.DataPageSize;
@@ -38,7 +38,7 @@ namespace DMS.OffsetPages
             WriteToCurrentOffsetTable(entry, fs, binaryWriter, startOfFreeOffset, sizeOfCurrentRecord, ref freeSpace);
         }
 
-        public static Dictionary<char[], long> ReadTableOffsets()
+        public static DKDictionary<char[], long> ReadTableOffsets()
         {
             using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open, FileAccess.Read);
             using BinaryReader reader = new(binaryStream, Encoding.UTF8);
@@ -46,7 +46,7 @@ namespace DMS.OffsetPages
             binaryStream.Seek(DataPageManager.FirstOffsetPageStart, SeekOrigin.Begin);
             int freeSpace = reader.ReadInt32();
 
-            Dictionary<char[], long> offsetMap = new();
+            DKDictionary<char[], long> offsetMap = new();
             ReadOffsetTable(binaryStream, reader, offsetMap);
 
             long nextPagePointer = reader.ReadInt64();
@@ -255,7 +255,7 @@ namespace DMS.OffsetPages
             return (int)DefaultBufferValue;
         }
 
-        private static void ReadOffsetTable(FileStream stream, BinaryReader reader, Dictionary<char[], long> offsetMap)
+        private static void ReadOffsetTable(FileStream stream, BinaryReader reader, DKDictionary<char[], long> offsetMap)
         {
             long stopPosition = stream.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer - sizeof(int); //<- this sizeof(int) is free space variable
 

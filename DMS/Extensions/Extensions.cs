@@ -57,7 +57,7 @@ namespace DMS.Extensions
             DKList<T> result = new();
             foreach (T item in source)
                 result.Insert(0, item);
-            
+
             return result;
         }
 
@@ -220,6 +220,21 @@ namespace DMS.Extensions
             return input.CustomAny(x => x.CustomEquals(value));
         }
 
+        public static bool CustomAll<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            if (predicate == null)
+                throw new ArgumentNullException(nameof(predicate));
+
+            foreach (TSource element in source)
+                if (!predicate(element))
+                    return false;
+
+            return true;
+        }
+
         public static bool CustomIsWhiteSpace(this char input) => input is ' ';
 
         public static bool CustomStartsWith(this string input, string value, StringCompare comparisonType)
@@ -339,7 +354,7 @@ namespace DMS.Extensions
         public static string[] CustomSplit(this string input, string[]? separators, StringSplitOptions options)
         {
             if (separators == null || separators.Length == 0)
-                return new [] { input };
+                return new[] { input };
 
             DKList<string> results = new();
             string currentSegment = string.Empty;
@@ -362,9 +377,9 @@ namespace DMS.Extensions
 
                         matchedSeparatorIndex++;
 
-                        if (matchedSeparatorIndex != separator.Length) 
+                        if (matchedSeparatorIndex != separator.Length)
                             continue;
-                        
+
                         results.Add(currentSegment[..potentialMatchIndex]);
                         currentSegment = currentSegment[(potentialMatchIndex + separator.Length)..];
                         matchedSeparator = true;
@@ -373,9 +388,9 @@ namespace DMS.Extensions
                         break;
                     }
 
-                    if (matchedSeparatorIndex <= 0) 
+                    if (matchedSeparatorIndex <= 0)
                         continue;
-                    
+
                     matchedSeparatorIndex = 0;
                     potentialMatchIndex = -1;
                 }
@@ -559,11 +574,11 @@ namespace DMS.Extensions
 
         public static TSource? CustomFirstOrDefault<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate)
         {
-            if(source is null)
+            if (source is null)
                 throw new ArgumentNullException(nameof(source));
 
             foreach (TSource? item in source)
-                if(predicate(item))
+                if (predicate(item))
                     return item;
 
             return default;
