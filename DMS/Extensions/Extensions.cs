@@ -584,16 +584,49 @@ namespace DMS.Extensions
             return default;
         }
 
+        //In C#, the checked keyword is used to explicitly enable overflow checking for arithmetic and conversion operations.
+        //This means that if an arithmetic operation results in a value that is outside the range of the data type, an OverflowException will be thrown. 
         public static IEnumerable<TResult> CustomSelect<TSource, TResult>(this IEnumerable<TSource> source,
             Func<TSource, int, TResult> selector)
         {
-            return default;
+            int index = -1;
+            foreach (TSource element in source)
+            {
+                checked
+                {
+                    index++;
+                }
+
+                yield return selector(element, index);
+            }
         }
 
-        public static DKDictionary<TKey, TElement> CustomToDictionary<TSource, TKey, TElement>(this IEnumerable<TSource> source,
-            Func<TSource, TKey> keySelector, Func<TSource, TElement> elementSelector) where TKey : notnull
+        public static DKDictionary<TKey, TElement> CustomToDictionary<TSource, TKey, TElement>(
+            this IEnumerable<TSource> source,
+            Func<TSource, TKey> keySelector,
+            Func<TSource, TElement> elementSelector) where TKey : notnull
         {
-            return default;
+            if (source is null)
+                throw new ArgumentNullException(nameof(source));
+
+            if (keySelector is null)
+                throw new ArgumentNullException(nameof(keySelector));
+
+            if (elementSelector is null)
+                throw new ArgumentNullException(nameof(elementSelector));
+
+            DKDictionary<TKey, TElement> dictionary = new();
+
+            foreach (TSource item in source)
+            {
+                TKey key = keySelector(item);
+                TElement value = elementSelector(item);
+                // Add key-value pair to the dictionary.
+                // Handle potential duplicates as needed.
+                dictionary.Add(key, value);
+            }
+
+            return dictionary;
         }
 
         public static IEnumerable<TResult> CustomSelectMany<TSource, TResult>(this IEnumerable<TSource> source,
@@ -602,15 +635,11 @@ namespace DMS.Extensions
             return default;
         }
 
-
         #endregion
 
         #region readonly span extensions
 
-        public static ReadOnlySpan<T> CustomSlice<T>(this ReadOnlySpan<T> span, int start, int length)
-        {
-            return new ReadOnlySpan<T>(span.CustomToArray(), start, length);
-        }
+        public static ReadOnlySpan<T> CustomSlice<T>(this ReadOnlySpan<T> span, int start, int length) => new(span.CustomToArray(), start, length);
 
         public static int CustomIndexOf<T>(this ReadOnlySpan<T> span, T value)
         {

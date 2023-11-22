@@ -4,6 +4,7 @@ using DMS.DataPages;
 using DMS.Shared;
 using System.Text;
 using DMS.Extensions;
+using DMS.Utils;
 
 namespace DMS.Commands
 {
@@ -44,16 +45,15 @@ namespace DMS.Commands
 
         public static void SelectFromTable(DKList<string> valuesToSelect, ReadOnlySpan<char> tableName, ReadOnlySpan<char> logicalOperator)
         {
-            (FileStream fileStream, BinaryReader reader) = OpenFileAndReader();
             char[] matchingKey = FindTableWithName(tableName);
 
             if (matchingKey == Array.Empty<char>())
             {
                 Console.WriteLine("There is no table with the given name");
-                fileStream.Close();
-                reader.Close();
                 return;
             }
+
+            (FileStream fileStream, BinaryReader reader) = OpenFileAndReader();
 
             fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
 
@@ -93,7 +93,7 @@ namespace DMS.Commands
 
             PrintSelectedValues(allData, valuesToSelect, columnTypeAndName, logicalOperator, columnCount);
         }
-
+        //trying to make it work then split and refactor the code
         public static void DeleteFromTable(ReadOnlySpan<char> tableName, IReadOnlyList<string> logicalOperators, IReadOnlyList<string> columns)//<- can contains not keyword
         {
             char[] matchingKey = FindTableWithName(tableName);
@@ -108,12 +108,12 @@ namespace DMS.Commands
 
             fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
 
-            (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) = ReadTableMetadata(reader);
-            int headerSectionForMainDP = 20 + tableLength;
+            var metadata = ReadTableMetadata(reader);
+            int headerSectionForMainDP = 20 + metadata.tableLength;
 
-            (int header, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDP, columnCount);
+            (int header, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDP, metadata.columnCount);
 
-            bool allElementsContained = columns.CustomAll(x => columnNameAndType.CustomAny(y => y.Name == x));
+            bool allElementsContained = columns.CustomAll(x => columnNameAndType.CustomAny(y => y.Name == x));//there can be case with not in front of the column
             if (!allElementsContained)
             {
                 Console.WriteLine("Wrong column in the where clause");
@@ -126,19 +126,51 @@ namespace DMS.Commands
             long end = DataPageManager.TableOffsets[matchingKey] + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
             long lengthToRead = end - start;
 
-            for (int i = 0; i < logicalOperators.Count; i++)
-            {
-                string logicalOperator = logicalOperators[i].CustomTrim();
+            DKList<char[]> allData = ReadAllData(lengthToRead, reader);
 
+            fileStream.Seek(end, SeekOrigin.Begin);
+            long pointer = reader.ReadInt64();
+
+            while (pointer != DataPageManager.DefaultBufferForDP)
+            {
+                fileStream.Seek(pointer, SeekOrigin.Begin);
+                reader.ReadInt32(); //<- free space
+                start = pointer + sizeof(int);
+                end = pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
+                lengthToRead = end - start;
+
+                allData = allData.Concat(ReadAllData(lengthToRead, reader)).CustomToList();
+                fileStream.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+                pointer = reader.ReadInt64();
+            }
+
+            allData.RemoveAll(x => x.Length == 0);
+
+            DKList<string> _operations = new();
+
+            foreach (string item in logicalOperators)
+            {
+                string logicalOperator = item.CustomTrim();
+                var operation = HelperMethods.SplitSqlQuery(logicalOperator);
+                _operations.Add(operation[0]);
+
+                var operatorAndIndex = LogicalOperators.ParseOperation(operation[0]);
+                string op = operatorAndIndex.Item1;
+                int operatorIndex = operatorAndIndex.Item2;
+
+                char[] value = LogicalOperators.GetValueFromOperation(operation[0], operatorIndex);
+
+                for (int i = 0; i < allData.Count; i++)
+                {
+                    if (LogicalOperators.CompareValues(allData[i], value, op))
+                    {
+
+                    }
+                }
             }
 
             reader.Close();
             fileStream.Close();
-
-            //what needs to happen here 
-            //first check if the given columns in the where are valid
-            //second split by operands is,not,or,and if they exist
-            //third find all the records that meet the criteria and replace them with empty bytes
         }
 
         public static DKList<char[]> ReadAllData(long lengthToRead, BinaryReader reader)
@@ -150,7 +182,7 @@ namespace DMS.Commands
                 int length = reader.ReadInt32();
                 offset += sizeof(int);
 
-                if (offset >= lengthToRead)
+                if (offset >= lengthToRead || length < 0)
                     return columnsValues;
 
                 char[] charArray = reader.ReadChars(length);

@@ -187,7 +187,7 @@ namespace DMS.Commands
 
             SQLCommands.SelectFromTable(columnValues, tableName, logicalOperator);
         }
-        //delete from test where id > 1
+        
         private static void DeleteFromTable(string command)
         {
             ReadOnlySpan<char> commandSpan = command;

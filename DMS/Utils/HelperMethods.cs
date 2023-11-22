@@ -1,7 +1,12 @@
-﻿namespace DMS.Utils
+﻿using DataStructures;
+using DMS.Extensions;
+
+namespace DMS.Utils
 {
     public static class HelperMethods
     {
+        private static readonly string[] SqlKeywords = { "join", "where", "order by", "and", "or", "distinct" };
+
         public static bool CustomExists<T>(T[] array, Predicate<T> match) => FindIndex(array, 0, array.Length, match) != -1;
 
         public static int FindIndex<T>(T[] array, int startIndex, int count, Predicate<T> match)
@@ -14,48 +19,51 @@
             return -1;
         }
 
-        public static void QuickSort<T>(T[] array, Comparison<T> comparison) => QuickSort(array, 0, array.Length - 1, comparison);
-
-        public static int Get7BitEncodedIntSize(int value)
+        public static DKList<string> SplitSqlQuery(ReadOnlySpan<char> sqlQuery)
         {
-            int size = 0;
-            uint num = (uint)value;
-            while (num >= 0x80)
+            DKList<string> parts = new();
+            int currentIndex = 0;
+
+            while (currentIndex < sqlQuery.Length)
             {
-                num >>= 7;
-                size++;
-            }
-            size++;
-            return size;
-        }
-
-        private static void QuickSort<T>(T[] array, int left, int right, Comparison<T> comparison)
-        {
-            if (left >= right) 
-                return;
-            
-            int pivotIndex = Partition(array, left, right, comparison);
-            QuickSort(array, left, pivotIndex - 1, comparison);
-            QuickSort(array, pivotIndex + 1, right, comparison);
-        }
-
-        private static int Partition<T>(T[] array, int left, int right, Comparison<T> comparison)
-        {
-            T pivot = array[right];
-            int i = left - 1;
-
-            for (int j = left; j < right; j++)
-            {
-                if (comparison(array[j], pivot) <= 0)
+                int nextKeywordIndex = FindNextKeywordIndex(sqlQuery[currentIndex..], out string foundKeyword);
+                if (nextKeywordIndex != -1)
                 {
-                    i++;
-                    Swap(ref array[i], ref array[j]);
+                    nextKeywordIndex += currentIndex;
+                    string part = sqlQuery.CustomSlice(currentIndex, nextKeywordIndex - currentIndex).ToString()
+                        .CustomTrim();
+                    if (!string.IsNullOrEmpty(part))
+                        parts.Add(part);
+                    currentIndex = nextKeywordIndex + foundKeyword.Length;
+                }
+                else
+                {
+                    string part = sqlQuery[currentIndex..].ToString().CustomTrim();
+                    if (!string.IsNullOrEmpty(part))
+                        parts.Add(part);
+                    break;
                 }
             }
-            Swap(ref array[i + 1], ref array[right]);
-            return i + 1;
+
+            return parts;
         }
 
-        private static void Swap<T>(ref T x, ref T y) => (x, y) = (y, x);
+        private static int FindNextKeywordIndex(ReadOnlySpan<char> span, out string? foundKeyword)
+        {
+            foundKeyword = null;
+            int earliestIndex = int.MaxValue;
+
+            foreach (string keyword in SqlKeywords)
+            {
+                int index = span.CustomIndexOf(keyword.CustomAsSpan(), StringComparison.OrdinalIgnoreCase);
+                if (index == -1 || index >= earliestIndex)
+                    continue;
+
+                earliestIndex = index;
+                foundKeyword = keyword;
+            }
+
+            return earliestIndex == int.MaxValue ? -1 : earliestIndex;
+        }
     }
 }

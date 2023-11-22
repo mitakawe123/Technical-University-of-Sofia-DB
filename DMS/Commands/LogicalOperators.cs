@@ -4,6 +4,7 @@ using DMS.Constants;
 using DMS.DataPages;
 using DMS.Extensions;
 using DMS.Shared;
+using DMS.Utils;
 
 namespace DMS.Commands
 {
@@ -11,7 +12,6 @@ namespace DMS.Commands
     //The purpose of this class is only filtration  
     public static class LogicalOperators
     {
-        private static readonly string[] SqlKeywords = { "join", "where", "order by", "and", "or", "distinct" };
         private static readonly DKList<string> Operators = new();
         private static DKList<string> _operations = new();
 
@@ -59,56 +59,9 @@ namespace DMS.Commands
                 }
             }
 
-            _operations = SplitSqlQuery(logicalOperator);
+            _operations = HelperMethods.SplitSqlQuery(logicalOperator);
 
             ExecuteConditionQuery(ref allData, allColumnsForTable, selectedColumns, colCount);
-        }
-
-        private static DKList<string> SplitSqlQuery(ReadOnlySpan<char> sqlQuery)
-        {
-            DKList<string> parts = new();
-            int currentIndex = 0;
-
-            while (currentIndex < sqlQuery.Length)
-            {
-                int nextKeywordIndex = FindNextKeywordIndex(sqlQuery[currentIndex..], out string foundKeyword);
-                if (nextKeywordIndex != -1)
-                {
-                    nextKeywordIndex += currentIndex;
-                    string part = sqlQuery.CustomSlice(currentIndex, nextKeywordIndex - currentIndex).ToString()
-                        .CustomTrim();
-                    if (!string.IsNullOrEmpty(part))
-                        parts.Add(part);
-                    currentIndex = nextKeywordIndex + foundKeyword.Length;
-                }
-                else
-                {
-                    string part = sqlQuery[currentIndex..].ToString().CustomTrim();
-                    if (!string.IsNullOrEmpty(part))
-                        parts.Add(part);
-                    break;
-                }
-            }
-
-            return parts;
-        }
-
-        private static int FindNextKeywordIndex(ReadOnlySpan<char> span, out string? foundKeyword)
-        {
-            foundKeyword = null;
-            int earliestIndex = int.MaxValue;
-
-            foreach (string keyword in SqlKeywords)
-            {
-                int index = span.CustomIndexOf(keyword.CustomAsSpan(), StringComparison.OrdinalIgnoreCase);
-                if (index == -1 || index >= earliestIndex)
-                    continue;
-
-                earliestIndex = index;
-                foundKeyword = keyword;
-            }
-
-            return earliestIndex == int.MaxValue ? -1 : earliestIndex;
         }
 
         private static void ExecuteConditionQuery(
@@ -139,6 +92,8 @@ namespace DMS.Commands
             Operators.Clear();
             _operations.Clear();
         }
+
+        #region where clause
 
         private static void WhereCondition(ref IReadOnlyList<char[]> allData, int colCount, string operation)
         {
@@ -176,6 +131,54 @@ namespace DMS.Commands
             allData = result;
         }
 
+        public static (string, int) ParseOperation(string operation)
+        {
+            string[] operators = { ">=", "<=", "!=", "=", ">", "<" };
+            Array.Sort(operators, (x, y) => y.Length.CompareTo(x.Length));
+
+            foreach (string op in operators)
+            {
+                int index = operation.CustomIndexOf(op);
+                if (index != -1)
+                    return (op, index + op.Length);
+            }
+            throw new InvalidOperationException("No valid operator found.");
+        }
+
+        public static char[] GetValueFromOperation(string operation, int operatorIndex) => operation[operatorIndex..].CustomTrim().CustomToCharArray();
+
+        public static bool CompareValues(char[] value1, char[] value2, string op)
+        {
+            //need to check for DATE
+            bool isValue1Int = int.TryParse(new string(value1), out int intValue1);
+            bool isValue2Int = int.TryParse(new string(value2), out int intValue2);
+
+            if (isValue1Int && isValue2Int)
+            {
+                return op switch
+                {
+                    "=" => intValue1 == intValue2,
+                    ">" => intValue1 > intValue2,
+                    "<" => intValue1 < intValue2,
+                    ">=" => intValue1 >= intValue2,
+                    "<=" => intValue1 <= intValue2,
+                    _ => false
+                };
+            }
+
+            // If either value is not an integer, fall back to string comparison
+            int comparison = string.Compare(new string(value1), new string(value2));
+            return op switch
+            {
+                "=" => comparison == 0,
+                _ => false,
+            };
+        }
+
+        #endregion
+
+        #region distinct clause
+
         private static void DistinctCondition(ref IReadOnlyList<char[]> allData)
         {
             DKList<char[]> result = new();
@@ -187,6 +190,10 @@ namespace DMS.Commands
             allData = result;
         }
 
+        #endregion
+
+        #region order by clause
+        
         private static void OrderByCondition(
             ref IReadOnlyList<char[]> allData,
             IReadOnlyList<Column> allColumnsForTable,
@@ -194,10 +201,10 @@ namespace DMS.Commands
             string operation)
         {
             string[] multiColOrdering = operation.CustomSplit(',');
-
+            
             // Map column names to their indices
-            Dictionary<string, int> columnMap = allColumnsForTable.Select((col, index) => new { col.Name, Index = index })
-                .ToDictionary(x => new string(x.Name), x => x.Index);
+            DKDictionary<string, int> columnMap = allColumnsForTable.CustomSelect((col, index) => new { col.Name, Index = index })
+                .CustomToDictionary(x => new string(x.Name), x => x.Index);
 
             DKList<(int Index, bool IsAscending)> sortingColumns = new();
             foreach (string orderClause in multiColOrdering)
@@ -238,6 +245,10 @@ namespace DMS.Commands
             allData = sortedData.AsReadOnly();
         }
 
+        #endregion
+
+        #region join clause
+        
         private static void JoinCondition(
             ref IReadOnlyList<char[]> allDataFromMainTable,
             DKList<Column> selectedColumns,
@@ -316,7 +327,7 @@ namespace DMS.Commands
 
             allDataFromMainTable = resultRows.SelectMany(row => row).CustomToArray();
         }
-
+       
         private static int FindColumnIndex(string columnName, IReadOnlyList<Column> selectedColumns)
         {
             for (int i = 0; i < selectedColumns.Count; i++)
@@ -368,50 +379,7 @@ namespace DMS.Commands
             allDataFromJoinedTable.RemoveAll(x => x.Length == 0);
             return (allDataFromJoinedTable, columnTypeAndName, columnCount);
         }
-
-        private static (string, int) ParseOperation(string operation)
-        {
-            string[] operators = { ">=", "<=", "!=", "=", ">", "<" };
-            Array.Sort(operators, (x, y) => y.Length.CompareTo(x.Length));
-
-            foreach (string op in operators)
-            {
-                int index = operation.CustomIndexOf(op);
-                if (index != -1)
-                    return (op, index + op.Length);
-            }
-            throw new InvalidOperationException("No valid operator found.");
-        }
-
-        private static char[] GetValueFromOperation(string operation, int operatorIndex) => operation[operatorIndex..].CustomTrim().CustomToCharArray();
-
-        private static bool CompareValues(char[] value1, char[] value2, string op)
-        {
-            bool isValue1Int = int.TryParse(new string(value1), out int intValue1);
-            bool isValue2Int = int.TryParse(new string(value2), out int intValue2);
-
-            if (isValue1Int && isValue2Int)
-            {
-                return op switch
-                {
-                    "=" => intValue1 == intValue2,
-                    ">" => intValue1 > intValue2,
-                    "<" => intValue1 < intValue2,
-                    ">=" => intValue1 >= intValue2,
-                    "<=" => intValue1 <= intValue2,
-                    _ => false
-                };
-            }
-
-            // If either value is not an integer, fall back to string comparison
-            int comparison = string.Compare(new string(value1), new string(value2));
-            switch (op)
-            {
-                case "=":
-                    return comparison == 0;
-                default:
-                    return false;
-            }
-        }
+        
+        #endregion
     }
 }
