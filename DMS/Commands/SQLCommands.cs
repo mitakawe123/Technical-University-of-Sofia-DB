@@ -3,6 +3,7 @@ using DMS.Constants;
 using DMS.DataPages;
 using DMS.Shared;
 using System.Text;
+using System.Threading.Channels;
 using DMS.Extensions;
 using DMS.Utils;
 
@@ -113,6 +114,8 @@ namespace DMS.Commands
 
             (int header, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDP, metadata.columnCount);
 
+            long memoizedPosition = fileStream.Position;
+
             bool allElementsContained = columns.CustomAll(x => columnNameAndType.CustomAny(y => y.Name == x));//there can be case with not in front of the column
             if (!allElementsContained)
             {
@@ -162,10 +165,13 @@ namespace DMS.Commands
 
                 for (int i = 0; i < allData.Count; i++)
                 {
-                    if (LogicalOperators.CompareValues(allData[i], value, op))
-                    {
-
-                    }
+                    if (!LogicalOperators.CompareValues(allData[i], value, op)) 
+                        continue;
+                    
+                    fileStream.Seek(memoizedPosition, SeekOrigin.Begin);
+                    int rowsDeleted = ReadAndDeleteData(lengthToRead, fileStream, reader, value, op, metadata.columnCount);
+                    if (rowsDeleted > 0)
+                        Console.WriteLine($"Rows affected {rowsDeleted}");
                 }
             }
 
@@ -193,6 +199,50 @@ namespace DMS.Commands
 
             columnsValues.RemoveAll(x => x.Length == 0);
             return columnsValues;
+        }
+
+        private static int ReadAndDeleteData(
+            long lengthToRead,
+            FileStream fileStream,
+            BinaryReader reader,
+            char[] value,
+            string operation,
+            int columnCount)
+        {
+            int deletedRowsCounter = 0;
+            int offset = 0;
+            /*while (offset < lengthToRead)
+            {
+                int length = reader.ReadInt32();
+                offset += sizeof(int);
+
+                if (offset >= lengthToRead || length < 0)
+                    return deletedRowsCounter;
+
+                char[] charArray = reader.ReadChars(length);
+                offset += length;
+
+                if (!charArray.SequenceEqual(value) && !LogicalOperators.CompareValues(charArray, value, operation)) 
+                    continue;
+                
+                int bytesToDelete = 0;
+                fileStream.Seek(fileStream.Position - sizeof(int) - length, SeekOrigin.Begin);
+                for (int i = 0; i < columnCount; i++)
+                {
+                    int lgh = reader.ReadInt32();
+                    char[] arr = reader.ReadChars(lgh);
+
+                    bytesToDelete += sizeof(int) + lgh;
+                }
+
+                fileStream.Seek(fileStream.Position - bytesToDelete, SeekOrigin.Begin);
+                fileStream.Write(new byte[bytesToDelete]);
+
+                deletedRowsCounter++;
+                offset += bytesToDelete;
+            }*/
+
+            return deletedRowsCounter;
         }
 
         public static (int header, DKList<Column> columnNameAndType) ReadColumns(BinaryReader reader, int initialHeaderSection, int columnCount)
