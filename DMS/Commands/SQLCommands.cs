@@ -28,20 +28,18 @@ namespace DMS.Commands
             (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) =
                 ReadTableMetadata(reader);
 
-            int headerSectionForMainDP = 20 + tableLength;
-            (headerSectionForMainDP, DKList<Column> columnNameAndType) =
-                ReadColumns(reader, headerSectionForMainDP, columnCount);
+            int headerSectionForMainDp = 20 + tableLength;
+            (headerSectionForMainDp, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDp, columnCount);
 
-            long firstFreeDP =
-                FindFirstFreeDataPageOffsetStart(fileStream, reader, DataPageManager.TableOffsets[matchingKey]);
+            long firstFreeDp = FindFirstFreeDataPageOffsetStart(fileStream, reader, DataPageManager.TableOffsets[matchingKey]);
 
-            bool isMainDP = firstFreeDP == DataPageManager.TableOffsets[matchingKey];
+            bool isMainDp = firstFreeDp == DataPageManager.TableOffsets[matchingKey];
 
             fileStream.Close();
             reader.Close();
 
             byte[] allRecords = GetAllData(columnsValues);
-            InsertIntoFreeSpace(allRecords, isMainDP, headerSectionForMainDP, firstFreeDP);
+            InsertIntoFreeSpace(allRecords, isMainDp, headerSectionForMainDp, firstFreeDp);
         }
 
         public static void SelectFromTable(DKList<string> valuesToSelect, ReadOnlySpan<char> tableName, ReadOnlySpan<char> logicalOperator)
@@ -59,17 +57,15 @@ namespace DMS.Commands
             fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
 
             (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) = ReadTableMetadata(reader);
-            int headerSectionForMainDP = 20 + tableLength;
+            int headerSectionForMainDp = 20 + tableLength;
 
-            (headerSectionForMainDP, DKList<Column> columnTypeAndName) = ReadColumns(reader, headerSectionForMainDP, columnCount);
+            (headerSectionForMainDp, DKList<Column> columnTypeAndName) = ReadColumns(reader, headerSectionForMainDp, columnCount);
 
-            long start = DataPageManager.TableOffsets[matchingKey] + headerSectionForMainDP;
+            long start = DataPageManager.TableOffsets[matchingKey] + headerSectionForMainDp;
             long end = DataPageManager.TableOffsets[matchingKey] + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
             long lengthToRead = end - start;
 
-            fileStream.Seek(start, SeekOrigin.Begin);
-
-            DKList<char[]> allData = ReadAllData(lengthToRead, reader);
+            DKList<char[]> allData = ReadAllData(end - fileStream.Position, reader);
 
             fileStream.Seek(end, SeekOrigin.Begin);
             long pointer = reader.ReadInt64();
@@ -110,11 +106,11 @@ namespace DMS.Commands
             fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
 
             var metadata = ReadTableMetadata(reader);
-            int headerSectionForMainDP = 20 + metadata.tableLength;
+            int headerSectionForMainDp = 20 + metadata.tableLength;
 
-            (int header, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDP, metadata.columnCount);
+            (headerSectionForMainDp, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDp, metadata.columnCount);
 
-            long memoizedPosition = fileStream.Position;
+            long memorizePosition = fileStream.Position;
 
             bool allElementsContained = columns.CustomAll(x => columnNameAndType.CustomAny(y => y.Name == x));//there can be case with not in front of the column
             if (!allElementsContained)
@@ -125,7 +121,7 @@ namespace DMS.Commands
                 return;
             }
 
-            long start = DataPageManager.TableOffsets[matchingKey] + headerSectionForMainDP;
+            long start = DataPageManager.TableOffsets[matchingKey] + headerSectionForMainDp;
             long end = DataPageManager.TableOffsets[matchingKey] + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
             long lengthToRead = end - start;
 
@@ -149,13 +145,15 @@ namespace DMS.Commands
 
             allData.RemoveAll(x => x.Length == 0);
 
-            DKList<string> _operations = new();
+            DKList<string> operations = new();
 
+            //What is the error here ->
+            //Before deleting record I need to find the column index and validate it
             foreach (string item in logicalOperators)
             {
                 string logicalOperator = item.CustomTrim();
-                var operation = HelperMethods.SplitSqlQuery(logicalOperator);
-                _operations.Add(operation[0]);
+                DKList<string> operation = HelperMethods.SplitSqlQuery(logicalOperator);
+                operations.Add(operation[0]);
 
                 var operatorAndIndex = LogicalOperators.ParseOperation(operation[0]);
                 string op = operatorAndIndex.Item1;
@@ -163,13 +161,13 @@ namespace DMS.Commands
 
                 char[] value = LogicalOperators.GetValueFromOperation(operation[0], operatorIndex);
 
-                for (int i = 0; i < allData.Count; i++)
+                foreach (char[] charArr in allData)
                 {
-                    if (!LogicalOperators.CompareValues(allData[i], value, op)) 
+                    if (!LogicalOperators.CompareValues(charArr, value, op))
                         continue;
-                    
-                    fileStream.Seek(memoizedPosition, SeekOrigin.Begin);
-                    int rowsDeleted = ReadAndDeleteData(lengthToRead, fileStream, reader, value, op, metadata.columnCount);
+
+                    fileStream.Seek(memorizePosition, SeekOrigin.Begin);
+                    int rowsDeleted = ReadAndDeleteData(fileStream, reader, end - memorizePosition, value, op, metadata.columnCount);
                     if (rowsDeleted > 0)
                         Console.WriteLine($"Rows affected {rowsDeleted}");
                 }
@@ -202,16 +200,16 @@ namespace DMS.Commands
         }
 
         private static int ReadAndDeleteData(
-            long lengthToRead,
             FileStream fileStream,
             BinaryReader reader,
+            long lengthToRead,
             char[] value,
             string operation,
             int columnCount)
         {
             int deletedRowsCounter = 0;
             int offset = 0;
-            /*while (offset < lengthToRead)
+            while (offset < lengthToRead)
             {
                 int length = reader.ReadInt32();
                 offset += sizeof(int);
@@ -222,25 +220,24 @@ namespace DMS.Commands
                 char[] charArray = reader.ReadChars(length);
                 offset += length;
 
-                if (!charArray.SequenceEqual(value) && !LogicalOperators.CompareValues(charArray, value, operation)) 
+                if (!charArray.SequenceEqual(value) && !LogicalOperators.CompareValues(charArray, value, operation))
                     continue;
-                
+
                 int bytesToDelete = 0;
                 fileStream.Seek(fileStream.Position - sizeof(int) - length, SeekOrigin.Begin);
+
                 for (int i = 0; i < columnCount; i++)
                 {
                     int lgh = reader.ReadInt32();
-                    char[] arr = reader.ReadChars(lgh);
-
+                    reader.ReadChars(lgh);
                     bytesToDelete += sizeof(int) + lgh;
                 }
-
                 fileStream.Seek(fileStream.Position - bytesToDelete, SeekOrigin.Begin);
                 fileStream.Write(new byte[bytesToDelete]);
 
                 deletedRowsCounter++;
                 offset += bytesToDelete;
-            }*/
+            }
 
             return deletedRowsCounter;
         }
