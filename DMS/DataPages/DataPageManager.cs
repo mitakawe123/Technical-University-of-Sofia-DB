@@ -13,33 +13,35 @@ namespace DMS.DataPages
     //in Microsoft SQL Server, there is a limit on the length of table names.
     //The maximum length allowed for a table name is 128 characters.
     //This limit is applicable not just to table names but also to most other identifiers in SQL Server, such as column names, schema names, constraint names, and others.
-    public class DataPageManager
+    public static class DataPageManager
     {
+        private const int CounterSection = 16; // 16 bytes for table count, data page count, all data pages count and offset table start
+        
         private static DKDictionary<char[], long> tableOffsets = new();// <-name of the table and start of the offset for the first data page
+        private static int TablesCount = 0; // 4 bytes for table count
         private static bool isclosing = false;
 
-        public const int CounterSection = 16; // 16 bytes for table count, data page count, all data pages count and offset table start
-        public const long DefaultBufferForDP = -1;// Default pointer to the next page
+        public static DKDictionary<char[], long> TableOffsets => tableOffsets;
+
+        public const long DefaultBufferForDp = -1;// Default pointer to the next page
         public const long BufferOverflowPointer = 8; //8 bytes for pointer to next page
+        public const int Metadata = 20;// 20 bytes for the metadata like free space and record size
         public const int DataPageSize = 8192; // 8KB
 
-        public static int TablesCount = 0; // 4 bytes for table count
         public static int DataPageCounter = 0; // 4 bytes for data page count  
         public static int AllDataPagesCount = 0; // 4 bytes for data page count
         public static int FirstOffsetPageStart = 0; // 4 bytes for offset table 
 
-        public static DKDictionary<char[], long> TableOffsets => tableOffsets;
-
         static DataPageManager()
         {
-            SetConsoleCtrlHandler(new HandlerRoutine(ConsoleCtrlCheck), true);
+            SetConsoleCtrlHandler(ConsoleCtrlCheck, true);
 
             PagesCountSection();
         }
 
         public static void InitDataPageManager()
         {
-            SystemEvents.SessionEnding += new SessionEndingEventHandler(SystemEvents_SessionEnding);
+            SystemEvents.SessionEnding += SystemEvents_SessionEnding;//only supported on windows
 
             Console.WriteLine("Welcome to DMS");
         }
@@ -75,8 +77,6 @@ namespace DMS.DataPages
             int freeSpace = DataPageSize;
             int currentPage = AllDataPagesCount;
 
-            long freeSpaceLocation = 0;
-            
             if (DataPageCounter == 0)
                 FirstOffsetPageStart = (numberOfPagesNeeded * DataPageSize) + CounterSection;
 
@@ -87,8 +87,7 @@ namespace DMS.DataPages
                 //this is the first Data page for the table and we need to write the header section only in this data page
                 if (currentPage == AllDataPagesCount)
                 {
-                    freeSpaceLocation = binaryStream.Position;
-                    freeSpace -= 20 + tableName.Length;//<- minus the header section
+                    freeSpace -= Metadata + tableName.Length;//<- minus the header section
 
                     //header section for the table data page is 16 bytes plus 2 bytes per char for the table name
                     writer.Write(freeSpace);// 4 bytes for free space
@@ -117,7 +116,7 @@ namespace DMS.DataPages
                 binaryStream.Seek((currentPage * DataPageSize) + CounterSection, SeekOrigin.Begin);
                 writer.Write(freeSpace);
 
-                //I don't think i need this if statement here anymore
+                //I don't think I need this if statement here anymore
                 // If there are more columns to write, store a reference to the next page
                 if (columnIndex < columns.Count)
                 {
@@ -138,7 +137,7 @@ namespace DMS.DataPages
 
             //update the pointer in the last DP
             binaryStream.Seek((currentPage * DataPageSize) + CounterSection - BufferOverflowPointer, SeekOrigin.Begin);
-            writer.Write(DefaultBufferForDP);
+            writer.Write(DefaultBufferForDp);
 
             TablesCount++;
             DataPageCounter += pageNum;
@@ -253,7 +252,7 @@ namespace DMS.DataPages
             string tableNameFromFile = Encoding.UTF8.GetString(tableNameInBytes);
             int columnsCount = reader.ReadInt32();
 
-            Console.WriteLine($"Table name: {tableNameFromFile} \nOccupied space in bytes: {recordSize} \nThe table spans accross {numberOfDataPagesForTable} data pages \nColumns count is {columnsCount}");
+            Console.WriteLine($"Table name: {tableNameFromFile} \nOccupied space in bytes: {recordSize} \nThe table spans across {numberOfDataPagesForTable} data pages \nColumns count is {columnsCount}");
         }
 
         private static int FindDataPageNumberForTable(long startingPosition)
@@ -266,7 +265,7 @@ namespace DMS.DataPages
             int counter = 1;
             long pointer = reader.ReadInt64();
 
-            while (pointer != DefaultBufferForDP)
+            while (pointer != DefaultBufferForDp)
             {
                 fileStream.Seek(pointer + DataPageSize - BufferOverflowPointer, SeekOrigin.Begin);
                 pointer = reader.ReadInt64();
@@ -318,6 +317,8 @@ namespace DMS.DataPages
                     isclosing = true;
                     Console.WriteLine("Closing the program ....");
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(ctrlType), ctrlType, null);
             }
             return true;
         }

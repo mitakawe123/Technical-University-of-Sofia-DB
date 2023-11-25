@@ -10,16 +10,6 @@ namespace DMS.Utils
 
         public static bool CustomExists<T>(T[] array, Predicate<T> match) => FindIndex(array, 0, array.Length, match) != -1;
 
-        public static int FindIndex<T>(T[] array, int startIndex, int count, Predicate<T> match)
-        {
-            int endIndex = startIndex + count;
-            for (int i = startIndex; i < endIndex; i++)
-                if (match(array[i]))
-                    return i;
-            
-            return -1;
-        }
-
         public static int FindColumnIndex(string columnName, IReadOnlyList<Column> selectedColumns)
         {
             for (int i = 0; i < selectedColumns.Count; i++)
@@ -40,22 +30,31 @@ namespace DMS.Utils
                 if (nextKeywordIndex != -1)
                 {
                     nextKeywordIndex += currentIndex;
-                    string part = sqlQuery.CustomSlice(currentIndex, nextKeywordIndex - currentIndex).ToString()
-                        .CustomTrim();
-                    if (!string.IsNullOrEmpty(part))
+                    string part = sqlQuery.CustomSlice(currentIndex, nextKeywordIndex - currentIndex).ToString().CustomTrim();
+                    if (!part.CustomIsNullOrEmpty())
                         parts.Add(part);
                     currentIndex = nextKeywordIndex + foundKeyword.Length;
                 }
                 else
                 {
                     string part = sqlQuery[currentIndex..].ToString().CustomTrim();
-                    if (!string.IsNullOrEmpty(part))
+                    if (!part.CustomIsNullOrEmpty())
                         parts.Add(part);
                     break;
                 }
             }
 
             return parts;
+        }
+
+        private static int FindIndex<T>(IReadOnlyList<T> array, int startIndex, int count, Predicate<T> match)
+        {
+            int endIndex = startIndex + count;
+            for (int i = startIndex; i < endIndex; i++)
+                if (match(array[i]))
+                    return i;
+            
+            return -1;
         }
 
         private static int FindNextKeywordIndex(ReadOnlySpan<char> span, out string? foundKeyword)
@@ -66,7 +65,7 @@ namespace DMS.Utils
             foreach (string keyword in SqlKeywords)
             {
                 int index = span.CustomIndexOf(keyword.CustomAsSpan(), StringComparison.OrdinalIgnoreCase);
-                if (index == -1 || index >= earliestIndex)
+                if (index is -1 || index >= earliestIndex)
                     continue;
 
                 earliestIndex = index;

@@ -271,7 +271,7 @@ namespace DMS.OffsetPages
                     return;
                 }
 
-                if (tableNameLength != 0 && !offsetMap.ContainsKey(tableName))
+                if (tableNameLength is not 0 && !offsetMap.ContainsKey(tableName))
                     offsetMap.Add(tableName, offsetValue);
             }
         }

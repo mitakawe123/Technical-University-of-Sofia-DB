@@ -4,7 +4,7 @@
 
     public class DKDictionary<K, V> : IDictionary<K, V> where K : notnull
     {
-        private DKLinkedList<KeyValuePair<K, V>> _items = new();
+        private readonly DKLinkedList<KeyValuePair<K, V>> _items = new();
 
         public V this[K key]
         {
@@ -63,32 +63,20 @@
         public void Add(K key, V value)
         {
             if (ContainsKey(key))
-            {
                 throw new ArgumentException("An item with the same key has already been added.");
-            }
 
             _items.AddLast(new KeyValuePair<K, V>(key, value));
         }
 
-        public void Add(KeyValuePair<K, V> item)
-        {
-            Add(item.Key, item.Value);
-        }
+        public void Add(KeyValuePair<K, V> item) => Add(item.Key, item.Value);
 
-        public void Clear()
-        {
-            _items.Clear();
-        }
+        public void Clear() => _items.Clear();
 
         public bool Contains(KeyValuePair<K, V> item)
         {
             foreach (var pair in _items)
-            {
                 if (pair.Key.Equals(item.Key) && pair.Value.Equals(item.Value))
-                {
                     return true;
-                }
-            }
 
             return false;
         }
@@ -158,7 +146,7 @@
                 }
             }
 
-            value = default(V);
+            value = default;
             return false;
         }
 

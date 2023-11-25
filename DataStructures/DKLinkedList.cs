@@ -13,7 +13,7 @@ namespace DataStructures
         {
             var newNode = new Node<T>(value);
 
-            if (Head == null)
+            if (Head is null)
             {
                 Head = Tail = newNode;
             }
@@ -110,9 +110,7 @@ namespace DataStructures
             while (current is not null)
             {
                 if (current.Value.Equals(value))
-                {
                     return true;
-                }
 
                 current = current.Next;
             }
@@ -132,7 +130,6 @@ namespace DataStructures
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
-
 
     public class Node<T>
     {

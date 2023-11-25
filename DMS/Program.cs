@@ -5,9 +5,9 @@ using DMS.Extensions;
 
 namespace DMS
 {
-    internal class Program
+    internal static class Program
     {
-        static void Main(string[] args)
+        private static void Main()
         {
             File.Delete(Files.MDF_FILE_NAME);
             DataPageManager.InitDataPageManager();

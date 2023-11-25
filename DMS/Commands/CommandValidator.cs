@@ -6,19 +6,15 @@ namespace DMS.Commands
 {
     public static class CommandValidator
     {
-        private static readonly DKList<string> AllowedKeywords = new();
         private static readonly DKList<char> InvalidTableNameCharacters = new();
         private static readonly DKList<string> SqlDataTypes = new();
 
         static CommandValidator()
         {
-            foreach (ESQLCommands keyword in Enum.GetValues<ESQLCommands>())
-                AllowedKeywords.Add(keyword.ToString().CustomToLower());
-
-            foreach (EInvalidTableNameCharacters keyword in Enum.GetValues<EInvalidTableNameCharacters>())
+            foreach (var keyword in Enum.GetValues<EInvalidTableNameCharacters>())
                 InvalidTableNameCharacters.Add((char)keyword);
 
-            foreach (EDataTypes keyword in Enum.GetValues<EDataTypes>())
+            foreach (var keyword in Enum.GetValues<EDataTypes>())
                 SqlDataTypes.Add(keyword.ToString().CustomToLower());
         }
 
@@ -85,16 +81,15 @@ namespace DMS.Commands
 
         private static bool ValidateCreateTableCommand(string command)
         {
-            //ReadOnlySpan<char> commandSpan = command;
-
-            if (!command.CustomContains(ECliCommands.CreateTable.ToString()))
+            string[] commandSpliced = command.Split(' ');
+            if (commandSpliced[0] != ECliCommands.CreateTable.ToString().CustomToLower())
                 return false;
 
             int firstWhiteSpace = command.CustomIndexOf(' ');
             int openingBracket = command.CustomIndexOf('(');
             int closingBracketForColumns = command.CustomLastIndexOf(')');
 
-            if (openingBracket == -1 || closingBracketForColumns == -1)
+            if (openingBracket is -1 || closingBracketForColumns is -1)
             {
                 Console.WriteLine("Add closing and opening brackets before and after the table name");
                 return false;
@@ -139,10 +134,7 @@ namespace DMS.Commands
             command = command.CustomTrim();
             string[] parts = command.CustomSplit(' ');
 
-            if (parts.Length != 2)
-                return false;
-
-            return true;
+            return parts.Length is 2;
         }
 
         private static bool ValidateInsertTableCommand(string command)
@@ -221,15 +213,12 @@ namespace DMS.Commands
             command = command.CustomTrim();
             string[] parts = command.CustomSplit(' ');
 
-            if (parts.Length != 2)
-                return false;
-
-            return true;
+            return parts.Length == 2;
         }
 
         private static bool ValidateSelectFromTable(string command)
         {
-            if (string.IsNullOrWhiteSpace(command))
+            if (command.CustomIsNullOrEmpty())
                 return false;
 
             string[] parts = command.CustomSplit(' ');
@@ -239,29 +228,17 @@ namespace DMS.Commands
 
             ReadOnlySpan<char> commandSpan = command;
 
-            if (!commandSpan.CustomStartsWith("select"))
-                return false;
-
-            if (!commandSpan.CustomContains("from", StringComparison.OrdinalIgnoreCase))
-                return false;
-
-            return true;
+            return commandSpan.CustomStartsWith("select") && commandSpan.CustomContains("from", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool ValidateDeleteFromTable(string command)
         {
-            if (string.IsNullOrWhiteSpace(command))
+            if (command.CustomIsNullOrEmpty())
                 return false;
 
             string[] parts = command.CustomSplit(' ');
 
-            if (parts.Length < 4 || parts[0] != "delete" || parts[1] != "from")
-                return false;
-
-            if (!command.CustomContains("where"))
-                return false;
-
-            return true;
+            return parts is ["delete", "from", _, _, ..] && command.CustomContains("where");
         }
     }
 }

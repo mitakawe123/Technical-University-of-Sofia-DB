@@ -178,10 +178,7 @@ namespace DMS.Extensions
             while (endIndex >= startIndex && HelperMethods.CustomExists(trimChars, ch => ch == input[endIndex]))
                 endIndex--;
 
-            if (startIndex > endIndex)
-                return "";
-
-            return input.CustomSubstring(startIndex, endIndex - startIndex + 1);
+            return startIndex > endIndex ? "" : input.CustomSubstring(startIndex, endIndex - startIndex + 1);
         }
 
         public static string CustomTrim(this string input)
@@ -621,18 +618,11 @@ namespace DMS.Extensions
             {
                 TKey key = keySelector(item);
                 TElement value = elementSelector(item);
-                // Add key-value pair to the dictionary.
-                // Handle potential duplicates as needed.
+                // There can be duplicates fix it
                 dictionary.Add(key, value);
             }
 
             return dictionary;
-        }
-
-        public static IEnumerable<TResult> CustomSelectMany<TSource, TResult>(this IEnumerable<TSource> source,
-            Func<TSource, IEnumerable<TResult>> selector)
-        {
-            return default;
         }
 
         #endregion
@@ -744,7 +734,6 @@ namespace DMS.Extensions
             return true;
         }
 
-
         public static bool CustomEndsWith<T>(this ReadOnlySpan<T> span, ReadOnlySpan<T> value) where T : IEquatable<T>?
         {
             if (value.Length > span.Length)
@@ -758,13 +747,7 @@ namespace DMS.Extensions
             return true;
         }
 
-        public static ReadOnlySpan<char> CustomAsSpan(this string? text)
-        {
-            if (text == null)
-                return ReadOnlySpan<char>.Empty;
-
-            return new ReadOnlySpan<char>(text.CustomToCharArray());
-        }
+        public static ReadOnlySpan<char> CustomAsSpan(this string? text) => text is null ? ReadOnlySpan<char>.Empty : new ReadOnlySpan<char>(text.CustomToCharArray());
 
         #endregion
     }

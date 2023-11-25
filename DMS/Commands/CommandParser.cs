@@ -10,7 +10,7 @@ namespace DMS.Commands
     {
         public static void Parse(ECliCommands commandType, string command)
         {
-            command = command.CustomToLower();
+            command = command.CustomToLower().CustomTrim();
 
             bool isValidQuery = CommandValidator.ValidateQuery(commandType, command);
 
@@ -139,7 +139,7 @@ namespace DMS.Commands
                     start = i + 1;
             }
 
-            SQLCommands.InsertIntoTable(valuesList, tableNameSpan);
+            SqlCommands.InsertIntoTable(valuesList, tableNameSpan);
         }
 
         private static void SelectFromTable(string command)
@@ -185,7 +185,7 @@ namespace DMS.Commands
                 }
             }
 
-            SQLCommands.SelectFromTable(columnValues, tableName, logicalOperator);
+            SqlCommands.SelectFromTable(columnValues, tableName, logicalOperator);
         }
         
         private static void DeleteFromTable(string command)
@@ -213,7 +213,7 @@ namespace DMS.Commands
                 whereConditions.Add(condition.CustomTrim());
             }
 
-            SQLCommands.DeleteFromTable(tableSpan, whereConditions, columnNames);
+            SqlCommands.DeleteFromTable(tableSpan, whereConditions, columnNames);
         }
 
         private static DKList<char[]> ProcessTuple(ReadOnlySpan<char> tuple)

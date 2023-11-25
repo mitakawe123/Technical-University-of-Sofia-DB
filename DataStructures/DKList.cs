@@ -19,10 +19,7 @@ namespace DataStructures
             if (capacity < 0)
                 throw new ArgumentOutOfRangeException();
 
-            if (capacity == 0)
-                _items = Array.Empty<T>();
-            else
-                _items = new T[capacity];
+            _items = capacity == 0 ? Array.Empty<T>() : new T[capacity];
         }
 
         public DKList(IEnumerable<T> collection)
