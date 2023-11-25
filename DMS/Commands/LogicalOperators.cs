@@ -264,7 +264,7 @@ namespace DMS.Commands
                 Console.WriteLine("There is no \'ON\' keyword after the table that will be joined");
                 return;
             }
-
+                
             char[]? matchingKey = DataPageManager.TableOffsets.Keys.CustomFirstOrDefault(table => tableToJoin.SequenceEqual(table)) ?? null;
 
             if (matchingKey is null)
@@ -273,8 +273,7 @@ namespace DMS.Commands
                 return;
             }
 
-            (IReadOnlyList<char[]> allDataFromJoinedTable, IReadOnlyList<Column> columnsForJoinedTable, int colCount) joinedTableData =
-                AllDataFromJoinedTable(DataPageManager.TableOffsets[matchingKey], matchingKey);
+            var joinedTableData = AllDataFromJoinedTable(DataPageManager.TableOffsets[matchingKey], matchingKey);
 
             string columnToJoin = operation[(indexOnKeyword + 2)..];
             string[] propsToJoin = columnToJoin.CustomSplit('=');
@@ -282,8 +281,8 @@ namespace DMS.Commands
             string[] mainTableJoinProp = propsToJoin[0].CustomTrim().CustomSplit('.');
             string[] joinedTableJoinProp = propsToJoin[1].CustomTrim().CustomSplit('.');
 
-            int mainTableJoinIndex = FindColumnIndex(mainTableJoinProp[1], selectedColumns);
-            int joinedTableJoinIndex = FindColumnIndex(joinedTableJoinProp[1], selectedColumns);
+            int mainTableJoinIndex = HelperMethods.FindColumnIndex(mainTableJoinProp[1], selectedColumns);
+            int joinedTableJoinIndex = HelperMethods.FindColumnIndex(joinedTableJoinProp[1], selectedColumns);
 
             DKList<DKList<char[]>> mainTableRows = new();
             for (int i = 0; i < allDataFromMainTable.Count; i += colCount)
@@ -328,15 +327,6 @@ namespace DMS.Commands
             allDataFromMainTable = resultRows.SelectMany(row => row).CustomToArray();
         }
        
-        private static int FindColumnIndex(string columnName, IReadOnlyList<Column> selectedColumns)
-        {
-            for (int i = 0; i < selectedColumns.Count; i++)
-                if (selectedColumns[i].Name == columnName)
-                    return i;
-
-            return -1;
-        }
-
         private static (IReadOnlyList<char[]> allDataFromJoinedTable, IReadOnlyList<Column> columnsForJoinedTable, int colCount)
             AllDataFromJoinedTable(long startOfOffsetForJoinedTable, char[] matchingKey)
         {

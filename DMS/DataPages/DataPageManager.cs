@@ -57,14 +57,13 @@ namespace DMS.DataPages
             writer.Write(FirstOffsetPageStart);
         }
 
-        //createtable test1(id int primary key, name string(max) null, name1 string(max) null)
         public static void CreateTable(IReadOnlyList<Column> columns, ReadOnlySpan<char> tableName)
         {
             char[] table = tableName.CustomToArray();
             if (tableOffsets.ContainsKey(table))
                 throw new Exception("Table already exists");
 
-            using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Append);
+            using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryWriter writer = new(binaryStream, Encoding.UTF8);
 
             ulong totalSpaceForColumnTypes = HelperAllocater.AllocatedStorageForTypes(columns);//<- this will calc how much space one record will take
@@ -76,6 +75,8 @@ namespace DMS.DataPages
             int freeSpace = DataPageSize;
             int currentPage = AllDataPagesCount;
 
+            long freeSpaceLocation = 0;
+            
             if (DataPageCounter == 0)
                 FirstOffsetPageStart = (numberOfPagesNeeded * DataPageSize) + CounterSection;
 
@@ -86,6 +87,7 @@ namespace DMS.DataPages
                 //this is the first Data page for the table and we need to write the header section only in this data page
                 if (currentPage == AllDataPagesCount)
                 {
+                    freeSpaceLocation = binaryStream.Position;
                     freeSpace -= 20 + tableName.Length;//<- minus the header section
 
                     //header section for the table data page is 16 bytes plus 2 bytes per char for the table name
@@ -100,7 +102,7 @@ namespace DMS.DataPages
                 }
 
                 // Write as many columns as fit on the current page
-                while (freeSpace - 4 > HelperAllocater.SpaceTakenByColumnsDefinition(columns[columnIndex]))
+                while (freeSpace - BufferOverflowPointer > HelperAllocater.SpaceTakenByColumnsDefinition(columns[columnIndex]))
                 {
                     writer.Write(columns[columnIndex].Type);//2 bytes per char
                     writer.Write(columns[columnIndex].Name);//2 bytes per char
@@ -112,14 +114,18 @@ namespace DMS.DataPages
                         break;
                 }
 
-                // If there are more columns to write, store a reference to the nex t page
+                binaryStream.Seek((currentPage * DataPageSize) + CounterSection, SeekOrigin.Begin);
+                writer.Write(freeSpace);
+
+                //I don't think i need this if statement here anymore
+                // If there are more columns to write, store a reference to the next page
                 if (columnIndex < columns.Count)
                 {
                     //update free space in the current data page
                     binaryStream.Seek((currentPage * DataPageSize) + CounterSection, SeekOrigin.Begin);
                     writer.Write(freeSpace);
 
-                    // Last 4 bytes of each page store the next page number
+                    // Last 8 bytes of each page store the next page number
                     binaryStream.Seek((currentPage + 1) * DataPageSize + CounterSection - BufferOverflowPointer, SeekOrigin.Begin);
                     writer.Write(((currentPage + 1) * DataPageSize) + CounterSection); // Next page number
                     freeSpace = DataPageSize;

@@ -18,7 +18,11 @@ namespace DMS
             {
                 Console.Write("Enter a command (or 'exit' to quit): ");
                 string command = Console.ReadLine()!;
-                string input = command.CustomSplit(new char[] { ' ' })[0];
+                string[] cliInput = command.CustomSplit(new[] { ' ' });
+                
+                string input = string.Empty;
+                if (cliInput.Length is not 0)
+                    input = cliInput[0];
 
                 if (!Enum.TryParse(input, true, out ECliCommands cliCommand))
                 {

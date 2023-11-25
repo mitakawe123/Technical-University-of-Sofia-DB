@@ -1,5 +1,6 @@
 ﻿using DataStructures;
 using DMS.Extensions;
+using DMS.Shared;
 
 namespace DMS.Utils
 {
@@ -16,6 +17,15 @@ namespace DMS.Utils
                 if (match(array[i]))
                     return i;
             
+            return -1;
+        }
+
+        public static int FindColumnIndex(string columnName, IReadOnlyList<Column> selectedColumns)
+        {
+            for (int i = 0; i < selectedColumns.Count; i++)
+                if (selectedColumns[i].Name == columnName)
+                    return i;
+
             return -1;
         }
 
