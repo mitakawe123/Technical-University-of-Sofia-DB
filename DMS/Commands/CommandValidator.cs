@@ -22,7 +22,7 @@ namespace DMS.Commands
             {
                 { ECliCommands.CreateTable, ValidateCreateTableCommand },
                 { ECliCommands.DropTable, ValidateDropTableAndTableInfoCommands },
-                { ECliCommands.ListTables, command => true },
+                { ECliCommands.ListTables, _ => true },
                 { ECliCommands.TableInfo, ValidateTableInfoCommand },
                 { ECliCommands.Insert, ValidateInsertTableCommand },
                 { ECliCommands.Select, ValidateSelectFromTable },
@@ -222,7 +222,7 @@ namespace DMS.Commands
             if (parts.Length != 3)
                 return false;
 
-            if (!parts[1].Equals("on", StringComparison.OrdinalIgnoreCase))
+            if (parts[1] != "on")
                 return false;
 
             return true;
@@ -241,7 +241,7 @@ namespace DMS.Commands
             if (parts.Length < 4)
                 return false;
 
-            if (!parts[1].Equals("on", StringComparison.OrdinalIgnoreCase))
+            if (parts[1] != "on")
                 return false;
 
             if (!remainingCommand.CustomContains('(') || !remainingCommand.CustomContains(')'))

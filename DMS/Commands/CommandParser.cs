@@ -177,7 +177,7 @@ namespace DMS.Commands
 
             SqlCommands.SelectFromTable(columnValues, tableName, logicalOperator);
         }
-        
+
         private static void DeleteFromTable(string command)
         {
             ReadOnlySpan<char> commandSpan = command;
@@ -208,12 +208,46 @@ namespace DMS.Commands
 
         private static void DropIndex(string command)
         {
-            IndexManager.DropIndex();
+            ReadOnlySpan<char> commandSpan = command;
+
+            int startKeywordIndex = commandSpan.CustomIndexOf("dropindex") + "dropindex".Length;
+            int onKeyword = commandSpan.CustomIndexOf("on");
+
+            ReadOnlySpan<char> indexName = commandSpan[startKeywordIndex..onKeyword].CustomTrim();
+            ReadOnlySpan<char> tableName = commandSpan[(onKeyword + 2)..].CustomTrim();
+
+            IndexManager.DropIndex(tableName, indexName);
         }
 
         private static void CreateIndex(string command)
         {
-            IndexManager.CreateIndex();
+            ReadOnlySpan<char> commandSpan = command;
+
+            int startKeywordIndex = commandSpan.CustomIndexOf("createindex") + "createindex".Length;
+            int onKeyword = commandSpan.CustomIndexOf("on");
+            int firstOpeningBracket = commandSpan.CustomIndexOf('(');
+            int firstClosingBracket = commandSpan.CustomIndexOf(')');
+
+            ReadOnlySpan<char> indexName = commandSpan[startKeywordIndex..onKeyword].CustomTrim();
+            ReadOnlySpan<char> tableName = commandSpan[(onKeyword + 2)..firstOpeningBracket];
+            ReadOnlySpan<char> columns = commandSpan[(firstOpeningBracket + 1)..firstClosingBracket];
+
+            DKList<string> columnsSpliced = new();
+
+            while (columns.Length > 0)
+            {
+                int commaIndex = columns.CustomIndexOf(',');
+                if (commaIndex == -1)
+                {
+                    columnsSpliced.Add(columns.CustomTrim().ToString());
+                    break;
+                }
+
+                columnsSpliced.Add(columns[..commaIndex].CustomTrim().ToString());
+                columns = columns[(commaIndex + 1)..];
+            }
+
+            IndexManager.CreateIndex(columnsSpliced, tableName, indexName);
         }
 
         private static DKList<char[]> ProcessTuple(ReadOnlySpan<char> tuple)
