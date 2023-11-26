@@ -8,7 +8,7 @@ namespace DMS.Commands
     {
         private static readonly DKList<char> InvalidTableNameCharacters = new();
         private static readonly DKList<string> SqlDataTypes = new();
-        private static DKDictionary<ECliCommands, Func<string, bool>> validationActions;
+        private static readonly DKDictionary<ECliCommands, Func<string, bool>> ValidationActions;
 
         static CommandValidator()
         {
@@ -18,7 +18,7 @@ namespace DMS.Commands
             foreach (var keyword in Enum.GetValues<EDataTypes>())
                 SqlDataTypes.Add(keyword.ToString().CustomToLower());
 
-            validationActions = new DKDictionary<ECliCommands, Func<string, bool>>
+            ValidationActions = new DKDictionary<ECliCommands, Func<string, bool>>
             {
                 { ECliCommands.CreateTable, ValidateCreateTableCommand },
                 { ECliCommands.DropTable, ValidateDropTableAndTableInfoCommands },
@@ -34,12 +34,12 @@ namespace DMS.Commands
 
         public static bool ValidateQuery(ECliCommands commandType, string command)
         {
-            if (validationActions.TryGetValue(commandType, out Func<string, bool> validateAction))
+            if (ValidationActions.TryGetValue(commandType, out Func<string, bool> validateAction))
             {
                 bool isValid = validateAction(command);
                 if (!isValid)
                     Console.WriteLine($"Please enter a valid {commandType.ToString().ToLower()} command!");
-                
+
                 return isValid;
             }
 
@@ -209,13 +209,55 @@ namespace DMS.Commands
             return parts is ["delete", "from", _, _, ..] && command.CustomContains("where");
         }
 
-        private static bool ValidateDropIndex(string arg)
+        private static bool ValidateDropIndex(string command)
         {
+            string dropIndex = ECliCommands.DropIndex.ToString().CustomToLower();
+            if (!command.StartsWith(dropIndex, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            string remainingCommand = command[dropIndex.Length..].TrimStart();
+
+            string[] parts = remainingCommand.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (parts.Length != 3)
+                return false;
+
+            if (!parts[1].Equals("on", StringComparison.OrdinalIgnoreCase))
+                return false;
+
             return true;
         }
 
-        private static bool ValidateCreateIndex(string arg)
+        private static bool ValidateCreateIndex(string command)
         {
+            string createIndex = ECliCommands.CreateIndex.ToString().CustomToLower();
+            if (!command.StartsWith(createIndex, StringComparison.OrdinalIgnoreCase))//write start with extension method
+                return false;
+
+            string remainingCommand = command[createIndex.Length..].CustomTrim();
+
+            string[] parts = remainingCommand.Split(new[] { ' '}, StringSplitOptions.RemoveEmptyEntries);//split extension with char too
+
+            if (parts.Length < 4)
+                return false;
+
+            if (!parts[1].Equals("on", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (!remainingCommand.CustomContains('(') || !remainingCommand.CustomContains(')'))
+                return false;
+
+            int indexOfOpenBracket = remainingCommand.CustomIndexOf('(');
+            int indexOfCloseBracket = remainingCommand.CustomIndexOf(')', indexOfOpenBracket);
+            if (indexOfCloseBracket == -1 || indexOfCloseBracket < indexOfOpenBracket)
+                return false;
+
+            string columnsPart = remainingCommand.CustomSubstring(indexOfOpenBracket + 1, indexOfCloseBracket - indexOfOpenBracket - 1);
+
+            string[] columns = columnsPart.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            if (columns.Length == 0 || columns.CustomAny(col => col.CustomIsNullOrEmpty()))
+                return false;
+
             return true;
         }
     }

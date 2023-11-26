@@ -17,7 +17,7 @@ namespace DMS.Commands
             {
                 { ECliCommands.CreateTable, CreateTable },
                 { ECliCommands.DropTable, DropTable },
-                { ECliCommands.ListTables, command => ListTables() },
+                { ECliCommands.ListTables, _ => ListTables() },
                 { ECliCommands.TableInfo, TableInfo },
                 { ECliCommands.Insert, InsertIntoTable },
                 { ECliCommands.Select, SelectFromTable },
