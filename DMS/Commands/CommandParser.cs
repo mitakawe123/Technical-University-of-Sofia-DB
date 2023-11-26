@@ -2,51 +2,41 @@
 using DMS.Constants;
 using DMS.DataPages;
 using DMS.Extensions;
+using DMS.Indexes;
 using DMS.Shared;
 
 namespace DMS.Commands
 {
     public static class CommandParser
     {
+        private static readonly DKDictionary<ECliCommands, Action<string>> CommandActions;
+
+        static CommandParser()
+        {
+            CommandActions = new DKDictionary<ECliCommands, Action<string>>
+            {
+                { ECliCommands.CreateTable, CreateTable },
+                { ECliCommands.DropTable, DropTable },
+                { ECliCommands.ListTables, command => ListTables() },
+                { ECliCommands.TableInfo, TableInfo },
+                { ECliCommands.Insert, InsertIntoTable },
+                { ECliCommands.Select, SelectFromTable },
+                { ECliCommands.Delete, DeleteFromTable },
+                { ECliCommands.CreateIndex, CreateIndex },
+                { ECliCommands.DropIndex, DropIndex }
+            };
+        }
+
         public static void Parse(ECliCommands commandType, string command)
         {
             command = command.CustomToLower().CustomTrim();
 
             bool isValidQuery = CommandValidator.ValidateQuery(commandType, command);
-
             if (!isValidQuery)
                 return;
 
-            switch (commandType)
-            {
-                case ECliCommands.CreateTable:
-                    CreateTable(command);
-                    break;
-
-                case ECliCommands.DropTable:
-                    DropTable(command);
-                    break;
-
-                case ECliCommands.ListTables:
-                    ListTables();
-                    break;
-
-                case ECliCommands.TableInfo:
-                    TableInfo(command);
-                    break;
-
-                case ECliCommands.Insert:
-                    InsertIntoTable(command);
-                    break;
-
-                case ECliCommands.Select:
-                    SelectFromTable(command);
-                    break;
-
-                case ECliCommands.Delete:
-                    DeleteFromTable(command);
-                    break;
-            }
+            if (CommandActions.TryGetValue(commandType, out Action<string> action))
+                action(command);
         }
 
         private static void CreateTable(string command)
@@ -214,6 +204,16 @@ namespace DMS.Commands
             }
 
             SqlCommands.DeleteFromTable(tableSpan, whereConditions, columnNames);
+        }
+
+        private static void DropIndex(string command)
+        {
+            IndexManager.DropIndex();
+        }
+
+        private static void CreateIndex(string command)
+        {
+            IndexManager.CreateIndex();
         }
 
         private static DKList<char[]> ProcessTuple(ReadOnlySpan<char> tuple)

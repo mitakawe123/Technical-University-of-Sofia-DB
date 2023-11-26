@@ -12,6 +12,8 @@
         Insert,
         Select,
         Delete,
+        CreateIndex,
+        DropIndex,
         Exit
     }
 

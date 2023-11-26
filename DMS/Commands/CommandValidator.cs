@@ -8,6 +8,7 @@ namespace DMS.Commands
     {
         private static readonly DKList<char> InvalidTableNameCharacters = new();
         private static readonly DKList<string> SqlDataTypes = new();
+        private static DKDictionary<ECliCommands, Func<string, bool>> validationActions;
 
         static CommandValidator()
         {
@@ -16,67 +17,34 @@ namespace DMS.Commands
 
             foreach (var keyword in Enum.GetValues<EDataTypes>())
                 SqlDataTypes.Add(keyword.ToString().CustomToLower());
+
+            validationActions = new DKDictionary<ECliCommands, Func<string, bool>>
+            {
+                { ECliCommands.CreateTable, ValidateCreateTableCommand },
+                { ECliCommands.DropTable, ValidateDropTableAndTableInfoCommands },
+                { ECliCommands.ListTables, command => true },
+                { ECliCommands.TableInfo, ValidateTableInfoCommand },
+                { ECliCommands.Insert, ValidateInsertTableCommand },
+                { ECliCommands.Select, ValidateSelectFromTable },
+                { ECliCommands.Delete, ValidateDeleteFromTable },
+                { ECliCommands.CreateIndex, ValidateCreateIndex },
+                { ECliCommands.DropIndex, ValidateDropIndex }
+            };
         }
 
         public static bool ValidateQuery(ECliCommands commandType, string command)
         {
-            switch (commandType)
+            if (validationActions.TryGetValue(commandType, out Func<string, bool> validateAction))
             {
-                case ECliCommands.CreateTable:
-                    bool isValidCreateTableCommand = ValidateCreateTableCommand(command);
-                    if (isValidCreateTableCommand)
-                        return true;
-
-                    Console.WriteLine("Please enter valid create table command!");
-                    return false;
-
-                case ECliCommands.DropTable:
-                    bool isValidDropTableCommand = ValidateDropTableAndTableInfoCommands(command);
-                    if (isValidDropTableCommand)
-                        return true;
-
-                    Console.WriteLine("Please enter a valid drop table command!");
-                    return false;
-
-                case ECliCommands.ListTables:
-                    return true;
-
-                case ECliCommands.TableInfo:
-                    bool isValidTableInfoCommand = ValidateTableInfoCommand(command);
-                    if (isValidTableInfoCommand)
-                        return true;
-
-                    Console.WriteLine("Please enter a valid table info command!");
-                    return true;
-
-                case ECliCommands.Insert:
-                    bool isValidInsertCommand = ValidateInsertTableCommand(command);
-                    if (isValidInsertCommand)
-                        return true;
-
-                    Console.WriteLine("Please enter a insert command!");
-                    return false;
-
-                case ECliCommands.Select:
-                    bool isValidSelectCommand = ValidateSelectFromTable(command);
-                    if (isValidSelectCommand)
-                        return true;
-
-                    Console.WriteLine("Please enter a insert command!");
-                    return false;
-
-                case ECliCommands.Delete:
-                    bool isValidDeleteCommand = ValidateDeleteFromTable(command);
-                    if (isValidDeleteCommand)
-                        return true;
-
-                    Console.WriteLine("Please enter a insert command!");
-                    return false;
-
-                default:
-                    Console.WriteLine("Invalid command please enter a valid command");
-                    return false;
+                bool isValid = validateAction(command);
+                if (!isValid)
+                    Console.WriteLine($"Please enter a valid {commandType.ToString().ToLower()} command!");
+                
+                return isValid;
             }
+
+            Console.WriteLine("Invalid command, please enter a valid command");
+            return false;
         }
 
         private static bool ValidateCreateTableCommand(string command)
@@ -239,6 +207,16 @@ namespace DMS.Commands
             string[] parts = command.CustomSplit(' ');
 
             return parts is ["delete", "from", _, _, ..] && command.CustomContains("where");
+        }
+
+        private static bool ValidateDropIndex(string arg)
+        {
+            return true;
+        }
+
+        private static bool ValidateCreateIndex(string arg)
+        {
+            return true;
         }
     }
 }
