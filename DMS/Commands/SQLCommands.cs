@@ -12,7 +12,7 @@ namespace DMS.Commands
     {
         public static void InsertIntoTable(IReadOnlyList<IReadOnlyList<char[]>> columnsValues, ReadOnlySpan<char> tableName)
         {
-            char[] matchingKey = FindTableWithName(tableName);
+            char[] matchingKey = HelperMethods.FindTableWithName(tableName);
 
             if (matchingKey == Array.Empty<char>())
             {
@@ -41,7 +41,7 @@ namespace DMS.Commands
 
         public static void SelectFromTable(DKList<string> valuesToSelect, ReadOnlySpan<char> tableName, ReadOnlySpan<char> logicalOperator)
         {
-            char[] matchingKey = FindTableWithName(tableName);
+            char[] matchingKey = HelperMethods.FindTableWithName(tableName);
 
             if (matchingKey == Array.Empty<char>())
             {
@@ -69,7 +69,7 @@ namespace DMS.Commands
 
         public static void DeleteFromTable(ReadOnlySpan<char> tableName, IReadOnlyList<string> logicalOperators, IReadOnlyList<string> columns)//<- can contains not keyword
         {
-            char[] matchingKey = FindTableWithName(tableName);
+            char[] matchingKey = HelperMethods.FindTableWithName(tableName);
 
             if (matchingKey == Array.Empty<char>())
             {
@@ -85,9 +85,9 @@ namespace DMS.Commands
             var metadata = ReadTableMetadata(reader);
             int headerSectionForMainDp = DataPageManager.Metadata + metadata.tableLength;
 
-            (headerSectionForMainDp, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDp, metadata.columnCount);
+            (headerSectionForMainDp, DKList<Column> columnTypeAndName) = ReadColumns(reader, headerSectionForMainDp, metadata.columnCount);
 
-            bool allElementsContained = columns.CustomAll(x => columnNameAndType.CustomAny(y => y.Name == x));//there can be case with not in front of the column
+            bool allElementsContained = columns.CustomAll(x => columnTypeAndName.CustomAny(y => y.Name == x));//there can be case with not in front of the column
             if (!allElementsContained)
             {
                 Console.WriteLine("Wrong column in the where clause");
@@ -350,27 +350,6 @@ namespace DMS.Commands
         {
             stream.Close();
             reader.Close();
-        }
-
-        private static char[] FindTableWithName(ReadOnlySpan<char> tableName)
-        {
-            if (DataPageManager.TableOffsets.Count is 0)
-                return Array.Empty<char>();
-
-            char[]? matchingKey = null;
-            foreach (KeyValuePair<char[], long> item in DataPageManager.TableOffsets)
-            {
-                if (tableName.SequenceEqual(item.Key))
-                {
-                    matchingKey = item.Key;
-                    break;
-                }
-            }
-
-            if (matchingKey is null || !DataPageManager.TableOffsets.ContainsKey(matchingKey))
-                return Array.Empty<char>();
-
-            return matchingKey;
         }
 
         private static void InsertIntoFreeSpace(byte[] allRecords, bool isMainDp, int headerSectionForMainDp, long firstFreeDp)

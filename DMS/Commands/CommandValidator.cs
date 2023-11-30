@@ -151,7 +151,7 @@ namespace DMS.Commands
 
                         if (bracketCount == 0 && (valuesPart[end] == ',' || end == valuesPart.Length - 1))
                         {
-                            ReadOnlySpan<char> segment = valuesPart.Slice(start, end - start + 1).Trim();
+                            ReadOnlySpan<char> segment = valuesPart.Slice(start, end - start + 1).CustomTrim();
                             if (!segment.CustomContains('(')
                                 || !segment.CustomContains(')'))
                                 throw new Exception(

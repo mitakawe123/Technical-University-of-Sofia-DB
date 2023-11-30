@@ -1,4 +1,5 @@
 ﻿using DataStructures;
+using DMS.DataPages;
 using DMS.Extensions;
 using DMS.Shared;
 
@@ -9,6 +10,27 @@ namespace DMS.Utils
         private static readonly string[] SqlKeywords = { "join", "where", "order by", "and", "or", "distinct" };
 
         public static bool CustomExists<T>(T[] array, Predicate<T> match) => FindIndex(array, 0, array.Length, match) != -1;
+
+        public static char[] FindTableWithName(ReadOnlySpan<char> tableName)
+        {
+            if (DataPageManager.TableOffsets.Count is 0)
+                return Array.Empty<char>();
+
+            char[]? matchingKey = null;
+            foreach (KeyValuePair<char[], long> item in DataPageManager.TableOffsets)
+            {
+                if (tableName.SequenceEqual(item.Key))
+                {
+                    matchingKey = item.Key;
+                    break;
+                }
+            }
+
+            if (matchingKey is null || !DataPageManager.TableOffsets.ContainsKey(matchingKey))
+                return Array.Empty<char>();
+
+            return matchingKey;
+        }
 
         public static int FindColumnIndex(string columnName, IReadOnlyList<Column> selectedColumns)
         {

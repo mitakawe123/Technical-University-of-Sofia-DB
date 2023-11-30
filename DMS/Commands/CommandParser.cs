@@ -229,7 +229,7 @@ namespace DMS.Commands
             int firstClosingBracket = commandSpan.CustomIndexOf(')');
 
             ReadOnlySpan<char> indexName = commandSpan[startKeywordIndex..onKeyword].CustomTrim();
-            ReadOnlySpan<char> tableName = commandSpan[(onKeyword + 2)..firstOpeningBracket];
+            ReadOnlySpan<char> tableName = commandSpan[(onKeyword + 2)..firstOpeningBracket].CustomTrim();
             ReadOnlySpan<char> columns = commandSpan[(firstOpeningBracket + 1)..firstClosingBracket];
 
             DKList<string> columnsSpliced = new();
