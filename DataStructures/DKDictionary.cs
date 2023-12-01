@@ -2,9 +2,13 @@
 {
     using System.Collections;
 
-    public class DKDictionary<K, V> : IDictionary<K, V> where K : notnull
+    public class DKDictionary<K, V> : IReadOnlyDictionary<K, V>, IDictionary<K, V> where K : notnull
     {
         private readonly DKLinkedList<KeyValuePair<K, V>> _items = new();
+
+        IEnumerable<K> IReadOnlyDictionary<K, V>.Keys => Keys;
+
+        IEnumerable<V> IReadOnlyDictionary<K, V>.Values => Values;
 
         public V this[K key]
         {
@@ -14,7 +18,7 @@
                     if (item.Key.Equals(key))
                         return item.Value;
 
-                throw new KeyNotFoundException("Key not found: " + key.ToString());
+                throw new KeyNotFoundException("Key not found: " + key);
             }
             set
             {
@@ -33,7 +37,6 @@
                     _items.AddLast(new KeyValuePair<K, V>(key, value));
             }
         }
-
         public ICollection<K> Keys
         {
             get

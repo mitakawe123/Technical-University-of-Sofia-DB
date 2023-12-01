@@ -535,15 +535,15 @@ namespace DMS.Extensions
             else
             {
                 using IEnumerator<T> e = source.GetEnumerator();
-                if (e.MoveNext())
-                {
-                    T result;
-                    do
-                        result = e.Current;
-                    while (e.MoveNext());
+                if (!e.MoveNext()) 
+                    throw new InvalidOperationException("Sequence contains no elements");
+                
+                T result;
+                do
+                    result = e.Current;
+                while (e.MoveNext());
 
-                    return result;
-                }
+                return result;
             }
             throw new InvalidOperationException("Sequence contains no elements");
         }

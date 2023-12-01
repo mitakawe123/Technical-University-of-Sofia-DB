@@ -144,7 +144,7 @@ namespace DMS.DataPages
             binaryStream.Close();
             writer.Close();
 
-            OffsetManager.WriteOffsetMapper(_tableOffsets.CustomLast());
+            OffsetManager.WriteOffsetMapper(_tableOffsets.CustomLast(), columns.Count);
         }
 
         public static bool DropTable(ReadOnlySpan<char> tableName)
@@ -216,6 +216,8 @@ namespace DMS.DataPages
             int tableNameLength = BitConverter.ToInt32(values, 0);
             string tempTableName = Encoding.UTF8.GetString(values, sizeof(int), tableNameLength);
             char[] extractedTableName = tempTableName.ToCharArray();
+
+            //update here for the index columns bytes
 
             /*int offsetValueStartPosition = sizeof(int) + tableNameLength;
             int offsetValue = BitConverter.ToInt32(values, offsetValueStartPosition);*/
