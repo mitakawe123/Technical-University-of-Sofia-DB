@@ -10,10 +10,12 @@ namespace DMS.OffsetPages
         private const long DefaultBufferValue = -5;
         private const int DefaultIndexValue = 0;
 
+        public static int RecordSizeForOffset(int tableNameLength, int columnCount) => tableNameLength * sizeof(char) + sizeof(int) + sizeof(int) + sizeof(int) + sizeof(int) * columnCount;
+
         public static void WriteOffsetMapper(KeyValuePair<char[], long> entry, int columnCount)
         {
             int freeSpace = DataPageManager.DataPageSize;
-            int sizeOfCurrentRecord = sizeof(int) + entry.Key.Length + sizeof(int);
+            int sizeOfCurrentRecord = RecordSizeForOffset(entry.Key.Length, columnCount);
             long pointerToNextPage = PointerToNextPage();//this is the end byte of the pointer
             long startOfFreeOffset = pointerToNextPage - DataPageManager.DataPageSize;
 
@@ -32,6 +34,7 @@ namespace DMS.OffsetPages
             //the data will overflow the current offset page and I need to create a new one
             if (freeSpace == DefaultBufferValue)
             {
+                freeSpace = DataPageManager.DataPageSize - sizeOfCurrentRecord;
                 CreateNewOffsetTable(entry, fs, binaryWriter, startOfFreeOffset, columnCount, ref freeSpace);
                 return;
             }
@@ -106,10 +109,62 @@ namespace DMS.OffsetPages
             }
         }
 
-        public static byte[] GetDataPageOffsetByTableName(char[] tableName)
+        public static (byte[] offsetValues, long endOfRecordOffsetValues) GetDataPageOffsetByTableName(char[] tableName)
         {
             using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryReader reader = new(binaryStream, Encoding.UTF8);
+
+            binaryStream.Seek(DataPageManager.FirstOffsetPageStart, SeekOrigin.Begin);
+            int freeSpace = reader.ReadInt32();
+            long stopPosition = DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
+
+            while (binaryStream.Position < stopPosition)
+            {
+                byte[] result = CheckAndGetResult();
+                if (result is not null)
+                    return (result, binaryStream.Position);
+            }
+
+            long pointer = reader.ReadInt64();
+            while (pointer is not DefaultBufferValue)
+            {
+                binaryStream.Seek(pointer, SeekOrigin.Begin);
+                freeSpace = reader.ReadInt32();
+                long stop = binaryStream.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
+                while (binaryStream.Position < stop)
+                {
+                    byte[] result = CheckAndGetResult();
+                    if (result is not null)
+                        return (result, binaryStream.Position);
+                }
+
+                pointer = reader.ReadInt64();
+            }
+
+            return (Array.Empty<byte>(), 0);
+
+            byte[] CreateResultArray(
+                int tableNameLength,
+                char[] currentTableName,
+                int offsetValue,
+                int columnCount,
+                IEnumerable<int> columnOffsetIndex)
+            {
+                int recordSizeInBytes = RecordSizeForOffset(tableNameLength, columnCount);
+                byte[] result = new byte[recordSizeInBytes];
+                using MemoryStream memoryStream = new(result);
+                using BinaryWriter writer = new(memoryStream, Encoding.UTF8);
+
+                writer.Write(tableNameLength);
+                writer.Write(currentTableName);
+                writer.Write(offsetValue);
+                writer.Write(columnCount);
+
+                foreach (int columnOffset in columnOffsetIndex)
+                    writer.Write(columnOffset);
+
+                return result;
+            }
 
             byte[] CheckAndGetResult()
             {
@@ -128,58 +183,6 @@ namespace DMS.OffsetPages
 
                 return null;
             }
-
-            byte[] CreateResultArray(
-                int tableNameLength,
-                char[] currentTableName,
-                int offsetValue,
-                int columnCount,
-                IEnumerable<int> columnOffsetIndex)
-            {
-                int recordSizeInBytes = tableNameLength * sizeof(char) + sizeof(int) + sizeof(int) + sizeof(int) + (sizeof(int) * columnCount);
-                byte[] result = new byte[recordSizeInBytes];
-                using MemoryStream memoryStream = new(result);
-                using BinaryWriter writer = new(memoryStream, Encoding.UTF8);
-
-                writer.Write(tableNameLength);
-                writer.Write(currentTableName);
-                writer.Write(offsetValue);
-                writer.Write(columnCount);
-
-                foreach (int columnOffset in columnOffsetIndex)
-                    writer.Write(columnOffset);
-
-                return result;
-            }
-
-            binaryStream.Seek(DataPageManager.FirstOffsetPageStart, SeekOrigin.Begin);
-            int freeSpace = reader.ReadInt32();
-            long stopPosition = DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
-
-            while (binaryStream.Position < stopPosition)
-            {
-                byte[] result = CheckAndGetResult();
-                if (result is not null)
-                    return result;
-            }
-
-            long pointer = reader.ReadInt64();
-            while (pointer != DefaultBufferValue)
-            {
-                binaryStream.Seek(pointer, SeekOrigin.Begin);
-                freeSpace = reader.ReadInt32();
-                long stop = binaryStream.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
-                while (binaryStream.Position < stop)
-                {
-                    byte[] result = CheckAndGetResult();
-                    if (result is not null)
-                        return result;
-                }
-
-                pointer = reader.ReadInt64();
-            }
-
-            return Array.Empty<byte>();
         }
 
         private static void InitFirstOffsetTable(
@@ -220,7 +223,6 @@ namespace DMS.OffsetPages
         {
             fs.Seek(startOfFreeOffset + DataPageManager.DataPageSize, SeekOrigin.Begin);
 
-            freeSpace = DataPageManager.DataPageSize;
             binaryWriter.Write(freeSpace);
 
             binaryWriter.Write(entry.Key.Length); // 4 bytes for the length of the table name

@@ -1,4 +1,5 @@
-﻿using DataStructures;
+﻿using System.Reflection.Metadata;
+using DataStructures;
 using DMS.Constants;
 using DMS.Extensions;
 using DMS.OffsetPages;
@@ -15,7 +16,7 @@ namespace DMS.DataPages
     //This limit is applicable not just to table names but also to most other identifiers in SQL Server, such as column names, schema names, constraint names, and others.
     public static class DataPageManager
     {
-        private static DKDictionary<char[], long> _tableOffsets = new();// <-name of the table and start of the offset for the first data page
+        private static DKDictionary<char[], long> _tableOffsets = new();// name of the table and start of the offset for the first data page
         private static int _tablesCount = 0; // 4 bytes for table count
 
         public const long DefaultBufferForDp = -1;// Default pointer to the next page
@@ -61,14 +62,21 @@ namespace DMS.DataPages
         {
             char[] table = tableName.CustomToArray();
             if (_tableOffsets.ContainsKey(table))
-                throw new Exception("Table already exists");
+            {
+                Console.WriteLine("Table already exists");
+                return;
+            }
 
-            using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open);
-            using BinaryWriter writer = new(binaryStream, Encoding.UTF8);
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
+            using BinaryWriter writer = new(fs, Encoding.UTF8);
 
-            ulong totalSpaceForColumnTypes = HelperAllocater.AllocatedStorageForTypes(columns);//<- this will calc how much space one record will take
-            int spaceTakenByColumnsDefinitions = HelperAllocater.SpaceTakenByColumnsDefinitions(columns);
-            int numberOfPagesNeeded = (int)Math.Ceiling((double)spaceTakenByColumnsDefinitions / DataPageSize);//<- this will calc how many pages we need to store all the columns
+            ulong totalSpaceForColumnTypes = HelperAllocater.AllocatedStorageForTypes(columns);// this will calc how much space one record will take
+            int columnDefinitionSpace = HelperAllocater.SpaceTakenByColumnsDefinitions(columns);
+
+            int nonRowDataSpace = (int)Math.Ceiling((double)(columnDefinitionSpace + Metadata + tableName.Length));
+            int totalNumberOfPages = (int)Math.Ceiling((double)(columnDefinitionSpace + Metadata + tableName.Length) / DataPageSize);
+            int pointerSpaceRequired = totalNumberOfPages * sizeof(long);
+            int numberOfPagesNeeded = (int)Math.Ceiling((double)(nonRowDataSpace + pointerSpaceRequired) / DataPageSize);
 
             int pageNum = 0;
             int columnIndex = 0;
@@ -76,26 +84,26 @@ namespace DMS.DataPages
             int currentPage = AllDataPagesCount;
 
             if (DataPageCounter == 0)
-                FirstOffsetPageStart = (numberOfPagesNeeded * DataPageSize) + CounterSection;
+                FirstOffsetPageStart = numberOfPagesNeeded * DataPageSize + CounterSection;
 
             while (numberOfPagesNeeded > 0)
             {
-                binaryStream.Seek((currentPage * DataPageSize) + CounterSection, SeekOrigin.Begin);
+                fs.Seek(currentPage * DataPageSize + CounterSection, SeekOrigin.Begin);
 
                 //this is the first Data page for the table and we need to write the header section only in this data page
                 if (currentPage == AllDataPagesCount)
                 {
-                    freeSpace -= Metadata + tableName.Length;//<- minus the header section
+                    freeSpace -= Metadata + tableName.Length;// minus the header section
 
-                    //header section for the table data page is 16 bytes plus 2 bytes per char for the table name
+                    //header section for the table data page is 20 bytes plus 1 byte per char for the table name
                     writer.Write(freeSpace);// 4 bytes for free space
-                    writer.Write(totalSpaceForColumnTypes);// 8 bytes for record size
+                    writer.Write(totalSpaceForColumnTypes);// 8 bytes (max size in bytes for record)
                     writer.Write(table.Length); //4 bytes for the table name length
                     writer.Write(table);// 1 bytes per char
                     writer.Write(columns.Count);// 4 bytes for column count
 
                     if (!_tableOffsets.ContainsKey(table))
-                        _tableOffsets.Add(table, (currentPage * DataPageSize) + CounterSection);
+                        _tableOffsets.Add(table, currentPage * DataPageSize + CounterSection);
                 }
 
                 // Write as many columns as fit on the current page
@@ -104,44 +112,41 @@ namespace DMS.DataPages
                     writer.Write(columns[columnIndex].Type);//2 bytes per char
                     writer.Write(columns[columnIndex].Name);//2 bytes per char
 
-                    freeSpace -= (2 * columns[columnIndex].Type.Length) + (2 * columns[columnIndex].Name.Length);
+                    freeSpace -= 2 * columns[columnIndex].Type.Length + 2 * columns[columnIndex].Name.Length;
                     columnIndex++;
 
                     if (columnIndex == columns.Count)
                         break;
                 }
 
-                binaryStream.Seek((currentPage * DataPageSize) + CounterSection, SeekOrigin.Begin);
-                writer.Write(freeSpace);
-
-                //I don't think I need this if statement here anymore
-                // If there are more columns to write, store a reference to the next page
-                if (columnIndex < columns.Count)
-                {
-                    //update free space in the current data page
-                    binaryStream.Seek((currentPage * DataPageSize) + CounterSection, SeekOrigin.Begin);
-                    writer.Write(freeSpace);
-
-                    // Last 8 bytes of each page store the next page number
-                    binaryStream.Seek((currentPage + 1) * DataPageSize + CounterSection - BufferOverflowPointer, SeekOrigin.Begin);
-                    writer.Write(((currentPage + 1) * DataPageSize) + CounterSection); // Next page number
-                    freeSpace = DataPageSize;
-                }
+                fs.Seek(currentPage * DataPageSize + CounterSection, SeekOrigin.Begin);
+                writer.Write(freeSpace - DefaultBufferForDp);
 
                 currentPage++;
                 pageNum++;
                 numberOfPagesNeeded--;
+
+                // If there are more columns to write, store a reference to the next page
+                if (columnIndex >= columns.Count)
+                    continue;
+
+                // Last 8 bytes of each page store the next page offset
+                fs.Seek(currentPage * DataPageSize + CounterSection - BufferOverflowPointer, SeekOrigin.Begin);
+                long pointerToNextPage = currentPage * DataPageSize + CounterSection;
+
+                writer.Write(pointerToNextPage); // Next page offset
+                freeSpace = DataPageSize;
             }
 
             //update the pointer in the last DP
-            binaryStream.Seek((currentPage * DataPageSize) + CounterSection - BufferOverflowPointer, SeekOrigin.Begin);
+            fs.Seek(currentPage * DataPageSize + CounterSection - BufferOverflowPointer, SeekOrigin.Begin);
             writer.Write(DefaultBufferForDp);
 
             _tablesCount++;
             DataPageCounter += pageNum;
             AllDataPagesCount += pageNum;
 
-            binaryStream.Close();
+            fs.Close();
             writer.Close();
 
             OffsetManager.WriteOffsetMapper(_tableOffsets.CustomLast(), columns.Count);
@@ -149,19 +154,9 @@ namespace DMS.DataPages
 
         public static bool DropTable(ReadOnlySpan<char> tableName)
         {
-            //one talbe can span accross multiple data pages
-            char[]? matchingKey = null;
+            char[] matchingKey = HelperMethods.FindTableWithName(tableName);
 
-            foreach (KeyValuePair<char[], long> keyValuePair in _tableOffsets)
-            {
-                if (tableName.SequenceEqual(keyValuePair.Key))
-                {
-                    matchingKey = keyValuePair.Key;
-                    break;
-                }
-            }
-
-            if (matchingKey is null)
+            if (matchingKey == Array.Empty<char>())
                 return false;
 
             long startingPageOffset = _tableOffsets[matchingKey];
@@ -205,33 +200,25 @@ namespace DMS.DataPages
         public static void TableInfo(ReadOnlySpan<char> tableName)
         {
             char[] table = tableName.CustomToArray();
-            byte[] values = OffsetManager.GetDataPageOffsetByTableName(table);
+            var values = OffsetManager.GetDataPageOffsetByTableName(table);
 
-            if (values.Length == 0)
+            if (values.offsetValues.Length == 0)
             {
                 Console.WriteLine($"No table with the given name {tableName}");
                 return;
             }
 
-            int tableNameLength = BitConverter.ToInt32(values, 0);
-            string tempTableName = Encoding.UTF8.GetString(values, sizeof(int), tableNameLength);
+            int tableNameLength = BitConverter.ToInt32(values.offsetValues, 0);
+            string tempTableName = Encoding.UTF8.GetString(values.offsetValues, sizeof(int), tableNameLength);
             char[] extractedTableName = tempTableName.ToCharArray();
 
             //update here for the index columns bytes
 
             /*int offsetValueStartPosition = sizeof(int) + tableNameLength;
             int offsetValue = BitConverter.ToInt32(values, offsetValueStartPosition);*/
-            char[]? tableFromOffset = null;
-            foreach (KeyValuePair<char[], long> item in _tableOffsets)
-            {
-                if (item.Key.SequenceEqual(extractedTableName))
-                {
-                    tableFromOffset = item.Key;
-                    break;
-                }
-            }
+            char[] tableFromOffset = HelperMethods.FindTableWithName(tableName);
 
-            if (tableFromOffset is null)
+            if (tableFromOffset == Array.Empty<char>())
             {
                 Console.WriteLine("No table found with this name");
                 return;

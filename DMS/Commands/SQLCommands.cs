@@ -31,12 +31,11 @@ namespace DMS.Commands
 
             long firstFreeDp = FindFirstFreeDataPageOffsetStart(fileStream, reader, DataPageManager.TableOffsets[matchingKey]);
 
-            bool isMainDp = firstFreeDp == DataPageManager.TableOffsets[matchingKey];
-
             CloseFileAndReader(fileStream, reader);
 
             byte[] allRecords = GetAllData(columnsValues);
-            InsertIntoFreeSpace(allRecords, isMainDp, headerSectionForMainDp, firstFreeDp);
+
+            InsertIntoFreeSpace(allRecords, firstFreeDp);
         }
 
         public static void SelectFromTable(DKList<string> valuesToSelect, ReadOnlySpan<char> tableName, ReadOnlySpan<char> logicalOperator)
@@ -52,7 +51,7 @@ namespace DMS.Commands
             (FileStream fileStream, BinaryReader reader) = OpenFileAndReader();
 
             fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
-
+            //fix the reading here
             var metadata = ReadTableMetadata(reader);
             int headerSectionForMainDp = DataPageManager.Metadata + metadata.tableLength;
 
@@ -339,22 +338,9 @@ namespace DMS.Commands
             Console.WriteLine(new string('-', tableWidth));
         }
 
-        private static (FileStream, BinaryReader) OpenFileAndReader()
+        private static void InsertIntoFreeSpace(byte[] allRecords, long firstFreeDp)
         {
-            FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
-            BinaryReader reader = new(fileStream, Encoding.UTF8);
-            return (fileStream, reader);
-        }
-
-        private static void CloseFileAndReader(FileStream stream, BinaryReader reader)
-        {
-            stream.Close();
-            reader.Close();
-        }
-
-        private static void InsertIntoFreeSpace(byte[] allRecords, bool isMainDp, int headerSectionForMainDp, long firstFreeDp)
-        {
-            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open); // <- initiate new file stream because the old one is not writable even through I gave full permissions for the stream
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open); //initiate new file stream because the old one is not writable even through I gave full permissions for the stream
             using BinaryWriter writer = new(fs, Encoding.UTF8);
 
             int recordIndex = 0;
@@ -363,12 +349,11 @@ namespace DMS.Commands
             fs.Seek(firstFreeDp, SeekOrigin.Begin);
 
             byte[] freeSpaceBytes = new byte[4];
-            fs.Read(freeSpaceBytes, 0, 4); //<- free space
+            fs.Read(freeSpaceBytes, 0, 4);
             int freeSpace = BitConverter.ToInt32(freeSpaceBytes, 0);
 
             long startingPosition = firstFreeDp + DataPageManager.DataPageSize - freeSpace;
 
-            //fs.Seek(isMainDp ? startingPosition : startingPosition + sizeof(int), SeekOrigin.Begin);
             fs.Seek(startingPosition, SeekOrigin.Begin);
 
             while (recordIndex < recordLength)
@@ -391,10 +376,9 @@ namespace DMS.Commands
                 fs.Read(pointerBytes, 0, 8);
                 long pointer = BitConverter.ToInt64(pointerBytes, 0);
 
-                // Check if the pointer is default, indicating a new page is needed
-                if (pointer == DataPageManager.DefaultBufferForDp)
+                // Check if there is more data to be written and add pointer to next DP
+                if (recordIndex < recordLength)
                 {
-                    // Allocate new page
                     pointer = (DataPageManager.AllDataPagesCount + 1) * DataPageManager.DataPageSize;
 
                     // Write the pointer to the current page
@@ -405,8 +389,13 @@ namespace DMS.Commands
                     DataPageManager.AllDataPagesCount++;
                 }
 
+                fs.Seek((DataPageManager.AllDataPagesCount - 1) * DataPageManager.DataPageSize, SeekOrigin.Begin);
+                writer.Write(freeSpace - DataPageManager.BufferOverflowPointer);
+                freeSpace = DataPageManager.DataPageSize;
+
                 // Move to the new page
-                fs.Seek(pointer, SeekOrigin.Begin);
+                if (pointer != DataPageManager.DefaultBufferForDp)
+                    fs.Seek(pointer, SeekOrigin.Begin);
             }
         }
 
@@ -414,15 +403,13 @@ namespace DMS.Commands
         {
             long startOfFreeDataPageOffset = currentPosition;
 
-            fs.Seek(currentPosition + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer,
-                SeekOrigin.Begin);
+            fs.Seek(currentPosition + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
 
             long pointer = reader.ReadInt64();
             while (pointer != DataPageManager.DefaultBufferForDp && pointer != 0)
             {
                 startOfFreeDataPageOffset = pointer;
-                fs.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer - sizeof(int),
-                    SeekOrigin.Begin);
+                fs.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
                 pointer = reader.ReadInt64();
             }
 
@@ -462,6 +449,19 @@ namespace DMS.Commands
             }
 
             return allBytes;
+        }
+
+        private static (FileStream, BinaryReader) OpenFileAndReader()
+        {
+            FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
+            BinaryReader reader = new(fileStream, Encoding.UTF8);
+            return (fileStream, reader);
+        }
+
+        private static void CloseFileAndReader(FileStream stream, BinaryReader reader)
+        {
+            stream.Close();
+            reader.Close();
         }
     }
 }

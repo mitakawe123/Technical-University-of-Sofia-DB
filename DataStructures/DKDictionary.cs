@@ -87,11 +87,19 @@
         public bool ContainsKey(K key)
         {
             foreach (var item in _items)
-                if (item.Key.Equals(key))
+            {
+                if (key is char[] keyAsCharArray && item.Key is char[] itemKeyAsCharArray)
+                {
+                    if (keyAsCharArray.SequenceEqual(itemKeyAsCharArray))
+                        return true;
+                }
+                else if (item.Key.Equals(key))
                     return true;
+            }
 
             return false;
         }
+
 
         public void CopyTo(KeyValuePair<K, V>[] array, int arrayIndex)
         {

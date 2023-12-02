@@ -38,7 +38,7 @@ namespace DMS.Commands
             {
                 bool isValid = validateAction(command);
                 if (!isValid)
-                    Console.WriteLine($"Please enter a valid {commandType.ToString().ToLower()} command!");
+                    Console.WriteLine($"Please enter a valid {commandType.ToString().CustomToLower()} command!");
 
                 return isValid;
             }
@@ -117,8 +117,7 @@ namespace DMS.Commands
 
             int firstBracket = commandSpan.CustomIndexOf('(');
 
-            ReadOnlySpan<char> vals = commandSpan.CustomSlice(insetIntoText.Length + 1,
-                commandSpan.Length - insetIntoText.Length - 1);
+            ReadOnlySpan<char> vals = commandSpan.CustomSlice(insetIntoText.Length + 1, commandSpan.Length - insetIntoText.Length - 1);
             ReadOnlySpan<char> tableName = vals[..firstBracket].CustomTrim();
 
             if (tableName.Length > 128)
@@ -236,7 +235,7 @@ namespace DMS.Commands
 
             string remainingCommand = command[createIndex.Length..].CustomTrim();
 
-            string[] parts = remainingCommand.Split(new[] { ' '}, StringSplitOptions.RemoveEmptyEntries);//split extension with char too
+            string[] parts = remainingCommand.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);//split extension with char too
 
             if (parts.Length < 4)
                 return false;

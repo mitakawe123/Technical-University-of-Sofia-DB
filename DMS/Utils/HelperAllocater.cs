@@ -7,7 +7,7 @@ namespace DMS.Utils
     public static class HelperAllocater
     {
         //how much bytes for each data type
-        public static ulong AllocatedStorageForTypes(IReadOnlyList<Column> columns)
+        public static ulong AllocatedStorageForTypes(IEnumerable<Column> columns)
         {
             ulong allocatedBytes = 0;
             foreach (var column in columns)
@@ -55,18 +55,11 @@ namespace DMS.Utils
             return allocatedBytes;
         }
 
-        public static int SpaceTakenByColumnsDefinitions(IReadOnlyList<Column> columns)
-        {
-            int space = 0;
-            foreach (Column column in columns)
-                space += (2 * column.Name.Length) + (2 * column.Type.Length);
-
-            return space;
-        }
+        public static int SpaceTakenByColumnsDefinitions(IEnumerable<Column> columns) => columns.CustomSum(column => 2 * column.Name.Length + 2 * column.Type.Length);
 
         public static int SpaceTakenByColumnsDefinition(Column column) => (2 * column.Name.Length) + (2 * column.Type.Length);
 
-        public static ulong CalculateSpaceForInsertRecords(IReadOnlyList<Column> columns)
+        public static ulong CalculateSpaceForInsertRecords(IEnumerable<Column> columns)
         {
             //2 bytes for each char in type and name
             ulong space = 0;

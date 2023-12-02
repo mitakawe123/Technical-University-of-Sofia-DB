@@ -236,10 +236,7 @@ namespace DMS.Extensions
 
         public static bool CustomStartsWith(this string input, string value, StringCompare comparisonType)
         {
-            if (comparisonType == StringCompare.IgnoreCaseSensitivity && input.CustomToLower() == value.CustomToLower())
-                return true;
-
-            return false;
+            return comparisonType == StringCompare.IgnoreCaseSensitivity && input.CustomToLower() == value.CustomToLower();
         }
 
         public static int CustomIndexOf(this string input, char value)
