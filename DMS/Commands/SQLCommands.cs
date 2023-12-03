@@ -51,7 +51,7 @@ namespace DMS.Commands
             (FileStream fileStream, BinaryReader reader) = OpenFileAndReader();
 
             fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
-            //fix the reading here
+
             var metadata = ReadTableMetadata(reader);
             int headerSectionForMainDp = DataPageManager.Metadata + metadata.tableLength;
 
@@ -112,7 +112,7 @@ namespace DMS.Commands
                 int length = reader.ReadInt32();
                 offset += sizeof(int);
 
-                if (offset >= lengthToRead)
+                if (offset >= lengthToRead || length < 0)
                     return columnsValues;
 
                 char[] charArray = reader.ReadChars(length);
@@ -262,6 +262,7 @@ namespace DMS.Commands
 
         public static (int headerSectionForMainDp, DKList<Column> columnNameAndType) ReadColumns(BinaryReader reader, int initialHeaderSection, int columnCount)
         {
+            //catch the case when the columns will overflow in the next page
             int headerSectionForMainDp = initialHeaderSection;
             DKList<Column> columnNameAndType = new();
 
@@ -382,16 +383,17 @@ namespace DMS.Commands
                     pointer = (DataPageManager.AllDataPagesCount + 1) * DataPageManager.DataPageSize;
 
                     // Write the pointer to the current page
-                    fs.Seek(DataPageManager.AllDataPagesCount * DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+                    fs.Seek(-DataPageManager.BufferOverflowPointer, SeekOrigin.Current);
                     writer.Write(pointer);
+
+                    freeSpace = DataPageManager.DataPageSize;
 
                     DataPageManager.DataPageCounter++;
                     DataPageManager.AllDataPagesCount++;
                 }
 
                 fs.Seek((DataPageManager.AllDataPagesCount - 1) * DataPageManager.DataPageSize, SeekOrigin.Begin);
-                writer.Write(freeSpace - DataPageManager.BufferOverflowPointer);
-                freeSpace = DataPageManager.DataPageSize;
+                writer.Write(freeSpace);
 
                 // Move to the new page
                 if (pointer != DataPageManager.DefaultBufferForDp)

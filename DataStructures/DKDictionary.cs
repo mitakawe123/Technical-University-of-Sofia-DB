@@ -37,6 +37,7 @@
                     _items.AddLast(new KeyValuePair<K, V>(key, value));
             }
         }
+
         public ICollection<K> Keys
         {
             get

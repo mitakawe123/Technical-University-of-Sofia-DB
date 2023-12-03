@@ -1,5 +1,4 @@
-﻿using System.Reflection.Metadata;
-using DataStructures;
+﻿using DataStructures;
 using DMS.Constants;
 using DMS.Extensions;
 using DMS.OffsetPages;
@@ -70,7 +69,7 @@ namespace DMS.DataPages
             using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryWriter writer = new(fs, Encoding.UTF8);
 
-            ulong totalSpaceForColumnTypes = HelperAllocater.AllocatedStorageForTypes(columns);// this will calc how much space one record will take
+            ulong totalSpaceForColumnTypes = HelperAllocater.AllocatedStorageForTypes(columns);// this will calc max space required for one record
             int columnDefinitionSpace = HelperAllocater.SpaceTakenByColumnsDefinitions(columns);
 
             int nonRowDataSpace = (int)Math.Ceiling((double)(columnDefinitionSpace + Metadata + tableName.Length));
@@ -120,7 +119,7 @@ namespace DMS.DataPages
                 }
 
                 fs.Seek(currentPage * DataPageSize + CounterSection, SeekOrigin.Begin);
-                writer.Write(freeSpace - DefaultBufferForDp);
+                writer.Write(freeSpace);
 
                 currentPage++;
                 pageNum++;
