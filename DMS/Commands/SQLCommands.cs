@@ -38,6 +38,7 @@ namespace DMS.Commands
             InsertIntoFreeSpace(allRecords, firstFreeDp);
         }
 
+        //select is not working again
         public static void SelectFromTable(DKList<string> valuesToSelect, ReadOnlySpan<char> tableName, ReadOnlySpan<char> logicalOperator)
         {
             char[] matchingKey = HelperMethods.FindTableWithName(tableName);

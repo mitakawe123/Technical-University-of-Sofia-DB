@@ -56,18 +56,18 @@ namespace DataStructures
                 if (value < _size)
                     throw new ArgumentOutOfRangeException(nameof(value));
 
-                if (value != _items.Length)
+                if (value == _items.Length) 
+                    return;
+                
+                if (value > 0)
                 {
-                    if (value > 0)
-                    {
-                        T[] newItems = new T[value];
-                        if (_size > 0)
-                            Array.Copy(_items, newItems, _size);
-                        _items = newItems;
-                    }
-                    else
-                        _items = Array.Empty<T>();
+                    T[] newItems = new T[value];
+                    if (_size > 0)
+                        Array.Copy(_items, newItems, _size);
+                    _items = newItems;
                 }
+                else
+                    _items = Array.Empty<T>();
             }
         }
 
@@ -269,7 +269,7 @@ namespace DataStructures
             return false;
         }
 
-        public DKList<T> GetRange(int index, int count)
+        public IEnumerable<T> GetRange(int index, int count)
         {
             if (index < 0)
                 throw new ArgumentException();

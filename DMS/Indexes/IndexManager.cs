@@ -7,6 +7,7 @@ using System.Text;
 using DMS.Commands;
 using DMS.Extensions;
 using DMS.OffsetPages;
+using System.Collections;
 
 namespace DMS.Indexes
 {
@@ -54,7 +55,7 @@ namespace DMS.Indexes
             CloseFileAndReader(fileStream, reader);
 
             var offsetValues = OffsetManager.GetDataPageOffsetByTableName(tableName.CustomToArray());
-            UpdateOffsetIndexManagerIndexColumns(columnIndexInTheTable, offsetValues.offsetValues, offsetValues.endOfRecordOffsetValues);
+            UpdateOffsetIndexManagerIndexColumns(columnIndexInTheTable, offsets, offsetValues.offsetValues, offsetValues.endOfRecordOffsetValues);
 
             WriteBinaryTreeToFile(offsets, columns.Count);
         }
@@ -64,7 +65,7 @@ namespace DMS.Indexes
 
         }
 
-        private static DKList<long> GetOffsetForIndexColumns(
+        private static IEnumerable<long> GetOffsetForIndexColumns(
             FileStream fileStream,
             BinaryReader reader,
             int columnIndex,
@@ -101,7 +102,7 @@ namespace DMS.Indexes
             return offsetForIndexColumn;
         }
 
-        private static DKList<long> GetOffsetForSingleDataPage(
+        private static IEnumerable<long> GetOffsetForSingleDataPage(
             BinaryReader reader,
             long lengthToRead,
             int columnIndex,
@@ -178,20 +179,23 @@ namespace DMS.Indexes
             DataPageManager.AllDataPagesCount += currentPage - DataPageManager.AllDataPagesCount;
         }
 
-        private static void UpdateOffsetIndexManagerIndexColumns(IReadOnlyList<int> columnIndexInTheTable, byte[] offsetValues, long endOfRecordOffsetValues)
+        private static void UpdateOffsetIndexManagerIndexColumns(
+            IReadOnlyList<int> columnIndexInTheTable, 
+            IReadOnlyList<long> indexOffsets, 
+            byte[] offsetValues, 
+            long endOfRecordOffsetValues)
         {
             int tableNameLength = BitConverter.ToInt32(offsetValues, 0);
 
             char[] tableName = new char[tableNameLength];
-            for (int i = 0; i < tableNameLength; i++)
-                tableName[i] = BitConverter.ToChar(offsetValues, 4 + i * 2);
+            Array.Copy(offsetValues, 4, tableName, 0, tableNameLength);
 
-            int offsetValue = BitConverter.ToInt32(offsetValues, 4 + tableNameLength * 2);
-            int columnCount = BitConverter.ToInt32(offsetValues, 8 + tableNameLength * 2);
+            int offsetValue = BitConverter.ToInt32(offsetValues, 4 + tableNameLength);
+            int columnCount = BitConverter.ToInt32(offsetValues, 8 + tableNameLength);
 
             int[] columnIndexes = new int[columnCount];
             for (int i = 0; i < columnCount; i++)
-                columnIndexes[i] = BitConverter.ToInt32(offsetValues, 12 + tableNameLength * 2 + i * 4);
+                columnIndexes[i] = BitConverter.ToInt32(offsetValues, 12 + tableNameLength + i * 4);
 
             long startOfRecordOffsetValues = endOfRecordOffsetValues - OffsetManager.RecordSizeForOffset(tableNameLength, columnCount);
 
@@ -200,12 +204,15 @@ namespace DMS.Indexes
 
             fileStream.Seek(startOfRecordOffsetValues + tableNameLength + sizeof(int) + sizeof(int) + sizeof(int), SeekOrigin.Begin);
 
+            int offsetOfIndex = 0;
             for (int i = 0; i < columnCount; i++)
             {
-                if (columnIndexInTheTable[i] == i)
+                if (columnIndexInTheTable.CustomContains(i))
                 {
-                    //update the offset values here for the tree 
+                    long indexOffset = indexOffsets[i];
+                    writer.Write(indexOffset);
                 }
+                else fileStream.Seek(sizeof(int), SeekOrigin.Current);
             }
         }
 
