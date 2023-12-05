@@ -23,7 +23,7 @@
             set
             {
                 bool updated = false;
-                for (var node = _items.Head; node != null; node = node.Next)
+                for (var node = _items.Head; node is not null; node = node.Next)
                 {
                     if (node.Value.Key.Equals(key))
                     {

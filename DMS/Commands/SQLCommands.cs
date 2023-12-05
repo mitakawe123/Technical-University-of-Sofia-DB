@@ -31,14 +31,13 @@ namespace DMS.Commands
 
             long firstFreeDp = FindFirstFreeDataPageOffsetStart(fileStream, reader, DataPageManager.TableOffsets[matchingKey]);
 
-            CloseFileAndReader(fileStream, reader);
+            CloseStreamAndReader(fileStream, reader);
 
             byte[] allRecords = GetAllData(columnsValues);
 
             InsertIntoFreeSpace(allRecords, firstFreeDp);
         }
 
-        //select is not working again
         public static void SelectFromTable(DKList<string> valuesToSelect, ReadOnlySpan<char> tableName, ReadOnlySpan<char> logicalOperator)
         {
             char[] matchingKey = HelperMethods.FindTableWithName(tableName);
@@ -60,7 +59,7 @@ namespace DMS.Commands
 
             long start = ReadAllDataFromAllDataPages(fileStream, reader, matchingKey, headerSectionForMainDp, out var lengthToRead, out var allData);
 
-            CloseFileAndReader(fileStream, reader);
+            CloseStreamAndReader(fileStream, reader);
 
             allData.RemoveAll(charArray => charArray.Length == 0 || charArray.All(c => c == '\0'));
 
@@ -91,7 +90,7 @@ namespace DMS.Commands
             if (!allElementsContained)
             {
                 Console.WriteLine("Wrong column in the where clause");
-                CloseFileAndReader(fileStream, reader);
+                CloseStreamAndReader(fileStream, reader);
                 return;
             }
 
@@ -101,7 +100,7 @@ namespace DMS.Commands
 
             SplitAndFindRecords(fileStream, reader, writer, logicalOperators, allData, start, lengthToRead, metadata);
 
-            CloseFileAndReader(fileStream, reader);
+            CloseStreamAndReader(fileStream, reader);
         }
 
         public static DKList<char[]> ReadAllDataForSingleDataPage(long lengthToRead, BinaryReader reader)
@@ -342,7 +341,7 @@ namespace DMS.Commands
 
         private static void InsertIntoFreeSpace(byte[] allRecords, long firstFreeDp)
         {
-            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open); //initiate new file stream because the old one is not writable even through I gave full permissions for the stream
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryWriter writer = new(fs, Encoding.UTF8);
 
             int recordIndex = 0;
@@ -379,26 +378,21 @@ namespace DMS.Commands
                 long pointer = BitConverter.ToInt64(pointerBytes, 0);
 
                 // Check if there is more data to be written and add pointer to next DP
-                if (recordIndex < recordLength)
-                {
-                    pointer = (DataPageManager.AllDataPagesCount + 1) * DataPageManager.DataPageSize;
+                if (recordIndex >= recordLength) 
+                    continue;
+                
+                pointer = (DataPageManager.AllDataPagesCount + 1) * DataPageManager.DataPageSize;
 
-                    // Write the pointer to the current page
-                    fs.Seek(-DataPageManager.BufferOverflowPointer, SeekOrigin.Current);
-                    writer.Write(pointer);
+                // Write the pointer to the current page
+                fs.Seek(-DataPageManager.BufferOverflowPointer, SeekOrigin.Current);
+                writer.Write(pointer);
 
-                    freeSpace = DataPageManager.DataPageSize;
+                fs.Seek(pointer, SeekOrigin.Begin);
 
-                    DataPageManager.DataPageCounter++;
-                    DataPageManager.AllDataPagesCount++;
-                }
+                freeSpace = DataPageManager.DataPageSize;
 
-                fs.Seek((DataPageManager.AllDataPagesCount - 1) * DataPageManager.DataPageSize, SeekOrigin.Begin);
-                writer.Write(freeSpace);
-
-                // Move to the new page
-                if (pointer != DataPageManager.DefaultBufferForDp)
-                    fs.Seek(pointer, SeekOrigin.Begin);
+                DataPageManager.DataPageCounter++;
+                DataPageManager.AllDataPagesCount++;
             }
         }
 
@@ -461,7 +455,7 @@ namespace DMS.Commands
             return (fileStream, reader);
         }
 
-        private static void CloseFileAndReader(FileStream stream, BinaryReader reader)
+        private static void CloseStreamAndReader(FileStream stream, BinaryReader reader)
         {
             stream.Close();
             reader.Close();

@@ -7,7 +7,6 @@ using System.Text;
 using DMS.Commands;
 using DMS.Extensions;
 using DMS.OffsetPages;
-using System.Collections;
 
 namespace DMS.Indexes
 {
@@ -55,7 +54,7 @@ namespace DMS.Indexes
             CloseFileAndReader(fileStream, reader);
 
             var offsetValues = OffsetManager.GetDataPageOffsetByTableName(tableName.CustomToArray());
-            UpdateOffsetIndexManagerIndexColumns(columnIndexInTheTable, offsets, offsetValues.offsetValues, offsetValues.endOfRecordOffsetValues);
+            UpdateOffsetManagerIndexColumns(columnIndexInTheTable, offsets, offsetValues.offsetValues, offsetValues.endOfRecordOffsetValues);
 
             WriteBinaryTreeToFile(offsets, columns.Count);
         }
@@ -65,7 +64,7 @@ namespace DMS.Indexes
 
         }
 
-        private static IEnumerable<long> GetOffsetForIndexColumns(
+        private static IReadOnlyList<long> GetOffsetForIndexColumns(
             FileStream fileStream,
             BinaryReader reader,
             int columnIndex,
@@ -102,7 +101,7 @@ namespace DMS.Indexes
             return offsetForIndexColumn;
         }
 
-        private static IEnumerable<long> GetOffsetForSingleDataPage(
+        private static IReadOnlyList<long> GetOffsetForSingleDataPage(
             BinaryReader reader,
             long lengthToRead,
             int columnIndex,
@@ -179,7 +178,7 @@ namespace DMS.Indexes
             DataPageManager.AllDataPagesCount += currentPage - DataPageManager.AllDataPagesCount;
         }
 
-        private static void UpdateOffsetIndexManagerIndexColumns(
+        private static void UpdateOffsetManagerIndexColumns(
             IReadOnlyList<int> columnIndexInTheTable, 
             IReadOnlyList<long> indexOffsets, 
             byte[] offsetValues, 
