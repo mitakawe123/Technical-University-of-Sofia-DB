@@ -39,7 +39,7 @@ namespace DMS.DataPages
 
         public static void InitDataPageManager()
         {
-            SystemEvents.SessionEnding += SystemEvents_SessionEnding;//only supported on windows
+            SystemEvents.SessionEnding += SystemEvents_SessionEnding; //only supported on windows
 
             Console.WriteLine("Welcome to DMS");
         }
@@ -198,23 +198,6 @@ namespace DMS.DataPages
 
         public static void TableInfo(ReadOnlySpan<char> tableName)
         {
-            char[] table = tableName.CustomToArray();
-            var values = OffsetManager.GetDataPageOffsetByTableName(table);
-
-            if (values.offsetValues.Length == 0)
-            {
-                Console.WriteLine($"No table with the given name {tableName}");
-                return;
-            }
-
-            int tableNameLength = BitConverter.ToInt32(values.offsetValues, 0);
-            string tempTableName = Encoding.UTF8.GetString(values.offsetValues, sizeof(int), tableNameLength);
-            char[] extractedTableName = tempTableName.ToCharArray();
-
-            //update here for the index columns bytes
-
-            /*int offsetValueStartPosition = sizeof(int) + tableNameLength;
-            int offsetValue = BitConverter.ToInt32(values, offsetValueStartPosition);*/
             char[] tableFromOffset = HelperMethods.FindTableWithName(tableName);
 
             if (tableFromOffset == Array.Empty<char>())
@@ -234,11 +217,24 @@ namespace DMS.DataPages
             int freeSpace = reader.ReadInt32();
             ulong recordSize = reader.ReadUInt64();
             int tableNameLengthFromFile = reader.ReadInt32();
-            byte[] tableNameInBytes = reader.ReadBytes(tableNameLengthFromFile);
-            string tableNameFromFile = Encoding.UTF8.GetString(tableNameInBytes);
+            char[] tableNameFromFile = reader.ReadChars(tableNameLengthFromFile);
             int columnsCount = reader.ReadInt32();
 
-            Console.WriteLine($"Table name: {tableNameFromFile} \nOccupied space in bytes: {recordSize} \nThe table spans across {numberOfDataPagesForTable} data pages \nColumns count is {columnsCount}");
+            Console.WriteLine($"Table name: {new string(tableNameFromFile)}");
+            Console.WriteLine($"The table spans across {numberOfDataPagesForTable} data pages");
+            Console.WriteLine($"Columns count is {columnsCount}");
+            Console.WriteLine("\nColumn Details:");
+
+            Console.WriteLine($"{"Column Name",-20} Column Type");
+            Console.WriteLine(new string('-', 40));
+            for (int i = 0; i < columnsCount; i++)
+            {
+                string columnType = reader.ReadString();
+                string columnName = reader.ReadString();
+
+                Console.WriteLine($"{columnName,-20} {columnType}");
+            }
+            Console.WriteLine(new string('-', 40));
         }
 
         private static int FindDataPageNumberForTable(long startingPosition)

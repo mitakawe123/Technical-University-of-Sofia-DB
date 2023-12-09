@@ -149,8 +149,8 @@ namespace DMS.OffsetPages
                 char[] currentTableName,
                 int offsetValue,
                 int columnCount,
-                ICollection<int> columnOffsetIndex,
-                ICollection<long> columnIndexName)
+                IReadOnlyList<int> columnOffsetIndex,
+                IReadOnlyList<long> columnIndexName)
             {
                 int recordSizeInBytes = RecordSizeForOffset(tableNameLength, columnCount);
                 byte[] result = new byte[recordSizeInBytes];
@@ -220,8 +220,8 @@ namespace DMS.OffsetPages
 
             for (int i = 0; i < columnCount; i++)
             {
-                writer.Write(DefaultIndexValue);
-                writer.Write(DefaultWordIndexValue);
+                writer.Write(DefaultIndexValue); // 4bytes index offset
+                writer.Write(DefaultWordIndexValue); //8 bytes index name as number 
             }
 
             binaryStream.Seek(DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
