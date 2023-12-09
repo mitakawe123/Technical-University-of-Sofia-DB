@@ -320,13 +320,6 @@ namespace DMS.Indexes
             return offsets;
         }
 
-        private static void ReadOffsetIndexManagerIndexColumns()
-        {
-            (FileStream fileStream, BinaryReader reader) = OpenFileAndRead();
-
-            CloseFileAndReader(fileStream, reader);
-        }
-
         private static int CalculateBinaryTreeArraySize(int nodeCount)
         {
             int height = (int)Math.Ceiling(Math.Log2(nodeCount + 1));

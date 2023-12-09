@@ -72,6 +72,26 @@ namespace DMS.OffsetPages
             using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryReader reader = new(binaryStream, Encoding.UTF8);
 
+            long stopPosition = DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
+            int freeSpace = reader.ReadInt32();
+            while (binaryStream.Position < stopPosition)
+                EraseRecordIfMatch();
+
+            long pointer = reader.ReadInt64();
+            while (pointer != DefaultBufferValue)
+            {
+                binaryStream.Seek(pointer, SeekOrigin.Begin);
+                freeSpace = reader.ReadInt32();
+
+                stopPosition = binaryStream.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
+                while (binaryStream.Position < stopPosition)
+                    EraseRecordIfMatch();
+
+                pointer = reader.ReadInt64();
+            }
+
+            return;
+
             void EraseRecordIfMatch()
             {
                 int tableNameLength = reader.ReadInt32();
@@ -89,24 +109,6 @@ namespace DMS.OffsetPages
                 emptyBuffer ??= new byte[recordSizeInBytes];
                 binaryStream.Seek(binaryStream.Position - recordSizeInBytes, SeekOrigin.Begin);
                 binaryStream.Write(emptyBuffer);
-            }
-
-            long stopPosition = DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
-            int freeSpace = reader.ReadInt32();
-            while (binaryStream.Position < stopPosition)
-                EraseRecordIfMatch();
-
-            long pointer = reader.ReadInt64();
-            while (pointer != DefaultBufferValue)
-            {
-                binaryStream.Seek(pointer, SeekOrigin.Begin);
-                freeSpace = reader.ReadInt32();
-
-                stopPosition = binaryStream.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
-                while (binaryStream.Position < stopPosition)
-                    EraseRecordIfMatch();
-
-                pointer = reader.ReadInt64();
             }
         }
 

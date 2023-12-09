@@ -1,6 +1,7 @@
 ﻿using DMS.Commands;
 using DMS.Constants;
 using DMS.DataPages;
+using DMS.DataRecovery;
 using DMS.Extensions;
 
 namespace DMS
@@ -9,6 +10,13 @@ namespace DMS
     {
         private static void Main()
         {
+            /*bool isThereCorruptedDataPages = FileIntegrityChecker.CheckForCorruptionOnStart();
+            if (isThereCorruptedDataPages)
+            {
+                Console.WriteLine("There is corruption in the data pages");
+                Environment.Exit(0);
+            }*/
+
             File.Delete(Files.MDF_FILE_NAME);
             DataPageManager.InitDataPageManager();
 
