@@ -9,8 +9,9 @@ namespace DMS.OffsetPages
     {
         private const long DefaultBufferValue = -5;
         private const int DefaultIndexValue = 0;
+        private const long DefaultWordIndexValue = 0;
 
-        public static int RecordSizeForOffset(int tableNameLength, int columnCount) => tableNameLength * sizeof(char) + sizeof(int) + sizeof(int) + sizeof(int) + sizeof(int) * columnCount;
+        public static int RecordSizeForOffset(int tableNameLength, int columnCount) => tableNameLength * sizeof(char) + sizeof(int) + sizeof(int) + sizeof(int) + sizeof(int) * columnCount + sizeof(long) * columnCount;
 
         public static void WriteOffsetMapper(KeyValuePair<char[], long> entry, int columnCount)
         {
@@ -120,7 +121,7 @@ namespace DMS.OffsetPages
 
             while (binaryStream.Position < stopPosition)
             {
-                byte[] result = CheckAndGetResult();
+                byte[]? result = CheckAndGetResult();
                 if (result is not null)
                     return (result, binaryStream.Position);
             }
@@ -133,7 +134,7 @@ namespace DMS.OffsetPages
                 long stop = binaryStream.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
                 while (binaryStream.Position < stop)
                 {
-                    byte[] result = CheckAndGetResult();
+                    byte[]? result = CheckAndGetResult();
                     if (result is not null)
                         return (result, binaryStream.Position);
                 }
@@ -148,7 +149,8 @@ namespace DMS.OffsetPages
                 char[] currentTableName,
                 int offsetValue,
                 int columnCount,
-                IEnumerable<int> columnOffsetIndex)
+                ICollection<int> columnOffsetIndex,
+                ICollection<long> columnIndexName)
             {
                 int recordSizeInBytes = RecordSizeForOffset(tableNameLength, columnCount);
                 byte[] result = new byte[recordSizeInBytes];
@@ -160,26 +162,38 @@ namespace DMS.OffsetPages
                 writer.Write(offsetValue);
                 writer.Write(columnCount);
 
-                foreach (int columnOffset in columnOffsetIndex)
-                    writer.Write(columnOffset);
+                for (int i = 0; i < columnOffsetIndex.Count; i++)
+                {
+                    writer.Write(columnOffsetIndex.ElementAt(i));
+                    writer.Write(columnIndexName.ElementAt(i));
+                }
 
                 return result;
             }
 
-            byte[] CheckAndGetResult()
+            byte[]? CheckAndGetResult()
             {
                 int tableNameLength = reader.ReadInt32();
                 char[] currentTableName = reader.ReadChars(tableNameLength);
+
+                if (!currentTableName.SequenceEqual(tableName) ||
+                    tableNameLength != tableName.Length) //early check to see if the table match
+                    return null;
+
                 int offsetValue = reader.ReadInt32();
-                reader.ReadInt32();//no idea why this is here but there is 0 int after the offset value and cant find why???????? without this the logic it is not working
+                reader.ReadInt32(); //no idea why this is here but there is 0 int after the offset value and cant find why???????? without this the logic it is not working
                 int columnCount = reader.ReadInt32();
 
                 DKList<int> columnOffsetIndex = new();
+                DKList<long> columnIndexName = new();
                 for (int i = 0; i < columnCount; i++)
+                {
                     columnOffsetIndex.Add(reader.ReadInt32());
+                    columnIndexName.Add(reader.ReadInt64());
+                }
 
                 if (currentTableName.SequenceEqual(tableName) && tableNameLength == tableName.Length)
-                    return CreateResultArray(tableNameLength, currentTableName, offsetValue, columnCount, columnOffsetIndex);
+                    return CreateResultArray(tableNameLength, currentTableName, offsetValue, columnCount, columnOffsetIndex, columnIndexName);
 
                 return null;
             }
@@ -201,11 +215,14 @@ namespace DMS.OffsetPages
 
             writer.Write(entry.Key.Length); // 4 bytes for the length of the table name
             writer.Write(entry.Key); // 1 byte per char
-            writer.Write(entry.Value);// 4 bytes for the start offset of the record
-            writer.Write(columnCount);// 4 bytes for number of columns 
+            writer.Write(entry.Value); // 4 bytes for the start offset of the record
+            writer.Write(columnCount); // 4 bytes for number of columns 
 
             for (int i = 0; i < columnCount; i++)
+            {
                 writer.Write(DefaultIndexValue);
+                writer.Write(DefaultWordIndexValue);
+            }
 
             binaryStream.Seek(DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
             writer.Write(DefaultBufferValue);
@@ -227,11 +244,14 @@ namespace DMS.OffsetPages
 
             binaryWriter.Write(entry.Key.Length); // 4 bytes for the length of the table name
             binaryWriter.Write(entry.Key); // 1 byte per char
-            binaryWriter.Write(entry.Value);// 4 bytes for the start offset of the record
-            binaryWriter.Write(columnCount);// 4 bytes for number of columns 
+            binaryWriter.Write(entry.Value); // 4 bytes for the start offset of the record
+            binaryWriter.Write(columnCount); // 4 bytes for number of columns 
 
             for (int i = 0; i < columnCount; i++)
+            {
                 binaryWriter.Write(DefaultIndexValue);
+                binaryWriter.Write(DefaultWordIndexValue);
+            }
 
             fs.Seek(startOfFreeOffset + (DataPageManager.DataPageSize * 2) - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
             binaryWriter.Write(DefaultBufferValue);
@@ -259,11 +279,14 @@ namespace DMS.OffsetPages
 
             binaryWriter.Write(entry.Key.Length); // 4 bytes for the length of the table name
             binaryWriter.Write(entry.Key); // 1 byte per char
-            binaryWriter.Write(entry.Value);// 4 bytes for the start offset of the record
-            binaryWriter.Write(columnCount);// 4 bytes for number of columns 
+            binaryWriter.Write(entry.Value); // 4 bytes for the start offset of the record
+            binaryWriter.Write(columnCount); // 4 bytes for number of columns 
 
             for (int i = 0; i < columnCount; i++)
+            {
                 binaryWriter.Write(DefaultIndexValue);
+                binaryWriter.Write(DefaultWordIndexValue);
+            }
 
             fs.Seek(startOfFreeOffset + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
             binaryWriter.Write(DefaultBufferValue);
@@ -317,7 +340,10 @@ namespace DMS.OffsetPages
                 int columnCount = reader.ReadInt32(); // number of columns to read for indexing 
 
                 for (int i = 0; i < columnCount; i++)
-                    reader.ReadInt32();//the start of the index tree in the file for the given column if the value is 0 that means there is not index for the given column
+                {
+                    reader.ReadInt32(); //the start of the index tree in the file for the given column if the value is 0 that means there is not index for the given column
+                    reader.ReadInt64();
+                }
 
                 if (tableNameLength == 0)
                 {

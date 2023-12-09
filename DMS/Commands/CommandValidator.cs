@@ -240,6 +240,9 @@ namespace DMS.Commands
             if (parts.Length < 4)
                 return false;
 
+            if (parts[1].Length > 128)
+                return false;
+
             if (parts[1] != "on")
                 return false;
 

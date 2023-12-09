@@ -7,12 +7,15 @@ using System.Text;
 using DMS.Commands;
 using DMS.Extensions;
 using DMS.OffsetPages;
+using System.IO;
 
 namespace DMS.Indexes
 {
     public static class IndexManager
     {
         private const int DefaultBufferForIndexDp = -10;
+        private const int DefaultOffsetIndexValue = 0;
+        private const long DefaultOffsetIndexNameValue = 0;
 
         public static void CreateIndex(IReadOnlyList<string> columns, ReadOnlySpan<char> tableName, ReadOnlySpan<char> indexName)
         {
@@ -43,25 +46,75 @@ namespace DMS.Indexes
 
             DKList<long> offsets = new();
             DKList<int> columnIndexInTheTable = new();
-
+            DKList<string> columnIndexNames = new();
             foreach (string col in columns)
             {
                 int columnIndex = HelperMethods.FindColumnIndex(col, columnTypeAndName);
                 offsets.AddRange(GetOffsetForIndexColumns(fileStream, reader, columnIndex, matchingKey, headerSectionForMainDp, columnTypeAndName.Count));
                 columnIndexInTheTable.Add(columnIndex);
+                columnIndexNames.Add(col);
             }
 
             CloseFileAndReader(fileStream, reader);
 
             var offsetValues = OffsetManager.GetDataPageOffsetByTableName(tableName.CustomToArray());
-            UpdateOffsetManagerIndexColumns(columnIndexInTheTable, offsets, offsetValues.offsetValues, offsetValues.endOfRecordOffsetValues);
+            UpdateOffsetManagerIndexColumns(columnIndexInTheTable, columnIndexNames, offsets, indexName, offsetValues.offsetValues, offsetValues.endOfRecordOffsetValues);
 
             WriteBinaryTreeToFile(offsets, columns.Count);
         }
 
         public static void DropIndex(ReadOnlySpan<char> tableName, ReadOnlySpan<char> indexName)
         {
+            char[] matchingKey = HelperMethods.FindTableWithName(tableName);
 
+            if (matchingKey == Array.Empty<char>())
+            {
+                Console.WriteLine("There is no table with the given name");
+                return;
+            }
+
+            var offsetValues = OffsetManager.GetDataPageOffsetByTableName(tableName.CustomToArray());
+
+            int tableNameLength = BitConverter.ToInt32(offsetValues.offsetValues, 0);
+
+            char[] tableNameFromIndexPage = new char[tableNameLength];
+            Array.Copy(offsetValues.offsetValues, 4, tableNameFromIndexPage, 0, tableNameLength);
+
+            int offsetValue = BitConverter.ToInt32(offsetValues.offsetValues, 4 + tableNameLength);
+            int columnCount = BitConverter.ToInt32(offsetValues.offsetValues, 8 + tableNameLength);
+
+            int[] columnIndexes = new int[columnCount];
+            long[] columnIndexNamesAsNumbers = new long[columnCount];
+            int byteIndex = 12 + tableNameLength; // Start index for reading columnIndexes
+
+            for (int i = 0; i < columnCount; i++)
+            {
+                columnIndexes[i] = BitConverter.ToInt32(offsetValues.offsetValues, byteIndex);
+                byteIndex += 4;
+
+                columnIndexNamesAsNumbers[i] = BitConverter.ToInt64(offsetValues.offsetValues, byteIndex);
+                byteIndex += 8;
+            }
+
+            long startOfRecordOffsetValues = offsetValues.endOfRecordOffsetValues - sizeof(int) * columnCount - sizeof(long) * columnCount;
+
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
+            using BinaryWriter writer = new(fs);
+
+            fs.Seek(startOfRecordOffsetValues, SeekOrigin.Begin);
+
+            for (int i = 0; i < columnCount; i++)
+            {
+                string columnIndexName = WordConverter.ConvertNumberToWord(columnIndexNamesAsNumbers[i]);
+                if (columnIndexName == new string(indexName))
+                {
+                    writer.Write(DefaultOffsetIndexValue);
+                    writer.Write(DefaultOffsetIndexNameValue);
+                    Console.WriteLine("Successfully drop index");
+                }
+                else
+                    fs.Seek(sizeof(int) + sizeof(long), SeekOrigin.Begin);
+            }
         }
 
         private static IReadOnlyList<long> GetOffsetForIndexColumns(
@@ -179,9 +232,11 @@ namespace DMS.Indexes
         }
 
         private static void UpdateOffsetManagerIndexColumns(
-            IReadOnlyList<int> columnIndexInTheTable, 
-            IReadOnlyList<long> indexOffsets, 
-            byte[] offsetValues, 
+            IReadOnlyList<int> columnIndexInTheTable,
+            IReadOnlyList<string> columnIndexNames,
+            IReadOnlyList<long> indexOffsets,
+            ReadOnlySpan<char> indexName,
+            byte[] offsetValues,
             long endOfRecordOffsetValues)
         {
             int tableNameLength = BitConverter.ToInt32(offsetValues, 0);
@@ -193,25 +248,41 @@ namespace DMS.Indexes
             int columnCount = BitConverter.ToInt32(offsetValues, 8 + tableNameLength);
 
             int[] columnIndexes = new int[columnCount];
-            for (int i = 0; i < columnCount; i++)
-                columnIndexes[i] = BitConverter.ToInt32(offsetValues, 12 + tableNameLength + i * 4);
+            long[] columnIndexNamesAsNumbers = new long[columnCount];
+            int byteIndex = 12 + tableNameLength; // Start index for reading columnIndexes
 
-            long startOfRecordOffsetValues = endOfRecordOffsetValues - OffsetManager.RecordSizeForOffset(tableNameLength, columnCount);
+            for (int i = 0; i < columnCount; i++)
+            {
+                columnIndexes[i] = BitConverter.ToInt32(offsetValues, byteIndex);
+                byteIndex += 4;
+
+                columnIndexNamesAsNumbers[i] = BitConverter.ToInt64(offsetValues, byteIndex);
+                byteIndex += 8;
+            }
+
+            long startOfRecordOffsetValues = endOfRecordOffsetValues - sizeof(int) * columnCount - sizeof(long) * columnCount;
 
             using FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryWriter writer = new(fileStream);
 
-            fileStream.Seek(startOfRecordOffsetValues + tableNameLength + sizeof(int) + sizeof(int) + sizeof(int), SeekOrigin.Begin);
+            fileStream.Seek(startOfRecordOffsetValues, SeekOrigin.Begin);
 
-            int offsetOfIndex = 0;
+            int colIndex = 0;
             for (int i = 0; i < columnCount; i++)
             {
                 if (columnIndexInTheTable.CustomContains(i))
                 {
                     long indexOffset = indexOffsets[i];
                     writer.Write(indexOffset);
+
+                    long columnNameAsNumber = WordConverter.ConvertWordToNumber(indexName.ToString());
+                    writer.Write(columnNameAsNumber);
+                    colIndex++;
+
+                    Console.WriteLine("Successfully created index");
                 }
-                else fileStream.Seek(sizeof(int), SeekOrigin.Current);
+                else
+                    fileStream.Seek(sizeof(int) + sizeof(long), SeekOrigin.Current);
             }
         }
 
