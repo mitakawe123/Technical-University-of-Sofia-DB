@@ -150,7 +150,7 @@ namespace DMS.Extensions
 
             DKList<string> result = new();
 
-            while ((matchIndex = input.CustomIndexOf(separator, startIndex)) >= 0)
+            while ((matchIndex = input.IndexOf(separator, startIndex)) >= 0)
             {
                 result.Add(input[startIndex..matchIndex]);
                 startIndex = matchIndex + separatorLength;
