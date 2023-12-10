@@ -10,7 +10,7 @@ namespace DMS.Utils
         //('2023-11-03'); -- ISO format
         //('11/03/2023'); -- U.S.format
         //('03/11/2023'); -- European format
-        private static readonly string[] formats = { "yyyy-MM-dd", "MM/dd/yyyy", "dd/MM/yyyy" };
+        private static readonly string[] Formats = { "yyyy-MM-dd", "MM/dd/yyyy", "dd/MM/yyyy" };
 
         public static bool CheckIfValidColumnType(ReadOnlySpan<char> type)
         {
@@ -69,7 +69,7 @@ namespace DMS.Utils
                 case EDataTypes.INT:
                     return int.TryParse(value, out _);
                 case EDataTypes.DATE:
-                    return DateTime.TryParseExact(value, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
+                    return DateTime.TryParseExact(value, Formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
                 default:
                     return true; // All values are valid as strings
             }

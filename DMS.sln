@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DMS", "DMS\DMS.csproj", "{E
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DataStructures", "DataStructures\DataStructures.csproj", "{2CE98615-C2D6-4A9B-B92A-0410886FD86C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI", "UI\UI.csproj", "{C9B4B1E7-F1E2-4987-A4DA-5AA9BBE924F9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{2CE98615-C2D6-4A9B-B92A-0410886FD86C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2CE98615-C2D6-4A9B-B92A-0410886FD86C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2CE98615-C2D6-4A9B-B92A-0410886FD86C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9B4B1E7-F1E2-4987-A4DA-5AA9BBE924F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9B4B1E7-F1E2-4987-A4DA-5AA9BBE924F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9B4B1E7-F1E2-4987-A4DA-5AA9BBE924F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9B4B1E7-F1E2-4987-A4DA-5AA9BBE924F9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
