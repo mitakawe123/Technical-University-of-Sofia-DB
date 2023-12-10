@@ -70,7 +70,7 @@ namespace DMS.Commands
             DKList<Column> selectedColumns,
             int colCount)
         {
-            List<string> currentOperations = new List<string>();
+            DKList<string> currentOperations = new();
             string currentOperator = string.Empty;
 
             for (int i = 0; i < Operators.Count; i++)
@@ -94,11 +94,9 @@ namespace DMS.Commands
                 currentOperations.Add(_operations[i]);
             }
 
+            // Execute any remaining operations
             if (currentOperations.Any())
-            {
-                // Execute any remaining operations
                 ExecuteCondition(ref allData, allColumnsForTable, selectedColumns, colCount, currentOperator, currentOperations);
-            }
 
             Operators.Clear();
             _operations.Clear();
@@ -110,32 +108,24 @@ namespace DMS.Commands
             DKList<Column> selectedColumns,
             int colCount,
             string operatorType,
-            List<string> operations)
+            DKList<string> operations)
         {
             switch (operatorType)
             {
                 case "where":
-                    // Implement logic to handle multiple 'where' conditions
-                    foreach (var operation in operations)
-                    {
+                    foreach (string operation in operations)
                         WhereCondition(ref allData, colCount, operation);
-                    }
                     break;
                 case "order by":
-                    // Assuming only the last 'order by' is relevant
                     OrderByCondition(ref allData, allColumnsForTable, colCount, operations.Last());
                     break;
                 case "join":
-                    // Handle join conditions
-                    foreach (var operation in operations)
-                    {
+                    foreach (string operation in operations)
                         JoinCondition(ref allData, selectedColumns, colCount, operation);
-                    }
                     break;
                 case "distinct":
                     DistinctCondition(ref allData);
                     break;
-                    // Add cases for other operators if needed
             }
         }
 
@@ -195,7 +185,7 @@ namespace DMS.Commands
 
         public static bool CompareValues(char[] value1, char[] value2, string op)
         {
-            //need to check for DATE
+            // Try parsing as integers
             bool isValue1Int = int.TryParse(new string(value1), out int intValue1);
             bool isValue2Int = int.TryParse(new string(value2), out int intValue2);
 
@@ -212,13 +202,37 @@ namespace DMS.Commands
                 };
             }
 
-            // If either value is not an integer, fall back to string comparison
+            // Try parsing as dates
+            bool isValue1Date = TryParseDate(new string(value1), out DateTime dateValue1);
+            bool isValue2Date = TryParseDate(new string(value2), out DateTime dateValue2);
+
+            if (isValue1Date && isValue2Date)
+            {
+                return op switch
+                {
+                    "=" => dateValue1 == dateValue2,
+                    ">" => dateValue1 > dateValue2,
+                    "<" => dateValue1 < dateValue2,
+                    ">=" => dateValue1 >= dateValue2,
+                    "<=" => dateValue1 <= dateValue2,
+                    _ => false
+                };
+            }
+
+            // Fallback to string comparison if neither are integers or dates
             int comparison = string.CompareOrdinal(new string(value1), new string(value2));
             return op switch
             {
                 "=" => comparison == 0,
                 _ => false,
             };
+        }
+
+        private static bool TryParseDate(string value, out DateTime date)
+        {
+            string[] formats = { "yyyy-MM-dd", "MM/dd/yyyy", "dd/MM/yyyy" };
+            return DateTime.TryParseExact(value, formats, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out date);
         }
 
         #endregion
