@@ -29,6 +29,13 @@ namespace DMS.Commands
             int headerSectionForMainDp = DataPageManager.Metadata + metadata.tableLength;
             (headerSectionForMainDp, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDp, metadata.columnCount);
 
+            bool areValidTypes = TypeValidation.CheckValidityOfColumnValuesBasedOnType(columnNameAndType, columnsValues);
+            if (!areValidTypes)
+            {
+                Console.WriteLine($"Invalid types when inserting into table {tableName}");
+                return;
+            }
+
             long firstFreeDp = FindFirstFreeDataPageOffsetStart(fileStream, reader, DataPageManager.TableOffsets[matchingKey]);
 
             CloseStreamAndReader(fileStream, reader);

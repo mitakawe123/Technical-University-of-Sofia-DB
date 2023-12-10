@@ -4,6 +4,7 @@ using DMS.DataPages;
 using DMS.Extensions;
 using DMS.Indexes;
 using DMS.Shared;
+using DMS.Utils;
 
 namespace DMS.Commands
 {
@@ -62,13 +63,20 @@ namespace DMS.Commands
                 ReadOnlySpan<char> columnName = columnDefinition[..spaceIndex].CustomTrim();
                 ReadOnlySpan<char> columnType = columnDefinition[(spaceIndex + 1)..].CustomTrim();
 
+                bool isValidType = TypeValidation.CheckIfValidColumnType(columnType);
+                if (!isValidType)
+                {
+                    Console.WriteLine($"Invalid type for column {columnName} with type {columnType}");
+                    return;
+                }
+
                 int typeSpaceIndex = columnType.CustomIndexOf(' ');
-                if (typeSpaceIndex != -1)
+                if (typeSpaceIndex is not -1)
                     columnType = columnType[..typeSpaceIndex];
 
                 columns.Add(new Column(new string(columnName), new string(columnType)));
 
-                values = commaIndex != -1 ? values[(commaIndex + 1)..].CustomTrim() : ReadOnlySpan<char>.Empty;
+                values = commaIndex is not -1 ? values[(commaIndex + 1)..].CustomTrim() : ReadOnlySpan<char>.Empty;
             }
 
             if (columns.CustomAny(x => x.Name.Length > 128))

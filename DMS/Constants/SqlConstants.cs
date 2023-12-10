@@ -41,14 +41,10 @@
         EXECUTE
     }
 
-    //('2023-11-03'); -- ISO format
-    //('11/03/2023'); -- U.S.format
-    //('03/11/2023'); -- European format
-    //('20231103');   -- ISO basic (unseparated)
     public enum EDataTypes
     {
-        DATE, //DATE: Stores a date in the format YYYY-MM-DD.
-        INT, //4 bytes (32 bits)
+        DATE,
+        INT,
         STRING // 2^31-1 bytes (2 GB). <- nvarchar(MAX) / 4,000char can be store there
     }
 
