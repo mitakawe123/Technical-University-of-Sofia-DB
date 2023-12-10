@@ -70,27 +70,73 @@ namespace DMS.Commands
             DKList<Column> selectedColumns,
             int colCount)
         {
+            List<string> currentOperations = new List<string>();
+            string currentOperator = string.Empty;
+
             for (int i = 0; i < Operators.Count; i++)
             {
-                switch (Operators[i])
+                if (Operators[i] == "and")
                 {
-                    case "where":
-                        WhereCondition(ref allData, colCount, _operations[i]);
-                        break;
-                    case "order by":
-                        OrderByCondition(ref allData, allColumnsForTable, colCount, _operations[i]);
-                        break;
-                    case "join":
-                        JoinCondition(ref allData, selectedColumns, colCount, _operations[i]);
-                        break;
-                    case "distinct":
-                        DistinctCondition(ref allData);
-                        break;
+                    // Keep accumulating conditions for the current operator
+                    currentOperations.Add(_operations[i]);
+                    continue;
                 }
+
+                if (currentOperations.Any())
+                {
+                    // Execute the accumulated conditions for the previous operator
+                    ExecuteCondition(ref allData, allColumnsForTable, selectedColumns, colCount, currentOperator, currentOperations);
+                    currentOperations.Clear();
+                }
+
+                // Set the new operator and add the current operation
+                currentOperator = Operators[i];
+                currentOperations.Add(_operations[i]);
+            }
+
+            if (currentOperations.Any())
+            {
+                // Execute any remaining operations
+                ExecuteCondition(ref allData, allColumnsForTable, selectedColumns, colCount, currentOperator, currentOperations);
             }
 
             Operators.Clear();
             _operations.Clear();
+        }
+
+        private static void ExecuteCondition(
+            ref IReadOnlyList<char[]> allData,
+            IReadOnlyList<Column> allColumnsForTable,
+            DKList<Column> selectedColumns,
+            int colCount,
+            string operatorType,
+            List<string> operations)
+        {
+            switch (operatorType)
+            {
+                case "where":
+                    // Implement logic to handle multiple 'where' conditions
+                    foreach (var operation in operations)
+                    {
+                        WhereCondition(ref allData, colCount, operation);
+                    }
+                    break;
+                case "order by":
+                    // Assuming only the last 'order by' is relevant
+                    OrderByCondition(ref allData, allColumnsForTable, colCount, operations.Last());
+                    break;
+                case "join":
+                    // Handle join conditions
+                    foreach (var operation in operations)
+                    {
+                        JoinCondition(ref allData, selectedColumns, colCount, operation);
+                    }
+                    break;
+                case "distinct":
+                    DistinctCondition(ref allData);
+                    break;
+                    // Add cases for other operators if needed
+            }
         }
 
         #region where clause
