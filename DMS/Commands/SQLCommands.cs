@@ -147,7 +147,10 @@ namespace DMS.Commands
             while (pointer != DataPageManager.DefaultBufferForDp)
             {
                 fileStream.Seek(pointer, SeekOrigin.Begin);
+                
+                reader.ReadUInt64();// <- hash
                 reader.ReadInt32(); //<- free space
+                
                 start = pointer + sizeof(int);
                 end = pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
                 lengthToRead = end - start;
@@ -190,8 +193,7 @@ namespace DMS.Commands
                         continue;
 
                     fileStream.Seek(start, SeekOrigin.Begin);
-                    int rowsDeleted =
-                        ReadAndDeleteData(fileStream, reader, writer, lengthToRead, value, op, metadata.columnCount);
+                    int rowsDeleted = ReadAndDeleteData(fileStream, reader, writer, lengthToRead, value, op, metadata.columnCount);
                     if (rowsDeleted > 0)
                         Console.WriteLine($"Rows affected {rowsDeleted}");
                 }
@@ -229,6 +231,7 @@ namespace DMS.Commands
             }
             catch (Exception)
             {
+                Console.WriteLine("Error occurred while deleting records");
             }
 
             return deletedRowsCounter;
@@ -279,6 +282,7 @@ namespace DMS.Commands
 
         public static (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) ReadTableMetadata(BinaryReader reader)
         {
+            ulong hash = reader.ReadUInt64(); //8 bytes
             int freeSpace = reader.ReadInt32(); // 4 bytes
             ulong recordSizeInBytes = reader.ReadUInt64();// 8 bytes
             int tableLength = reader.ReadInt32();// 4 bytes
@@ -349,9 +353,11 @@ namespace DMS.Commands
 
             fs.Seek(firstFreeDp, SeekOrigin.Begin);
 
-            byte[] freeSpaceBytes = new byte[4];
-            fs.Read(freeSpaceBytes, 0, 4);
-            int freeSpace = BitConverter.ToInt32(freeSpaceBytes, 0);
+            byte[] buffer = new byte[12];
+            int bytesRead = fs.Read(buffer, 0, buffer.Length);
+
+            ulong hash = BitConverter.ToUInt64(buffer, 0);
+            int freeSpace = BitConverter.ToInt32(buffer, 8);
 
             long startingPosition = firstFreeDp + DataPageManager.DataPageSize - freeSpace;
 
@@ -368,7 +374,7 @@ namespace DMS.Commands
                 recordIndex += dataToWrite;
 
                 //go back and update free space in the current data page
-                fs.Seek(firstFreeDp, SeekOrigin.Begin);
+                fs.Seek(firstFreeDp + sizeof(ulong), SeekOrigin.Begin);//ulong for the hash
                 writer.Write(freeSpace);
 
                 // Move to the end of the current page and read the pointer
@@ -378,9 +384,9 @@ namespace DMS.Commands
                 long pointer = BitConverter.ToInt64(pointerBytes, 0);
 
                 // Check if there is more data to be written and add pointer to next DP
-                if (recordIndex >= recordLength) 
+                if (recordIndex >= recordLength)
                     continue;
-                
+
                 pointer = (DataPageManager.AllDataPagesCount + 1) * DataPageManager.DataPageSize;
 
                 // Write the pointer to the current page

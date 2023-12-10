@@ -1,6 +1,7 @@
 ﻿using DataStructures;
 using DMS.Constants;
 using DMS.DataPages;
+using DMS.DataRecovery;
 using System.Text;
 
 namespace DMS.OffsetPages
@@ -11,7 +12,8 @@ namespace DMS.OffsetPages
         private const int DefaultIndexValue = 0;
         private const long DefaultWordIndexValue = 0;
 
-        public static int RecordSizeForOffset(int tableNameLength, int columnCount) => tableNameLength * sizeof(char) + sizeof(int) + sizeof(int) + sizeof(int) + sizeof(int) * columnCount + sizeof(long) * columnCount;
+        //table name 1 byte per char, free space 4 bytes,table name length 4 bytes, 4 bytes for start of offset, 4 bytes for column count, 4 bytes index offset * column Count, 8 bytes for index name as number * column count, 8bytes for hash 
+        public static int RecordSizeForOffset(int tableNameLength, int columnCount) => tableNameLength * sizeof(char) + sizeof(int) + sizeof(int) + sizeof(int) + sizeof(int) * columnCount + sizeof(long) * columnCount + sizeof(ulong);
 
         public static void WriteOffsetMapper(KeyValuePair<char[], long> entry, int columnCount)
         {
@@ -30,17 +32,17 @@ namespace DMS.OffsetPages
             freeSpace = FreeSpaceInOffset(sizeOfCurrentRecord);
 
             using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
-            using BinaryWriter binaryWriter = new(fs, Encoding.UTF8);
+            using BinaryWriter writer = new(fs, Encoding.UTF8);
 
             //the data will overflow the current offset page and I need to create a new one
             if (freeSpace == DefaultBufferValue)
             {
                 freeSpace = DataPageManager.DataPageSize - sizeOfCurrentRecord;
-                CreateNewOffsetTable(entry, fs, binaryWriter, startOfFreeOffset, columnCount, ref freeSpace);
+                CreateNewOffsetTable(entry, fs, writer, startOfFreeOffset, columnCount, ref freeSpace);
                 return;
             }
 
-            WriteToCurrentOffsetTable(entry, fs, binaryWriter, startOfFreeOffset, sizeOfCurrentRecord, columnCount, ref freeSpace);
+            WriteToCurrentOffsetTable(entry, fs, writer, startOfFreeOffset, sizeOfCurrentRecord, columnCount, ref freeSpace);
         }
 
         public static DKDictionary<char[], long> ReadTableOffsets()
@@ -49,6 +51,7 @@ namespace DMS.OffsetPages
             using BinaryReader reader = new(binaryStream, Encoding.UTF8);
 
             binaryStream.Seek(DataPageManager.FirstOffsetPageStart, SeekOrigin.Begin);
+            ulong hash = reader.ReadUInt64();
             int freeSpace = reader.ReadInt32();
 
             DKDictionary<char[], long> offsetMap = new();
@@ -73,7 +76,9 @@ namespace DMS.OffsetPages
             using BinaryReader reader = new(binaryStream, Encoding.UTF8);
 
             long stopPosition = DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
+            ulong hash = reader.ReadUInt64();
             int freeSpace = reader.ReadInt32();
+
             while (binaryStream.Position < stopPosition)
                 EraseRecordIfMatch();
 
@@ -81,6 +86,7 @@ namespace DMS.OffsetPages
             while (pointer != DefaultBufferValue)
             {
                 binaryStream.Seek(pointer, SeekOrigin.Begin);
+                hash = reader.ReadUInt64();
                 freeSpace = reader.ReadInt32();
 
                 stopPosition = binaryStream.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
@@ -118,6 +124,8 @@ namespace DMS.OffsetPages
             using BinaryReader reader = new(binaryStream, Encoding.UTF8);
 
             binaryStream.Seek(DataPageManager.FirstOffsetPageStart, SeekOrigin.Begin);
+
+            ulong hash = reader.ReadUInt64();
             int freeSpace = reader.ReadInt32();
             long stopPosition = DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
 
@@ -132,6 +140,7 @@ namespace DMS.OffsetPages
             while (pointer is not DefaultBufferValue)
             {
                 binaryStream.Seek(pointer, SeekOrigin.Begin);
+                hash = reader.ReadUInt64();
                 freeSpace = reader.ReadInt32();
                 long stop = binaryStream.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
                 while (binaryStream.Position < stop)
@@ -207,12 +216,15 @@ namespace DMS.OffsetPages
             int columnCount,
             ref int freeSpace)
         {
-            using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Append);
-            using BinaryWriter writer = new(binaryStream, Encoding.UTF8);
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
+            using BinaryWriter writer = new(fs, Encoding.UTF8);
 
-            binaryStream.Seek(DataPageManager.FirstOffsetPageStart, SeekOrigin.Begin);
+            fs.Seek(DataPageManager.FirstOffsetPageStart, SeekOrigin.Begin);
+
+            long snapshotHashStartingPosition = fs.Position;
 
             freeSpace -= sizeOfCurrentRecord;
+            writer.Write(FileIntegrityChecker.DefaultHashValue);// 8 bytes for hash
             writer.Write(freeSpace); // 4 bytes for free space
 
             writer.Write(entry.Key.Length); // 4 bytes for the length of the table name
@@ -226,8 +238,10 @@ namespace DMS.OffsetPages
                 writer.Write(DefaultWordIndexValue); //8 bytes index name as number 
             }
 
-            binaryStream.Seek(DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+            fs.Seek(DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
             writer.Write(DefaultBufferValue);
+
+            FileIntegrityChecker.RecalculateHash(fs, writer, snapshotHashStartingPosition);
 
             DataPageManager.AllDataPagesCount++;
         }
@@ -235,28 +249,33 @@ namespace DMS.OffsetPages
         private static void CreateNewOffsetTable(
             KeyValuePair<char[], long> entry,
             FileStream fs,
-            BinaryWriter binaryWriter,
+            BinaryWriter writer,
             long startOfFreeOffset,
             int columnCount,
             ref int freeSpace)
         {
             fs.Seek(startOfFreeOffset + DataPageManager.DataPageSize, SeekOrigin.Begin);
 
-            binaryWriter.Write(freeSpace);
+            long snapshotHashStartingPosition = fs.Position;
 
-            binaryWriter.Write(entry.Key.Length); // 4 bytes for the length of the table name
-            binaryWriter.Write(entry.Key); // 1 byte per char
-            binaryWriter.Write(entry.Value); // 4 bytes for the start offset of the record
-            binaryWriter.Write(columnCount); // 4 bytes for number of columns 
+            writer.Write(FileIntegrityChecker.DefaultHashValue);
+            writer.Write(freeSpace);
+
+            writer.Write(entry.Key.Length); // 4 bytes for the length of the table name
+            writer.Write(entry.Key); // 1 byte per char
+            writer.Write(entry.Value); // 4 bytes for the start offset of the record
+            writer.Write(columnCount); // 4 bytes for number of columns 
 
             for (int i = 0; i < columnCount; i++)
             {
-                binaryWriter.Write(DefaultIndexValue);
-                binaryWriter.Write(DefaultWordIndexValue);
+                writer.Write(DefaultIndexValue);
+                writer.Write(DefaultWordIndexValue);
             }
 
             fs.Seek(startOfFreeOffset + (DataPageManager.DataPageSize * 2) - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
-            binaryWriter.Write(DefaultBufferValue);
+            writer.Write(DefaultBufferValue);
+
+            FileIntegrityChecker.RecalculateHash(fs, writer, snapshotHashStartingPosition);
 
             DataPageManager.AllDataPagesCount++;
         }
@@ -264,7 +283,7 @@ namespace DMS.OffsetPages
         private static void WriteToCurrentOffsetTable(
             KeyValuePair<char[], long> entry,
             FileStream fs,
-            BinaryWriter binaryWriter,
+            BinaryWriter writer,
             long startOfFreeOffset,
             int columnCount,
             int sizeOfCurrentRecord,
@@ -272,26 +291,31 @@ namespace DMS.OffsetPages
         {
             fs.Seek(startOfFreeOffset, SeekOrigin.Begin);
 
+            long snapshotHashStartingPosition = fs.Position;
+
             //write to the current offset page
             long startingPoint = startOfFreeOffset + (DataPageManager.DataPageSize - freeSpace) + sizeof(int);
             freeSpace -= sizeOfCurrentRecord;
 
-            binaryWriter.Write(freeSpace); // 4 bytes for free space
+            writer.Write(FileIntegrityChecker.DefaultHashValue);
+            writer.Write(freeSpace); // 4 bytes for free space
             fs.Seek(startingPoint, SeekOrigin.Begin);
 
-            binaryWriter.Write(entry.Key.Length); // 4 bytes for the length of the table name
-            binaryWriter.Write(entry.Key); // 1 byte per char
-            binaryWriter.Write(entry.Value); // 4 bytes for the start offset of the record
-            binaryWriter.Write(columnCount); // 4 bytes for number of columns 
+            writer.Write(entry.Key.Length); // 4 bytes for the length of the table name
+            writer.Write(entry.Key); // 1 byte per char
+            writer.Write(entry.Value); // 4 bytes for the start offset of the record
+            writer.Write(columnCount); // 4 bytes for number of columns 
 
             for (int i = 0; i < columnCount; i++)
             {
-                binaryWriter.Write(DefaultIndexValue);
-                binaryWriter.Write(DefaultWordIndexValue);
+                writer.Write(DefaultIndexValue);
+                writer.Write(DefaultWordIndexValue);
             }
 
             fs.Seek(startOfFreeOffset + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
-            binaryWriter.Write(DefaultBufferValue);
+            writer.Write(DefaultBufferValue);
+
+            FileIntegrityChecker.RecalculateHash(fs, writer, snapshotHashStartingPosition);
         }
 
         private static long PointerToNextPage()
@@ -323,6 +347,7 @@ namespace DMS.OffsetPages
             using BinaryReader reader = new(binaryStream);
 
             binaryStream.Seek(DataPageManager.FirstOffsetPageStart, SeekOrigin.Begin);
+            ulong hash = reader.ReadUInt64();
             int freeSpace = reader.ReadInt32();
             if (requiredSpace + DataPageManager.BufferOverflowPointer < freeSpace)
                 return freeSpace;
@@ -330,11 +355,11 @@ namespace DMS.OffsetPages
             return (int)DefaultBufferValue;
         }
 
-        private static void ReadOffsetTable(FileStream stream, BinaryReader reader, IDictionary<char[], long> offsetMap)
+        private static void ReadOffsetTable(FileStream fs, BinaryReader reader, IDictionary<char[], long> offsetMap)
         {
-            long stopPosition = stream.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer - sizeof(int); //<- this sizeof(int) is free space variable
+            long stopPosition = fs.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer - sizeof(int) - sizeof(ulong); // this sizeof(int) is free space and ulong is hash
 
-            while (stream.Position < stopPosition)
+            while (fs.Position < stopPosition)
             {
                 int tableNameLength = reader.ReadInt32();
                 char[] tableName = reader.ReadChars(tableNameLength);
@@ -349,7 +374,7 @@ namespace DMS.OffsetPages
 
                 if (tableNameLength == 0)
                 {
-                    stream.Seek(stopPosition, SeekOrigin.Begin);
+                    fs.Seek(stopPosition, SeekOrigin.Begin);
                     return;
                 }
 

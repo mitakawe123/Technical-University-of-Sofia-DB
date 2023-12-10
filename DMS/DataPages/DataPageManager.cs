@@ -6,6 +6,7 @@ using DMS.Shared;
 using DMS.Utils;
 using Microsoft.Win32;
 using System.Text;
+using DMS.DataRecovery;
 using static DMS.Utils.ControlTypes;
 
 namespace DMS.DataPages
@@ -21,7 +22,7 @@ namespace DMS.DataPages
         public const long DefaultBufferForDp = -1;// Default pointer to the next page
         public const long BufferOverflowPointer = 8; //8 bytes for pointer to next page
         public const int CounterSection = 16; // 16 bytes for table count, data page count, all data pages count and offset table start
-        public const int Metadata = 20;// 20 bytes for the metadata
+        public const int Metadata = 28;// 28 bytes for the metadata
         public const int DataPageSize = 8192; // 8KB
 
         public static int DataPageCounter = 0; // 4 bytes for data page count  
@@ -66,7 +67,7 @@ namespace DMS.DataPages
                 return;
             }
 
-            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open, FileAccess.ReadWrite);
             using BinaryWriter writer = new(fs, Encoding.UTF8);
 
             ulong totalSpaceForColumnTypes = HelperAllocater.AllocatedStorageForTypes(columns);// this will calc max space required for one record
@@ -88,6 +89,8 @@ namespace DMS.DataPages
             while (numberOfPagesNeeded > 0)
             {
                 fs.Seek(currentPage * DataPageSize + CounterSection, SeekOrigin.Begin);
+
+                writer.Write(FileIntegrityChecker.DefaultHashValue); // 8 bytes hash
 
                 //this is the first Data page for the table and we need to write the header section only in this data page
                 if (currentPage == AllDataPagesCount)
@@ -118,12 +121,16 @@ namespace DMS.DataPages
                         break;
                 }
 
-                fs.Seek(currentPage * DataPageSize + CounterSection, SeekOrigin.Begin);
+                long snapshotHashStartingPosition = currentPage * DataPageSize + CounterSection;
+
+                fs.Seek(currentPage * DataPageSize + CounterSection + FileIntegrityChecker.HashSize, SeekOrigin.Begin);
                 writer.Write(freeSpace);
 
                 currentPage++;
                 pageNum++;
                 numberOfPagesNeeded--;
+
+                FileIntegrityChecker.RecalculateHash(fs, writer, snapshotHashStartingPosition);
 
                 // If there are more columns to write, store a reference to the next page
                 if (columnIndex >= columns.Count)
@@ -135,6 +142,8 @@ namespace DMS.DataPages
 
                 writer.Write(pointerToNextPage); // Next page offset
                 freeSpace = DataPageSize;
+
+                FileIntegrityChecker.RecalculateHash(fs, writer, snapshotHashStartingPosition);
             }
 
             //update the pointer in the last DP
@@ -188,12 +197,23 @@ namespace DMS.DataPages
         {
             if (_tableOffsets.Count == 0)
             {
-                Console.WriteLine("There is no tables in the DB");
+                Console.WriteLine("There are no tables in the DB.");
                 return;
             }
 
-            foreach (char[] table in _tableOffsets.Keys)
-                Console.WriteLine(table);
+            Console.WriteLine("List of Tables in the Database:");
+            Console.WriteLine(new string('-', 30)); // Print a separator line
+
+            int index = 1;
+            foreach (char[] tableCharArray in _tableOffsets.Keys)
+            {
+                string tableName = new(tableCharArray);
+                Console.WriteLine($"{index}. {tableName}");
+                index++;
+            }
+
+            Console.WriteLine(new string('-', 30)); // Print a separator line
+            Console.WriteLine($"{_tableOffsets.Count} tables listed.");
         }
 
         public static void TableInfo(ReadOnlySpan<char> tableName)
@@ -214,6 +234,7 @@ namespace DMS.DataPages
 
             fileStream.Seek(offset, SeekOrigin.Begin);
 
+            ulong hash = reader.ReadUInt64();
             int freeSpace = reader.ReadInt32();
             ulong recordSize = reader.ReadUInt64();
             int tableNameLengthFromFile = reader.ReadInt32();
@@ -261,29 +282,41 @@ namespace DMS.DataPages
         {
             try
             {
-                using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
-                using BinaryReader reader = new(fs, Encoding.UTF8);
-                fs.Seek(0, SeekOrigin.Begin);
-
-                _tablesCount = reader.ReadInt32();
-                AllDataPagesCount = reader.ReadInt32();
-                DataPageCounter = reader.ReadInt32();
-                FirstOffsetPageStart = reader.ReadInt32();
+                ReadCountsFromFile();
             }
-            catch (Exception)
+            catch (FileNotFoundException)
             {
-                using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.CreateNew);
-                using BinaryWriter writer = new(fs, Encoding.UTF8);
-                fs.Seek(0, SeekOrigin.Begin);
-
-                writer.Write(_tablesCount);
-                writer.Write(AllDataPagesCount);
-                writer.Write(DataPageCounter);
-                writer.Write(FirstOffsetPageStart);
+                CreateNewFileWithDefaults();
+            }
+            catch (IOException ex)
+            {
+                Console.WriteLine($"An IO exception occurred: {ex.Message}");
             }
 
             if (AllDataPagesCount != 0)
                 _tableOffsets = OffsetManager.ReadTableOffsets();
+        }
+
+        private static void ReadCountsFromFile()
+        {
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
+            using BinaryReader reader = new(fs, Encoding.UTF8);
+
+            _tablesCount = reader.ReadInt32();
+            AllDataPagesCount = reader.ReadInt32();
+            DataPageCounter = reader.ReadInt32();
+            FirstOffsetPageStart = reader.ReadInt32();
+        }
+
+        private static void CreateNewFileWithDefaults()
+        {
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.CreateNew);
+            using BinaryWriter writer = new(fs, Encoding.UTF8);
+
+            writer.Write(_tablesCount);
+            writer.Write(AllDataPagesCount);
+            writer.Write(DataPageCounter);
+            writer.Write(FirstOffsetPageStart);
         }
 
         private static bool ConsoleCtrlCheck(CtrlTypes ctrlType)

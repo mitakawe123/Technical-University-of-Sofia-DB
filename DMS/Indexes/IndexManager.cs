@@ -7,7 +7,6 @@ using System.Text;
 using DMS.Commands;
 using DMS.Extensions;
 using DMS.OffsetPages;
-using System.IO;
 
 namespace DMS.Indexes
 {

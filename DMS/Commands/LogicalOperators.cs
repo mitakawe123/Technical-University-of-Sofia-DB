@@ -299,16 +299,16 @@ namespace DMS.Commands
 
         private static void JoinRows(
             out IReadOnlyList<char[]> allDataFromMainTable,
-            DKList<DKList<char[]>> mainTableRows,
-            DKList<DKList<char[]>> joinedTableRows,
+            IReadOnlyList<IReadOnlyList<char[]>> mainTableRows,
+            IReadOnlyList<IReadOnlyList<char[]>> joinedTableRows,
             int mainTableJoinIndex,
             int joinedTableJoinIndex)
         {
             DKList<DKList<char[]>> resultRows = new();
 
-            foreach (DKList<char[]> mainTableRow in mainTableRows)
+            foreach (var mainTableRow in mainTableRows)
             {
-                foreach (DKList<char[]> joinedTableRow in joinedTableRows)
+                foreach (var joinedTableRow in joinedTableRows)
                 {
                     if (!mainTableRow[mainTableJoinIndex].SequenceEqual(joinedTableRow[joinedTableJoinIndex]))
                         continue;
@@ -317,8 +317,8 @@ namespace DMS.Commands
 
                     combinedRow.AddRange(mainTableRow);
 
-                    for (int i = 0; i < joinedTableRow.Count; i++)
-                        combinedRow.Add(joinedTableRow[i]);
+                    foreach (var tableRow in joinedTableRow)
+                        combinedRow.Add(tableRow);
 
                     resultRows.Add(combinedRow);
                 }
@@ -327,42 +327,46 @@ namespace DMS.Commands
             allDataFromMainTable = resultRows.SelectMany(row => row).CustomToArray();
         }
        
-        private static (IReadOnlyList<char[]> allDataFromJoinedTable, IReadOnlyList<Column> columnsForJoinedTable, int colCount) AllDataFromJoinedTable(long startOfOffsetForJoinedTable, char[] matchingKey)
+        private static (IReadOnlyList<char[]> allDataFromJoinedTable, IReadOnlyList<Column> columnsForJoinedTable, int colCount) 
+            AllDataFromJoinedTable(long startOfOffsetForJoinedTable, char[] matchingKey)
         {
-            using FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
-            using BinaryReader binaryReader = new(fileStream, Encoding.UTF8);
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
+            using BinaryReader reader = new(fs, Encoding.UTF8);
 
-            fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
+            fs.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
 
-            var metadata = SqlCommands.ReadTableMetadata(binaryReader);
+            var metadata = SqlCommands.ReadTableMetadata(reader);
 
             int headerSectionForMainDp = DataPageManager.Metadata + matchingKey.Length;
-            fileStream.Seek(startOfOffsetForJoinedTable + headerSectionForMainDp, SeekOrigin.Begin);
+            fs.Seek(startOfOffsetForJoinedTable + headerSectionForMainDp, SeekOrigin.Begin);
 
-            (headerSectionForMainDp, DKList<Column> columnTypeAndName) = SqlCommands.ReadColumns(binaryReader, headerSectionForMainDp, metadata.columnCount);
+            (headerSectionForMainDp, DKList<Column> columnTypeAndName) = SqlCommands.ReadColumns(reader, headerSectionForMainDp, metadata.columnCount);
 
             long start = DataPageManager.TableOffsets[matchingKey] + headerSectionForMainDp;
             long end = DataPageManager.TableOffsets[matchingKey] + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
             long lengthToRead = end - start;
 
-            fileStream.Seek(start, SeekOrigin.Begin);
+            fs.Seek(start, SeekOrigin.Begin);
 
-            DKList<char[]> allDataFromJoinedTable = SqlCommands.ReadAllDataForSingleDataPage(lengthToRead, binaryReader);
+            DKList<char[]> allDataFromJoinedTable = SqlCommands.ReadAllDataForSingleDataPage(lengthToRead, reader);
 
-            fileStream.Seek(end, SeekOrigin.Begin);
-            long pointer = binaryReader.ReadInt64();
+            fs.Seek(end, SeekOrigin.Begin);
+            long pointer = reader.ReadInt64();
 
             while (pointer != DataPageManager.DefaultBufferForDp)
             {
-                fileStream.Seek(pointer, SeekOrigin.Begin);
-                binaryReader.ReadInt32(); //<- free space
+                fs.Seek(pointer, SeekOrigin.Begin);
+                
+                reader.ReadUInt64(); //<- hash
+                reader.ReadInt32(); //<- free space
+                
                 start = pointer + sizeof(int);
                 end = pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
                 lengthToRead = end - start;
 
-                allDataFromJoinedTable = allDataFromJoinedTable.Concat(SqlCommands.ReadAllDataForSingleDataPage(lengthToRead, binaryReader)).CustomToList();
-                fileStream.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
-                pointer = binaryReader.ReadInt64();
+                allDataFromJoinedTable = allDataFromJoinedTable.Concat(SqlCommands.ReadAllDataForSingleDataPage(lengthToRead, reader)).CustomToList();
+                fs.Seek(pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+                pointer = reader.ReadInt64();
             }
 
             allDataFromJoinedTable.RemoveAll(charArray => charArray.Length == 0 || charArray.All(c => c == '\0'));
