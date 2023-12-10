@@ -58,13 +58,6 @@ namespace DMS.DataRecovery
             writer.Write(hash);
         }
 
-        private static (FileStream, BinaryWriter) OpenFileAndWrite()
-        {
-            FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
-            BinaryWriter writer = new(fileStream, Encoding.UTF8);
-            return (fileStream, writer);
-        }
-
         private static (FileStream, BinaryReader) OpenFileAndRead()
         {
             FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
@@ -74,5 +67,4 @@ namespace DMS.DataRecovery
 
         private static bool CompareHashes(ulong hash1, ulong hash2) => hash1 == hash2;
     }
-
 }

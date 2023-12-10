@@ -27,7 +27,7 @@ namespace DMS.Commands
 
             string operatorStr = new string(logicalOperator).CustomTrim();
 
-            string[] tokens = operatorStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] tokens = operatorStr.CustomSplit(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
             for (int i = 0; i < tokens.Length; i++)
             {
@@ -241,7 +241,7 @@ namespace DMS.Commands
 
             rows.Sort(rowComparer);
 
-            DKList<char[]> sortedData = rows.SelectMany(row => row).CustomToList();
+            DKList<char[]> sortedData = rows.CustomSelectMany(row => row).CustomToList();
             allData = sortedData.AsReadOnly();
         }
 
@@ -324,7 +324,7 @@ namespace DMS.Commands
                 }
             }
 
-            allDataFromMainTable = resultRows.SelectMany(row => row).CustomToArray();
+            allDataFromMainTable = resultRows.CustomSelectMany(row => row).CustomToArray();
         }
        
         private static (IReadOnlyList<char[]> allDataFromJoinedTable, IReadOnlyList<Column> columnsForJoinedTable, int colCount) 

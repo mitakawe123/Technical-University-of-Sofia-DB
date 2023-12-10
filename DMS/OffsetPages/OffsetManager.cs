@@ -12,9 +12,6 @@ namespace DMS.OffsetPages
         private const int DefaultIndexValue = 0;
         private const long DefaultWordIndexValue = 0;
 
-        //table name 1 byte per char, free space 4 bytes,table name length 4 bytes, 4 bytes for start of offset, 4 bytes for column count, 4 bytes index offset * column Count, 8 bytes for index name as number * column count, 8bytes for hash 
-        public static int RecordSizeForOffset(int tableNameLength, int columnCount) => tableNameLength * sizeof(char) + sizeof(int) + sizeof(int) + sizeof(int) + sizeof(int) * columnCount + sizeof(long) * columnCount + sizeof(ulong);
-
         public static void WriteOffsetMapper(KeyValuePair<char[], long> entry, int columnCount)
         {
             int freeSpace = DataPageManager.DataPageSize;
@@ -210,6 +207,9 @@ namespace DMS.OffsetPages
             }
         }
 
+        //table name 1 byte per char, free space 4 bytes,table name length 4 bytes, 4 bytes for start of offset, 4 bytes for column count, 4 bytes index offset * column Count, 8 bytes for index name as number * column count, 8bytes for hash 
+        private static int RecordSizeForOffset(int tableNameLength, int columnCount) => tableNameLength * sizeof(char) + sizeof(int) + sizeof(int) + sizeof(int) + sizeof(int) * columnCount + sizeof(long) * columnCount + sizeof(ulong);
+        
         private static void InitFirstOffsetTable(
             KeyValuePair<char[], long> entry,
             int sizeOfCurrentRecord,

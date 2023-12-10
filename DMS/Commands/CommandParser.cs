@@ -84,10 +84,9 @@ namespace DMS.Commands
             ReadOnlySpan<char> tableNameSpan = commandSpan[startAfterKeyword..].CustomTrim();
 
             bool isTableDeleted = DataPageManager.DropTable(tableNameSpan);
-            if (isTableDeleted)
-                Console.WriteLine($"Table {tableNameSpan} was deleted successfully");
-            else
-                Console.WriteLine($"Table {tableNameSpan} was not deleted successfully");
+            Console.WriteLine(isTableDeleted
+                ? $"Table {tableNameSpan} was deleted successfully"
+                : $"Table {tableNameSpan} was not deleted successfully");
         }
 
         private static void ListTables() => DataPageManager.ListTables();
@@ -142,7 +141,7 @@ namespace DMS.Commands
             ReadOnlySpan<char> values = commandSpan[startAfterKeyword..startFrom].CustomTrim();
             ReadOnlySpan<char> tableSpan = commandSpan[(startFrom + "from".Length)..].CustomTrim();
 
-            int endOfTableName = tableSpan.IndexOf(' ');
+            int endOfTableName = tableSpan.CustomIndexOf(' ');
             if (endOfTableName == -1)
                 endOfTableName = tableSpan.Length; // If no space, the table name goes till the end
 
@@ -188,14 +187,14 @@ namespace DMS.Commands
             ReadOnlySpan<char> tableSpan = commandSpan[(startFrom + "from".Length)..whereIndex].CustomTrim();
             ReadOnlySpan<char> whereCondition = commandSpan[(whereIndex + "where".Length)..].CustomTrim();
 
-            string[] conditions = whereCondition.ToString().Split(new[] { "and" }, StringSplitOptions.RemoveEmptyEntries);
+            string[] conditions = whereCondition.ToString().CustomSplit(new[] { "and" }, StringSplitOptions.RemoveEmptyEntries);
 
             DKList<string> whereConditions = new();
             DKList<string> columnNames = new();
 
             foreach (string condition in conditions)
             {
-                string[] columns = condition.Split(new[] { "=", ">", "<" }, StringSplitOptions.RemoveEmptyEntries);
+                string[] columns = condition.CustomSplit(new[] { "=", ">", "<" }, StringSplitOptions.RemoveEmptyEntries);
 
                 columns[0] = columns[0].CustomTrim();
 
@@ -261,12 +260,12 @@ namespace DMS.Commands
                 if (tuple[i] == '"' && (i == 0 || tuple[i - 1] != '\\'))
                     inQuotes = !inQuotes;
 
-                if (!inQuotes && tuple[i] == ',')
-                {
-                    ReadOnlySpan<char> valueSpan = tuple[start..i].CustomTrim();
-                    values.Add(ProcessValue(valueSpan));
-                    start = i + 1;
-                }
+                if (inQuotes || tuple[i] != ',') 
+                    continue;
+                
+                ReadOnlySpan<char> valueSpan = tuple[start..i].CustomTrim();
+                values.Add(ProcessValue(valueSpan));
+                start = i + 1;
             }
 
             if (start < tuple.Length)

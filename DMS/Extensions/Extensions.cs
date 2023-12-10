@@ -8,6 +8,7 @@ namespace DMS.Extensions
     public static class Extensions
     {
         #region nomal extensions
+
         public static DKList<T> CustomToList<T>(this T[] array) => new(array);
 
         public static DKList<T> CustomToList<T>(this IEnumerable<T> source)
@@ -77,7 +78,7 @@ namespace DMS.Extensions
         public static char[] CustomToCharArray(this string input)
         {
             if (input is null)
-                return new char[0];
+                return Array.Empty<char>();
 
             char[] chars = new char[input.Length];
 
@@ -149,19 +150,93 @@ namespace DMS.Extensions
 
             DKList<string> result = new();
 
-            while ((matchIndex = input.IndexOf(separator, startIndex)) >= 0)
+            while ((matchIndex = input.CustomIndexOf(separator, startIndex)) >= 0)
             {
                 result.Add(input[startIndex..matchIndex]);
                 startIndex = matchIndex + separatorLength;
                 count++;
             }
 
-            if (count == 0)
-                result.Add(input);
-            else
-                result.Add(input[startIndex..inputLength]);
+            result.Add(count == 0 ? input : input[startIndex..inputLength]);
 
             return result.CustomToArray();
+        }
+
+        public static string[] CustomSplit(this string source, string[]? separators, StringSplitOptions options)
+        {
+            if (source.CustomIsNullOrEmpty())
+            {
+                return options == StringSplitOptions.RemoveEmptyEntries
+                    ? Array.Empty<string>()
+                    : new[] { string.Empty };
+            }
+
+            if (separators == null || separators.Length == 0)
+                return new[] { source };
+
+            DKList<string> result = new();
+            var currentToken = new StringBuilder();
+            foreach (char c in source)
+            {
+                bool isSeparator = separators.CustomAny(sep => sep.Length == 1 && sep[0] == c);
+
+                if (isSeparator)
+                {
+                    AddToken(result, currentToken, options);
+                    currentToken.Clear();
+                }
+                else
+                {
+                    currentToken.Append(c);
+                }
+            }
+
+            AddToken(result, currentToken, options);
+
+            return result.CustomToArray();
+        }
+
+        public static string[] CustomSplit(this string source, char[]? separators, StringSplitOptions options)
+        {
+            if (string.IsNullOrEmpty(source))
+            {
+                return options == StringSplitOptions.RemoveEmptyEntries
+                    ? Array.Empty<string>()
+                    : new[] { string.Empty };
+            }
+
+            if (separators == null || separators.Length == 0)
+                return new[] { source };
+
+            DKList<string> result = new();
+            var currentToken = new StringBuilder();
+            foreach (char c in source)
+            {
+                bool isSeparator = separators.Contains(c);
+
+                if (isSeparator)
+                {
+                    AddToken(result, currentToken, options);
+                    currentToken.Clear();
+                }
+                else
+                {
+                    currentToken.Append(c);
+                }
+            }
+
+            AddToken(result, currentToken, options);
+
+            return result.ToArray();
+        }
+
+        private static void AddToken(DKList<string> tokens, StringBuilder currentToken, StringSplitOptions options)
+        {
+            string token = currentToken.ToString();
+            if (options == StringSplitOptions.RemoveEmptyEntries && token.CustomIsNullOrEmpty())
+                return;
+            
+            tokens.Add(token);
         }
 
         public static string CustomTrim(this string input, char[] trimChars)
@@ -308,6 +383,30 @@ namespace DMS.Extensions
             return -1;
         }
 
+        public static int CustomIndexOf(string source, string value, int startIndex)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+            if (value == null)
+                throw new ArgumentNullException(nameof(value));
+            if (startIndex < 0 || startIndex > source.Length)
+                throw new ArgumentOutOfRangeException(nameof(startIndex));
+
+            return IndexOfCultureAware(source, value, startIndex, StringComparison.CurrentCulture);
+        }
+
+        private static int IndexOfCultureAware(string source, string value, int startIndex, StringComparison comparisonType)
+        {
+            int valueLength = value.Length;
+            int endLimit = source.Length - valueLength;
+
+            for (int i = startIndex; i <= endLimit; i++)
+                if (source.CustomSubstring(i, valueLength).Equals(value, comparisonType))
+                    return i;
+
+            return -1;
+        }
+
         public static int CustomLastIndexOf(this string input, char value)
         {
             if (input is null)
@@ -345,67 +444,7 @@ namespace DMS.Extensions
             return stringBuilder.ToString(index, length);
         }
 
-        public static string[] CustomSplit(this string input, string[]? separators, StringSplitOptions options)
-        {
-            if (separators == null || separators.Length == 0)
-                return new[] { input };
-
-            DKList<string> results = new();
-            string currentSegment = string.Empty;
-            int potentialMatchIndex = -1;
-            int matchedSeparatorIndex = 0;
-            int[] separatorsLengths = new int[separators.Length];
-
-            for (int i = 0; i < separators.Length; i++)
-                separatorsLengths[i] = separators[i].Length;
-
-            foreach (char character in input)
-            {
-                bool matchedSeparator = false;
-                foreach (string separator in separators)
-                {
-                    if (character == separator[matchedSeparatorIndex])
-                    {
-                        if (potentialMatchIndex == -1)
-                            potentialMatchIndex = currentSegment.Length;
-
-                        matchedSeparatorIndex++;
-
-                        if (matchedSeparatorIndex != separator.Length)
-                            continue;
-
-                        results.Add(currentSegment[..potentialMatchIndex]);
-                        currentSegment = currentSegment[(potentialMatchIndex + separator.Length)..];
-                        matchedSeparator = true;
-                        matchedSeparatorIndex = 0;
-                        potentialMatchIndex = -1;
-                        break;
-                    }
-
-                    if (matchedSeparatorIndex <= 0)
-                        continue;
-
-                    matchedSeparatorIndex = 0;
-                    potentialMatchIndex = -1;
-                }
-
-                if (!matchedSeparator)
-                    currentSegment += character;
-            }
-
-            if (currentSegment.Length > 0 || options != StringSplitOptions.RemoveEmptyEntries)
-                results.Add(currentSegment);
-
-            return results.CustomToArray();
-        }
-
-        public static bool CustomIsNullOrEmpty(this string input)
-        {
-            if (input is null || input is "")
-                return true;
-
-            return false;
-        }
+        public static bool CustomIsNullOrEmpty(this string input) => input is null or "";
 
         public static bool CustomAny<T>(this IEnumerable<T> source, Func<T, bool> predicate)
         {
@@ -622,6 +661,26 @@ namespace DMS.Extensions
             return dictionary;
         }
 
+        public static IEnumerable<TResult> CustomSelectMany<TSource, TResult>(
+            this IEnumerable<TSource> source,
+            Func<TSource, IEnumerable<TResult>> selector)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+            if (selector == null)
+                throw new ArgumentNullException(nameof(selector));
+
+            foreach (TSource element in source)
+            {
+                IEnumerable<TResult> result = selector(element);
+
+                foreach (TResult resultElement in result)
+                {
+                    yield return resultElement;
+                }
+            }
+        }
+
         #endregion
 
         #region readonly span extensions
@@ -652,7 +711,6 @@ namespace DMS.Extensions
 
         public static int CustomLastIndexOf<T>(this ReadOnlySpan<T> span, T value)
         {
-            //this is not working
             for (int i = span.Length - 1; i >= 0; i++)
                 if (EqualityComparer<T>.Default.Equals(span[i], value))
                     return i;
@@ -701,7 +759,7 @@ namespace DMS.Extensions
                 return false;
 
             for (int i = 0; i <= span.Length - value.Length; i++)
-                if (span.Slice(i, value.Length).Equals(value, comparisonType))
+                if (span.CustomSlice(i, value.Length).Equals(value, comparisonType))
                     return true;
 
             return false;

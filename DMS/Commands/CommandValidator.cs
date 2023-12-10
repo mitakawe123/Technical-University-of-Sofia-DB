@@ -49,7 +49,7 @@ namespace DMS.Commands
 
         private static bool ValidateCreateTableCommand(string command)
         {
-            string[] commandSpliced = command.Split(' ');
+            string[] commandSpliced = command.CustomSplit(' ');
             if (commandSpliced[0] != ECliCommands.CreateTable.ToString().CustomToLower())
                 return false;
 
@@ -150,7 +150,7 @@ namespace DMS.Commands
 
                         if (bracketCount == 0 && (valuesPart[end] == ',' || end == valuesPart.Length - 1))
                         {
-                            ReadOnlySpan<char> segment = valuesPart.Slice(start, end - start + 1).CustomTrim();
+                            ReadOnlySpan<char> segment = valuesPart.CustomSlice(start, end - start + 1).CustomTrim();
                             if (!segment.CustomContains('(')
                                 || !segment.CustomContains(')'))
                                 throw new Exception(
@@ -170,7 +170,7 @@ namespace DMS.Commands
                     return false;
                 }
             }
-            //maybe it will be good idea to get the here to check if I can parse the values to the correct type that are defined in the data page
+            //maybe it will be good idea to check if I can parse the values to the correct type that are defined in the data page
 
             return true;
         }
@@ -216,15 +216,12 @@ namespace DMS.Commands
 
             string remainingCommand = command[dropIndex.Length..].TrimStart();
 
-            string[] parts = remainingCommand.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] parts = remainingCommand.CustomSplit(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
             if (parts.Length != 3)
                 return false;
 
-            if (parts[1] != "on")
-                return false;
-
-            return true;
+            return parts[1] == "on";
         }
 
         private static bool ValidateCreateIndex(string command)
@@ -235,7 +232,7 @@ namespace DMS.Commands
 
             string remainingCommand = command[createIndex.Length..].CustomTrim();
 
-            string[] parts = remainingCommand.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);//split extension with char too
+            string[] parts = remainingCommand.CustomSplit(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);//split extension with char too
 
             if (parts.Length < 4)
                 return false;
@@ -256,11 +253,8 @@ namespace DMS.Commands
 
             string columnsPart = remainingCommand.CustomSubstring(indexOfOpenBracket + 1, indexOfCloseBracket - indexOfOpenBracket - 1);
 
-            string[] columns = columnsPart.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-            if (columns.Length == 0 || columns.CustomAny(col => col.CustomIsNullOrEmpty()))
-                return false;
-
-            return true;
+            string[] columns = columnsPart.CustomSplit(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            return columns.Length != 0 && !columns.CustomAny(col => col.CustomIsNullOrEmpty());
         }
     }
 }
