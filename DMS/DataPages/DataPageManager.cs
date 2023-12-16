@@ -16,20 +16,18 @@ namespace DMS.DataPages
     //This limit is applicable not just to table names but also to most other identifiers in SQL Server, such as column names, schema names, constraint names, and others.
     public static class DataPageManager
     {
-        private static DKDictionary<char[], long> _tableOffsets = new();// name of the table and start of the offset for the first data page
-        private static int _tablesCount = 0; // 4 bytes for table count
-
         public const long DefaultBufferForDp = -1;// Default pointer to the next page
         public const long BufferOverflowPointer = 8; //8 bytes for pointer to next page
         public const int CounterSection = 16; // 16 bytes for table count, data page count, all data pages count and offset table start
         public const int Metadata = 28;// 28 bytes for the metadata
         public const int DataPageSize = 8192; // 8KB
 
-        public static int DataPageCounter = 0; // 4 bytes for data page count  
-        public static int AllDataPagesCount = 0; // 4 bytes for data page count
-        public static int FirstOffsetPageStart = 0; // 4 bytes for offset table 
+        public static int TablesCount; // 4 bytes for table count
+        public static int DataPageCounter; // 4 bytes for data page count  
+        public static int AllDataPagesCount; // 4 bytes for data page count
+        public static int FirstOffsetPageStart; // 4 bytes for offset table 
 
-        public static DKDictionary<char[], long> TableOffsets => _tableOffsets;
+        public static DKDictionary<char[], long> TableOffsets { get; private set; } = new();
 
         static DataPageManager()
         {
@@ -47,12 +45,12 @@ namespace DMS.DataPages
 
         public static void ConsoleEventCallback()
         {
-            using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open, FileAccess.ReadWrite);
-            using BinaryWriter writer = new(binaryStream, Encoding.UTF8);
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open, FileAccess.ReadWrite);
+            using BinaryWriter writer = new(fs, Encoding.UTF8);
 
-            binaryStream.Seek(0, SeekOrigin.Begin);
+            fs.Seek(0, SeekOrigin.Begin);
 
-            writer.Write(_tablesCount);
+            writer.Write(TablesCount);
             writer.Write(AllDataPagesCount);
             writer.Write(DataPageCounter);
             writer.Write(FirstOffsetPageStart);
@@ -61,7 +59,7 @@ namespace DMS.DataPages
         public static void CreateTable(IReadOnlyList<Column> columns, ReadOnlySpan<char> tableName)
         {
             char[] table = tableName.CustomToArray();
-            if (_tableOffsets.ContainsKey(table))
+            if (TableOffsets.ContainsKey(table))
             {
                 Console.WriteLine("Table already exists");
                 return;
@@ -104,8 +102,8 @@ namespace DMS.DataPages
                     writer.Write(table);// 1 bytes per char
                     writer.Write(columns.Count);// 4 bytes for column count
 
-                    if (!_tableOffsets.ContainsKey(table))
-                        _tableOffsets.Add(table, currentPage * DataPageSize + CounterSection);
+                    if (!TableOffsets.ContainsKey(table))
+                        TableOffsets.Add(table, currentPage * DataPageSize + CounterSection);
                 }
 
                 // Write as many columns as fit on the current page
@@ -150,14 +148,14 @@ namespace DMS.DataPages
             fs.Seek(currentPage * DataPageSize + CounterSection - BufferOverflowPointer, SeekOrigin.Begin);
             writer.Write(DefaultBufferForDp);
 
-            _tablesCount++;
+            TablesCount++;
             DataPageCounter += pageNum;
             AllDataPagesCount += pageNum;
 
             fs.Close();
             writer.Close();
 
-            OffsetManager.WriteOffsetMapper(_tableOffsets.CustomLast(), columns.Count);
+            OffsetManager.WriteOffsetMapper(TableOffsets.CustomLast(), columns.Count);
         }
 
         public static bool DropTable(ReadOnlySpan<char> tableName)
@@ -167,7 +165,7 @@ namespace DMS.DataPages
             if (matchingKey == Array.Empty<char>())
                 return false;
 
-            long startingPageOffset = _tableOffsets[matchingKey];
+            long startingPageOffset = TableOffsets[matchingKey];
             int numberOfDataPagesForTable = FindDataPageNumberForTable(startingPageOffset);
 
             FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open);
@@ -178,7 +176,7 @@ namespace DMS.DataPages
             binaryStream.Seek(startingPageOffset, SeekOrigin.Begin);
             writer.Write(emptyPage);
 
-            _tableOffsets.Remove(matchingKey);
+            TableOffsets.Remove(matchingKey);
 
             binaryStream.Close();
             writer.Close();
@@ -186,7 +184,7 @@ namespace DMS.DataPages
             //need to remove it from the page offset too
             OffsetManager.RemoveOffsetRecord(matchingKey);
 
-            _tablesCount--;
+            TablesCount--;
             AllDataPagesCount -= numberOfDataPagesForTable;
             DataPageCounter -= numberOfDataPagesForTable;
 
@@ -195,7 +193,7 @@ namespace DMS.DataPages
 
         public static void ListTables()
         {
-            if (_tableOffsets.Count == 0)
+            if (TableOffsets.Count == 0)
             {
                 Console.WriteLine("There are no tables in the DB.");
                 return;
@@ -205,7 +203,7 @@ namespace DMS.DataPages
             Console.WriteLine(new string('-', 30)); // Print a separator line
 
             int index = 1;
-            foreach (char[] tableCharArray in _tableOffsets.Keys)
+            foreach (char[] tableCharArray in TableOffsets.Keys)
             {
                 string tableName = new(tableCharArray);
                 Console.WriteLine($"{index}. {tableName}");
@@ -213,7 +211,7 @@ namespace DMS.DataPages
             }
 
             Console.WriteLine(new string('-', 30)); // Print a separator line
-            Console.WriteLine($"{_tableOffsets.Count} tables listed.");
+            Console.WriteLine($"{TableOffsets.Count} tables listed.");
         }
 
         public static void TableInfo(ReadOnlySpan<char> tableName)
@@ -226,7 +224,7 @@ namespace DMS.DataPages
                 return;
             }
 
-            long offset = _tableOffsets[tableFromOffset];
+            long offset = TableOffsets[tableFromOffset];
             int numberOfDataPagesForTable = FindDataPageNumberForTable(offset);
 
             using FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
@@ -294,7 +292,7 @@ namespace DMS.DataPages
             }
 
             if (AllDataPagesCount != 0)
-                _tableOffsets = OffsetManager.ReadTableOffsets();
+                TableOffsets = OffsetManager.ReadTableOffsets();
         }
 
         private static void ReadCountsFromFile()
@@ -302,7 +300,7 @@ namespace DMS.DataPages
             using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryReader reader = new(fs, Encoding.UTF8);
 
-            _tablesCount = reader.ReadInt32();
+            TablesCount = reader.ReadInt32();
             AllDataPagesCount = reader.ReadInt32();
             DataPageCounter = reader.ReadInt32();
             FirstOffsetPageStart = reader.ReadInt32();
@@ -313,7 +311,7 @@ namespace DMS.DataPages
             using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.CreateNew);
             using BinaryWriter writer = new(fs, Encoding.UTF8);
 
-            writer.Write(_tablesCount);
+            writer.Write(TablesCount);
             writer.Write(AllDataPagesCount);
             writer.Write(DataPageCounter);
             writer.Write(FirstOffsetPageStart);
