@@ -35,9 +35,13 @@ namespace DMS.DataRecovery
 
                 bool compareHashes = CompareHashes(hash, currentHash);
                 if (!compareHashes)
+                {
+                    CloseFileAndRead(fs,reader);
                     return true;
+                }
             }
 
+            CloseFileAndRead(fs, reader);
             return false;
         }
 
@@ -58,6 +62,8 @@ namespace DMS.DataRecovery
             writer.Write(hash);
         }
 
+        private static bool CompareHashes(ulong hash1, ulong hash2) => hash1 == hash2;
+        
         private static (FileStream, BinaryReader) OpenFileAndRead()
         {
             FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
@@ -65,6 +71,10 @@ namespace DMS.DataRecovery
             return (fileStream, reader);
         }
 
-        private static bool CompareHashes(ulong hash1, ulong hash2) => hash1 == hash2;
+        private static void CloseFileAndRead(FileStream fs, BinaryReader reader)
+        {
+            fs.Close();
+            reader.Close();
+        }
     }
 }

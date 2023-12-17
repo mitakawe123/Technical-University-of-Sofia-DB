@@ -9,21 +9,40 @@ namespace UI
             InitializeComponent();
         }
 
-        private void Form1_Load(object sender, EventArgs e)
+        private void MainForm_Load(object sender, EventArgs e)
         {
             DataPageManager.InitDataPageManager();
 
             LoadTableNamesIntoListView();
+
+            ContextMenuStrip menuStrip = new();
+            menuStrip.Items.Add("Show all records");
+            menuStrip.Items.Add("Drop table");
+
+            tableNames.ContextMenuStrip = menuStrip;
         }
 
         private void LoadTableNamesIntoListView()
         {
             foreach (var item in DataPageManager.TableOffsets)
             {
-                var listViewItem = new ListViewItem(new string(item.Key));
+                ListViewItem listViewItem = new(new string(item.Key));
                 listViewItem.SubItems.Add(item.Value.ToString());
-                listView1.Items.Add(listViewItem);
+                tableNames.Items.Add(listViewItem);
             }
+        }
+
+        private void ShowTableRecords(object sender, EventArgs e)
+        {
+            if (tableNames.SelectedItems.Count <= 0) 
+                return;
+
+            string selectedItemsNames = "";
+
+            foreach (ListViewItem selectedItem in tableNames.SelectedItems)
+                selectedItemsNames += selectedItem.Text + "\n";
+
+            MessageBox.Show(selectedItemsNames);
         }
     }
 }
