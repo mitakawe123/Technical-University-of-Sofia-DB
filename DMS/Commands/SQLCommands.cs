@@ -45,14 +45,18 @@ namespace DMS.Commands
             InsertIntoFreeSpace(allRecords, firstFreeDp);
         }
 
-        public static void SelectFromTable(DKList<string> valuesToSelect, ReadOnlySpan<char> tableName, ReadOnlySpan<char> logicalOperator)
+        public static SelectQueryParams SelectFromTable(
+            DKList<string> valuesToSelect,
+            ReadOnlySpan<char> tableName,
+            ReadOnlySpan<char> logicalOperator,
+            bool isForUI = false)
         {
             char[] matchingKey = HelperMethods.FindTableWithName(tableName);
 
             if (matchingKey == Array.Empty<char>())
             {
                 Console.WriteLine("There is no table with the given name");
-                return;
+                return default;
             }
 
             (FileStream fileStream, BinaryReader reader) = OpenFileAndReader();
@@ -68,9 +72,13 @@ namespace DMS.Commands
 
             CloseStreamAndReader(fileStream, reader);
 
-            allData.RemoveAll(charArray => charArray.Length == 0 || charArray.All(c => c == '\0'));
+            allData.RemoveAll(charArray => charArray.Length == 0 || charArray.CustomAll(c => c == '\0'));
 
+            if (isForUI)
+                return PrintSelectedValuesInUI(allData, valuesToSelect, columnTypeAndName, logicalOperator, metadata.columnCount);
+                
             PrintSelectedValues(allData, valuesToSelect, columnTypeAndName, logicalOperator, metadata.columnCount);
+            return default;
         }
 
         public static void DeleteFromTable(ReadOnlySpan<char> tableName, IReadOnlyList<string> logicalOperators, IReadOnlyList<string> columns)//<- can contains not keyword
@@ -154,10 +162,10 @@ namespace DMS.Commands
             while (pointer != DataPageManager.DefaultBufferForDp)
             {
                 fileStream.Seek(pointer, SeekOrigin.Begin);
-                
+
                 reader.ReadUInt64();// <- hash
                 reader.ReadInt32(); //<- free space
-                
+
                 start = pointer + sizeof(int);
                 end = pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
                 lengthToRead = end - start;
@@ -298,6 +306,27 @@ namespace DMS.Commands
             int columnCount = reader.ReadInt32(); // 4 bytes
 
             return (freeSpace, recordSizeInBytes, tableLength, table, columnCount);
+        }
+
+        public static SelectQueryParams PrintSelectedValuesInUI(
+            IReadOnlyList<char[]> allData,
+            DKList<string> valuesToSelect,
+            IReadOnlyList<Column> columnTypeAndName,
+            ReadOnlySpan<char> logicalOperator,
+            int colCount)
+        {
+            DKList<Column> selectedColumns = columnTypeAndName.CustomWhere(c => valuesToSelect.CustomContains(c.Name) || valuesToSelect.CustomContains("*")).CustomToList();
+
+            LogicalOperators.Parse(ref allData, selectedColumns, columnTypeAndName, logicalOperator, colCount);
+
+            return new SelectQueryParams()
+            {
+                AllData = allData,
+                ColumnCount = colCount,
+                ColumnTypeAndName = columnTypeAndName,
+                LogicalOperator = logicalOperator,
+                ValuesToSelect = valuesToSelect
+            };
         }
 
         private static void PrintSelectedValues(
@@ -473,5 +502,15 @@ namespace DMS.Commands
             stream.Close();
             reader.Close();
         }
+
+    }
+
+    public ref struct SelectQueryParams
+    {
+        public IReadOnlyList<char[]> AllData;
+        public DKList<string> ValuesToSelect;
+        public IReadOnlyList<Column> ColumnTypeAndName;
+        public ReadOnlySpan<char> LogicalOperator;
+        public int ColumnCount;
     }
 }

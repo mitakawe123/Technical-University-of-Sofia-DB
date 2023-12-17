@@ -1,4 +1,7 @@
+using DataStructures;
+using DMS.Commands;
 using DMS.DataPages;
+using System.Data;
 
 namespace UI
 {
@@ -15,11 +18,7 @@ namespace UI
 
             LoadTableNamesIntoListView();
 
-            ContextMenuStrip menuStrip = new();
-            menuStrip.Items.Add("Show all records");
-            menuStrip.Items.Add("Drop table");
-
-            tableNames.ContextMenuStrip = menuStrip;
+            tableNames.ContextMenuStrip = TableMenu;
         }
 
         private void LoadTableNamesIntoListView()
@@ -32,17 +31,39 @@ namespace UI
             }
         }
 
-        private void ShowTableRecords(object sender, EventArgs e)
+        private void ShowAllRecords_Click(object sender, EventArgs e)
         {
-            if (tableNames.SelectedItems.Count <= 0) 
+            if (tableNames.SelectedItems.Count <= 0)
                 return;
 
-            string selectedItemsNames = "";
+            DKList<string> valuesToSelect = new() { "*" };
+            ReadOnlySpan<char> tableName = tableNames.SelectedItems[0].Text;
+            ReadOnlySpan<char> logicalOperator = "";
 
-            foreach (ListViewItem selectedItem in tableNames.SelectedItems)
-                selectedItemsNames += selectedItem.Text + "\n";
+            SelectQueryParams tableInformation = SqlCommands.SelectFromTable(valuesToSelect, tableName, logicalOperator, true);
 
-            MessageBox.Show(selectedItemsNames);
+            DataTable dataTable = new DataTable();
+
+            foreach (var column in tableInformation.ColumnTypeAndName)
+                dataTable.Columns.Add(column.Name, typeof(string));
+
+            for (int i = 0; i < tableInformation.AllData.Count; i += tableInformation.ColumnCount)
+            {
+                DataRow newRow = dataTable.NewRow();
+
+                for (int col = 0; col < tableInformation.ColumnCount; col++)
+                    newRow[col] = new string(tableInformation.AllData[i + col]);
+
+                dataTable.Rows.Add(newRow);
+            }
+
+            DataGridView.DataSource = dataTable;
+        }
+
+        private void DropTable_Click(object sender, EventArgs e)
+        {
+            ReadOnlySpan<char> tableName = tableNames.SelectedItems[0].Text;
+            DataPageManager.DropTable(tableName);
         }
     }
 }
