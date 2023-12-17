@@ -45,7 +45,7 @@ namespace DMS.DataPages
 
         public static void ConsoleEventCallback()
         {
-            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open, FileAccess.ReadWrite);
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryWriter writer = new(fs, Encoding.UTF8);
 
             fs.Seek(0, SeekOrigin.Begin);

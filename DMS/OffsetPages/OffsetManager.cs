@@ -17,7 +17,7 @@ namespace DMS.OffsetPages
             int freeSpace = DataPageManager.DataPageSize;
             int sizeOfCurrentRecord = RecordSizeForOffset(entry.Key.Length, columnCount);//here I have error when calculating the record size
             long pointerToNextPage = PointerToNextPage();//this is the end byte of the pointer
-            long startOfFreeOffset = pointerToNextPage - DataPageManager.DataPageSize;
+            long startOfFreeOffsetPage = pointerToNextPage - DataPageManager.DataPageSize;
 
             //this is the case when the there is no offset and I need to initialize it
             if (pointerToNextPage == -2)
@@ -35,11 +35,11 @@ namespace DMS.OffsetPages
             if (freeSpace == DefaultBufferValue)
             {
                 freeSpace = DataPageManager.DataPageSize - sizeOfCurrentRecord;
-                CreateNewOffsetTable(entry, fs, writer, startOfFreeOffset, columnCount, ref freeSpace);
+                CreateNewOffsetTable(entry, fs, writer, startOfFreeOffsetPage, columnCount, ref freeSpace);
                 return;
             }
 
-            WriteToCurrentOffsetTable(entry, fs, writer, startOfFreeOffset, columnCount, sizeOfCurrentRecord, ref freeSpace);
+            WriteToCurrentOffsetTable(entry, fs, writer, startOfFreeOffsetPage, columnCount, ref freeSpace);
         }
 
         public static DKDictionary<char[], long> ReadTableOffsets()
@@ -153,7 +153,7 @@ namespace DMS.OffsetPages
             byte[] CreateResultArray(
                 int tableNameLength,
                 char[] currentTableName,
-                int offsetValue,
+                long offsetValue,
                 int columnCount,
                 IReadOnlyList<int> columnOffsetIndex,
                 IReadOnlyList<long> columnIndexName)
@@ -186,8 +186,7 @@ namespace DMS.OffsetPages
                     tableNameLength != tableName.Length) //early check to see if the table match
                     return null;
 
-                int offsetValue = reader.ReadInt32();
-                reader.ReadInt32(); //no idea why this is here but there is 0 int after the offset value and cant find why???????? without this the logic it is not working
+                long offsetValue = reader.ReadInt64();
                 int columnCount = reader.ReadInt32();
 
                 DKList<int> columnOffsetIndex = new();
@@ -205,15 +204,14 @@ namespace DMS.OffsetPages
             }
         }
 
-        //table name 1 byte per char
-        //free space 4 bytes
-        //table name length 4 bytes
-        //4 bytes for start of offset
+        //8 bytes hash 
+        //4 bytes free space
+        //1 byte per char table name
+        //4 bytes start of offset
         //4 bytes for column count
         //4 bytes index offset * column Count
         //8 bytes for index name as number * column count
-        //8 bytes for hash 
-        private static int RecordSizeForOffset(int tableNameLength, int columnCount) => tableNameLength + sizeof(int) * 4 + sizeof(int) * columnCount + sizeof(long) * columnCount + sizeof(ulong);
+        private static int RecordSizeForOffset(int tableNameLength, int columnCount) => sizeof(ulong) + sizeof(int) + sizeof(int) + tableNameLength + sizeof(long) + sizeof(int) + columnCount * sizeof(int) + columnCount * sizeof(long);
 
         private static void InitFirstOffsetTable(
             KeyValuePair<char[], long> entry,
@@ -234,12 +232,12 @@ namespace DMS.OffsetPages
 
             writer.Write(entry.Key.Length); // 4 bytes for the length of the table name
             writer.Write(entry.Key); // 1 byte per char
-            writer.Write(entry.Value); // 4 bytes for the start offset of the record
+            writer.Write(entry.Value); // 8 bytes for the start offset of the record
             writer.Write(columnCount); // 4 bytes for number of columns 
 
             for (int i = 0; i < columnCount; i++)
             {
-                writer.Write(DefaultIndexValue); // 4bytes index offset
+                writer.Write(DefaultIndexValue); // 4 bytes index offset
                 writer.Write(DefaultWordIndexValue); //8 bytes index name as number 
             }
 
@@ -268,7 +266,7 @@ namespace DMS.OffsetPages
 
             writer.Write(entry.Key.Length); // 4 bytes for the length of the table name
             writer.Write(entry.Key); // 1 byte per char
-            writer.Write(entry.Value); // 4 bytes for the start offset of the record
+            writer.Write(entry.Value); // 8 bytes for the start offset of the record
             writer.Write(columnCount); // 4 bytes for number of columns 
 
             for (int i = 0; i < columnCount; i++)
@@ -277,7 +275,7 @@ namespace DMS.OffsetPages
                 writer.Write(DefaultWordIndexValue);
             }
 
-            fs.Seek(startOfFreeOffset + (DataPageManager.DataPageSize * 2) - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+            fs.Seek(startOfFreeOffset + DataPageManager.DataPageSize * 2 - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
             writer.Write(DefaultBufferValue);
 
             FileIntegrityChecker.RecalculateHash(fs, writer, snapshotHashStartingPosition);
@@ -291,26 +289,24 @@ namespace DMS.OffsetPages
             BinaryWriter writer,
             long startOfFreeOffset,
             int columnCount,
-            int sizeOfCurrentRecord,
             ref int freeSpace)
         {
-
-            fs.Seek(startOfFreeOffset, SeekOrigin.Begin);
-
-            long snapshotHashStartingPosition = fs.Position;
+            long snapshotHashStartingPosition = startOfFreeOffset;
 
             //write to the current offset page
             long startingPoint = startOfFreeOffset + (DataPageManager.DataPageSize - freeSpace);
-            freeSpace -= sizeOfCurrentRecord;
+            int recordSize = sizeof(int) + entry.Key.Length + sizeof(long) + sizeof(int) + sizeof(int) * columnCount + sizeof(long) * columnCount;
+            freeSpace -= recordSize;
 
-            //writer.Write(FileIntegrityChecker.DefaultHashValue);
-            //writer.Write(freeSpace); // 4 bytes for free space
+            //update free space in the data page 
+            fs.Seek(startOfFreeOffset + sizeof(ulong), SeekOrigin.Begin);
+            writer.Write(freeSpace);
 
             fs.Seek(startingPoint, SeekOrigin.Begin);
 
             writer.Write(entry.Key.Length); // 4 bytes for the length of the table name
             writer.Write(entry.Key); // 1 byte per char
-            writer.Write(entry.Value); // 4 bytes for the start offset of the record
+            writer.Write(entry.Value); // 8 bytes for the start offset of the record
             writer.Write(columnCount); // 4 bytes for number of columns 
 
             for (int i = 0; i < columnCount; i++)
@@ -373,14 +369,13 @@ namespace DMS.OffsetPages
             {
                 int tableNameLength = reader.ReadInt32();
                 char[] tableName = reader.ReadChars(tableNameLength);
-                int offsetValue = reader.ReadInt32();
-                reader.ReadInt32();
+                long offsetValue = reader.ReadInt64();
                 int columnCount = reader.ReadInt32(); // number of columns to read for indexing 
 
                 for (int i = 0; i < columnCount; i++)
                 {
-                    var indexValue = reader.ReadInt32(); //the start of the index tree in the file for the given column if the value is 0 that means there is not index for the given column
-                    var indexNameAsNumber = reader.ReadInt64();
+                    int indexValue = reader.ReadInt32(); //the start of the index tree in the file for the given column if the value is 0 that means there is not index for the given column
+                    long indexNameAsNumber = reader.ReadInt64();
                 }
 
                 if (tableNameLength == 0)
