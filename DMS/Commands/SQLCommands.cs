@@ -82,6 +82,7 @@ namespace DMS.Commands
             return default;
         }
 
+        //need to update the hash here too
         public static void DeleteFromTable(ReadOnlySpan<char> tableName, IReadOnlyList<string> logicalOperators, IReadOnlyList<string> columns)//<- can contains not keyword
         {
             char[] matchingKey = HelperMethods.FindTableWithName(tableName);
