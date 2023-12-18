@@ -10,8 +10,6 @@ namespace DMS
     {
         private static void Main()
         { 
-            //File.Delete(Files.MDF_FILE_NAME);
-
             bool isThereCorruptedDataPages = FileIntegrityChecker.CheckForCorruptionOnStart();
             if (isThereCorruptedDataPages)
             {

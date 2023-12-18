@@ -3,6 +3,7 @@ using DMS.Constants;
 using DMS.DataPages;
 using DMS.Shared;
 using System.Text;
+using DMS.DataRecovery;
 using DMS.Extensions;
 using DMS.Utils;
 
@@ -76,7 +77,7 @@ namespace DMS.Commands
 
             if (isForUI)
                 return PrintSelectedValuesInUI(allData, valuesToSelect, columnTypeAndName, logicalOperator, metadata.columnCount);
-                
+
             PrintSelectedValues(allData, valuesToSelect, columnTypeAndName, logicalOperator, metadata.columnCount);
             return default;
         }
@@ -386,6 +387,7 @@ namespace DMS.Commands
 
             int recordIndex = 0;
             int recordLength = allRecords.Length;
+            long snapshotFirstFreeDp = firstFreeDp;
 
             fs.Seek(firstFreeDp, SeekOrigin.Begin);
 
@@ -409,9 +411,12 @@ namespace DMS.Commands
                 writer.Write(allRecords, recordIndex, dataToWrite);
                 recordIndex += dataToWrite;
 
-                //go back and update free space in the current data page
-                fs.Seek(firstFreeDp + sizeof(ulong), SeekOrigin.Begin);//ulong for the hash
+                //update free space first then the hash
+                fs.Seek(snapshotFirstFreeDp + sizeof(ulong), SeekOrigin.Begin);
                 writer.Write(freeSpace);
+
+                fs.Seek(snapshotFirstFreeDp, SeekOrigin.Begin);
+                FileIntegrityChecker.RecalculateHash(fs, writer, snapshotFirstFreeDp);
 
                 // Move to the end of the current page and read the pointer
                 fs.Seek(firstFreeDp + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
@@ -424,12 +429,13 @@ namespace DMS.Commands
                     continue;
 
                 pointer = (DataPageManager.AllDataPagesCount + 1) * DataPageManager.DataPageSize;
+                snapshotFirstFreeDp = pointer;
 
                 // Write the pointer to the current page
                 fs.Seek(-DataPageManager.BufferOverflowPointer, SeekOrigin.Current);
                 writer.Write(pointer);
 
-                fs.Seek(pointer, SeekOrigin.Begin);
+                FileIntegrityChecker.RecalculateHash(fs, writer, pointer);
 
                 freeSpace = DataPageManager.DataPageSize;
 

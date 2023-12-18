@@ -31,7 +31,7 @@ namespace DMS.DataRecovery
 
                 int bytesRead = fs.Read(buffer, 0, (int)bytesToRead);
 
-                ulong currentHash = Hash.ComputeHash(buffer);
+                ulong currentHash = Hash.ComputeHash(buffer);   
 
                 bool compareHashes = CompareHashes(hash, currentHash);
                 if (!compareHashes)
