@@ -50,7 +50,7 @@ namespace DMS.Commands
             DKList<string> valuesToSelect,
             ReadOnlySpan<char> tableName,
             ReadOnlySpan<char> logicalOperator,
-            bool isForUI = false)
+            bool isForUi = false)
         {
             char[] matchingKey = HelperMethods.FindTableWithName(tableName);
 
@@ -75,7 +75,7 @@ namespace DMS.Commands
 
             allData.RemoveAll(charArray => charArray.Length == 0 || charArray.CustomAll(c => c == '\0'));
 
-            if (isForUI)
+            if (isForUi)
                 return PrintSelectedValuesInUI(allData, valuesToSelect, columnTypeAndName, logicalOperator, metadata.columnCount);
 
             PrintSelectedValues(allData, valuesToSelect, columnTypeAndName, logicalOperator, metadata.columnCount);
@@ -93,10 +93,10 @@ namespace DMS.Commands
                 return;
             }
 
-            (FileStream fileStream, BinaryReader reader) = OpenFileAndReader();
-            using BinaryWriter writer = new(fileStream);
+            (FileStream fs, BinaryReader reader) = OpenFileAndReader();
+            using BinaryWriter writer = new(fs);
 
-            fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
+            fs.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
 
             var metadata = ReadTableMetadata(reader);
             int headerSectionForMainDp = DataPageManager.Metadata + metadata.tableLength;
@@ -107,17 +107,19 @@ namespace DMS.Commands
             if (!allElementsContained)
             {
                 Console.WriteLine("Wrong column in the where clause");
-                CloseStreamAndReader(fileStream, reader);
+                CloseStreamAndReader(fs, reader);
                 return;
             }
 
-            long start = ReadAllDataFromAllDataPages(fileStream, reader, matchingKey, headerSectionForMainDp, out var lengthToRead, out var allData);
+            long start = ReadAllDataFromAllDataPages(fs, reader, matchingKey, headerSectionForMainDp, out var lengthToRead, out var allData);
+
+            long snapshotHashStartingPoint = start - headerSectionForMainDp;
 
             allData.RemoveAll(charArray => charArray.Length == 0 || charArray.All(c => c == '\0'));
 
-            SplitAndFindRecords(fileStream, reader, writer, logicalOperators, allData, start, lengthToRead, metadata);
+            SplitAndFindRecords(fs, reader, writer, logicalOperators, allData, start, lengthToRead, snapshotHashStartingPoint, metadata);
 
-            CloseStreamAndReader(fileStream, reader);
+            CloseStreamAndReader(fs, reader);
         }
 
         public static DKList<char[]> ReadAllDataForSingleDataPage(long lengthToRead, BinaryReader reader)
@@ -181,13 +183,14 @@ namespace DMS.Commands
         }
 
         private static void SplitAndFindRecords(
-            FileStream fileStream,
+            FileStream fs,
             BinaryReader reader,
             BinaryWriter writer,
             IReadOnlyList<string> logicalOperators,
             DKList<char[]> allData,
             long start,
             long lengthToRead,
+            long snapshotHashStartingPoint,
             (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) metadata)
         {
             DKList<string> operations = new();
@@ -209,8 +212,10 @@ namespace DMS.Commands
                     if (!LogicalOperators.CompareValues(charArr, value, op))
                         continue;
 
-                    fileStream.Seek(start, SeekOrigin.Begin);
-                    int rowsDeleted = ReadAndDeleteData(fileStream, reader, writer, lengthToRead, value, op, metadata.columnCount);
+                    fs.Seek(start, SeekOrigin.Begin);
+                    int rowsDeleted = ReadAndDeleteData(fs, reader, writer, lengthToRead, value, op, metadata.columnCount);
+
+                    FileIntegrityChecker.RecalculateHash(fs, writer, snapshotHashStartingPoint);
                     if (rowsDeleted > 0)
                         Console.WriteLine($"Rows affected {rowsDeleted}");
                 }
@@ -248,7 +253,8 @@ namespace DMS.Commands
             }
             catch (Exception)
             {
-                Console.WriteLine("Error occurred while deleting records");
+                // ignore
+                // Console.WriteLine("Error occurred while deleting records");
             }
 
             return deletedRowsCounter;

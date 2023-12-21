@@ -1,6 +1,6 @@
 ﻿namespace DMS.DataRecovery
 {
-    public class Hash
+    public abstract class Hash
     {
         public static ulong ComputeHash(byte[] data)
         {

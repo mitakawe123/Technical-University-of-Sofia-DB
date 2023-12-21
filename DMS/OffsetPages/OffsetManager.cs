@@ -63,26 +63,29 @@ namespace DMS.OffsetPages
             return offsetMap;
         }
 
-        //update the hash of the page when delete record
         public static void RemoveOffsetRecord(char[] tableName)
         {
             byte[]? emptyBuffer = null;
-            bool isTableSuccessfulyDeleted = false;
-
+            bool isTableSuccessfulDeleted = false;
             using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryReader reader = new(fs, Encoding.UTF8);
+            using BinaryWriter writer = new(fs, Encoding.UTF8);
 
             fs.Seek(DataPageManager.FirstOffsetPageStart, SeekOrigin.Begin);
 
             long stopPosition = DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize -
                                 DataPageManager.BufferOverflowPointer;
+            long snapshotHashStartingPosition = fs.Position;
             ulong hash = reader.ReadUInt64();
             int freeSpace = reader.ReadInt32();
 
             while (fs.Position < stopPosition)
             {
-                if (isTableSuccessfulyDeleted)
+                if (isTableSuccessfulDeleted)
+                {
+                    FileIntegrityChecker.RecalculateHash(fs, writer, snapshotHashStartingPosition);
                     return;
+                }
 
                 EraseRecordIfMatch();
             }
@@ -91,14 +94,18 @@ namespace DMS.OffsetPages
             while (pointer != DefaultBufferValue)
             {
                 fs.Seek(pointer, SeekOrigin.Begin);
+                snapshotHashStartingPosition = fs.Position;
                 hash = reader.ReadUInt64();
                 freeSpace = reader.ReadInt32();
 
                 stopPosition = pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
                 while (fs.Position < stopPosition)
                 {
-                    if (isTableSuccessfulyDeleted)
+                    if (isTableSuccessfulDeleted)
+                    {
+                        FileIntegrityChecker.RecalculateHash(fs, writer, snapshotHashStartingPosition);
                         return;
+                    }
 
                     EraseRecordIfMatch();
                 }
@@ -128,7 +135,7 @@ namespace DMS.OffsetPages
                 emptyBuffer ??= new byte[recordSizeInBytes];
                 fs.Seek(fs.Position - recordSizeInBytes, SeekOrigin.Begin);
                 fs.Write(emptyBuffer);
-                isTableSuccessfulyDeleted = true;
+                isTableSuccessfulDeleted = true;
             }
         }
 
