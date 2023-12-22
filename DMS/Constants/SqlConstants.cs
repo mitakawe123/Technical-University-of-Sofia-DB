@@ -14,7 +14,8 @@
         Delete,
         CreateIndex,
         DropIndex,
-        Exit
+        Exit,
+        UI
     }
 
     public enum ESQLCommands

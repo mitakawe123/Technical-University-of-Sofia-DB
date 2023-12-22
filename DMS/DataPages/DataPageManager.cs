@@ -168,20 +168,26 @@ namespace DMS.DataPages
             long startingPageOffset = TableOffsets[matchingKey];
             int numberOfDataPagesForTable = FindDataPageNumberForTable(startingPageOffset);
 
-            FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open);
-            BinaryWriter writer = new(binaryStream);
+            FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
+            BinaryWriter writer = new(fs);
 
-            byte[] emptyPage = new byte[DataPageSize * numberOfDataPagesForTable];
+            for (int i = 0; i < numberOfDataPagesForTable; i++)
+            {
+                fs.Seek(startingPageOffset + DataPageSize * i, SeekOrigin.Begin);
 
-            binaryStream.Seek(startingPageOffset, SeekOrigin.Begin);
-            writer.Write(emptyPage);
+                long snapshot = fs.Position;
+                byte[] emptyPage = new byte[DataPageSize];
+
+                writer.Write(emptyPage);
+                FileIntegrityChecker.RecalculateHash(fs, writer, snapshot);
+            }
 
             TableOffsets.Remove(matchingKey);
 
-            binaryStream.Close();
+            fs.Close();
             writer.Close();
 
-            //need to remove it from the page offset too
+            //remove it from the page offset
             OffsetManager.RemoveOffsetRecord(matchingKey);
 
             TablesCount--;

@@ -62,8 +62,17 @@ namespace UI
 
         private void DropTable_Click(object sender, EventArgs e)
         {
+            if (tableNames.SelectedItems.Count <= 0)
+            {
+                MessageBox.Show("Please select a table to drop.");
+                return;
+            }
+
             ReadOnlySpan<char> tableName = tableNames.SelectedItems[0].Text;
             DataPageManager.DropTable(tableName);
+
+            tableNames.Items.Remove(tableNames.SelectedItems[0]);
+            tableNames.Refresh();
         }
     }
 }

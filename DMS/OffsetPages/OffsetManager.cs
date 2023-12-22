@@ -65,7 +65,6 @@ namespace DMS.OffsetPages
 
         public static void RemoveOffsetRecord(char[] tableName)
         {
-            byte[]? emptyBuffer = null;
             bool isTableSuccessfulDeleted = false;
             using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryReader reader = new(fs, Encoding.UTF8);
@@ -76,6 +75,8 @@ namespace DMS.OffsetPages
             long stopPosition = DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize -
                                 DataPageManager.BufferOverflowPointer;
             long snapshotHashStartingPosition = fs.Position;
+            long prevPosition = fs.Position;
+
             ulong hash = reader.ReadUInt64();
             int freeSpace = reader.ReadInt32();
 
@@ -83,14 +84,17 @@ namespace DMS.OffsetPages
             {
                 if (isTableSuccessfulDeleted)
                 {
+                    prevPosition = fs.Position;
                     FileIntegrityChecker.RecalculateHash(fs, writer, snapshotHashStartingPosition);
-                    return;
+                    fs.Seek(prevPosition, SeekOrigin.Begin);
                 }
 
                 EraseRecordIfMatch();
             }
 
+            fs.Seek(stopPosition, SeekOrigin.Begin);
             long pointer = reader.ReadInt64();
+
             while (pointer != DefaultBufferValue)
             {
                 fs.Seek(pointer, SeekOrigin.Begin);
@@ -103,8 +107,9 @@ namespace DMS.OffsetPages
                 {
                     if (isTableSuccessfulDeleted)
                     {
+                        prevPosition = fs.Position;
                         FileIntegrityChecker.RecalculateHash(fs, writer, snapshotHashStartingPosition);
-                        return;
+                        fs.Seek(prevPosition, SeekOrigin.Begin);
                     }
 
                     EraseRecordIfMatch();
@@ -112,29 +117,47 @@ namespace DMS.OffsetPages
 
                 pointer = reader.ReadInt64();
             }
-
+            
             return;
 
             void EraseRecordIfMatch()
             {
-                int tableNameLength = reader.ReadInt32();
-                char[] currentTableName = reader.ReadChars(tableNameLength);
-                long offsetValue = reader.ReadInt64();
-                int columnCount = reader.ReadInt32();
+                int tableNameLength = reader.ReadInt32(); // 4 bytes
 
-                for (int i = 0; i < columnCount; i++)
-                {
-                    int indexValue = reader.ReadInt32();
-                    long indexValueAsNumber = reader.ReadInt64();
-                }
+                if (tableNameLength <= 0)
+                    return;
+
+                char[] currentTableName = reader.ReadChars(tableNameLength); // 1 byte per char
 
                 if (!currentTableName.SequenceEqual(tableName) || tableNameLength != tableName.Length)
                     return;
 
-                int recordSizeInBytes = tableNameLength + sizeof(int) + sizeof(int);
-                emptyBuffer ??= new byte[recordSizeInBytes];
-                fs.Seek(fs.Position - recordSizeInBytes, SeekOrigin.Begin);
+                long offsetValue = reader.ReadInt64(); // 8 bytes
+                int columnCount = reader.ReadInt32(); // 4 bytes
+
+                int totalIndexValueSize = 0;
+                int totalIndexValueAsNumberSize = 0;
+
+                for (int i = 0; i < columnCount; i++)
+                {
+                    int indexValue = reader.ReadInt32(); // 4 bytes each
+                    totalIndexValueSize += sizeof(int);
+
+                    long indexValueAsNumber = reader.ReadInt64(); // 8 bytes each
+                    totalIndexValueAsNumberSize += sizeof(long);
+                }
+
+                int recordSizeInBytes = sizeof(int) // Size of tableNameLength
+                                        + tableNameLength // Size of currentTableName
+                                        + sizeof(long) // Size of offsetValue
+                                        + sizeof(int) // Size of columnCount
+                                        + totalIndexValueSize // Total size of all indexValue entries
+                                        + totalIndexValueAsNumberSize; // Total size of all indexValueAsNumber entries
+                byte[] emptyBuffer = new byte[recordSizeInBytes];
+
+                fs.Seek(-recordSizeInBytes, SeekOrigin.Current);
                 fs.Write(emptyBuffer);
+
                 isTableSuccessfulDeleted = true;
             }
         }
