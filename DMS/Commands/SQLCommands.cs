@@ -262,7 +262,7 @@ namespace DMS.Commands
 
         private static bool TryReadRow(BinaryReader reader, long lengthToRead, ref long offset, out char[] charArray, out int recordLength)
         {
-            charArray = null;
+            charArray = Array.Empty<char>();
             recordLength = reader.ReadInt32();
             offset += sizeof(int);
 

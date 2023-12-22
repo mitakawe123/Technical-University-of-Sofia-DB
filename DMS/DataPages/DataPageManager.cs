@@ -38,8 +38,9 @@ namespace DMS.DataPages
 
         public static void InitDataPageManager()
         {
-            SystemEvents.SessionEnding += SystemEvents_SessionEnding; //only supported on windows
-
+            if (OperatingSystem.IsWindows())
+                SystemEvents.SessionEnding += SystemEvents_SessionEnding; // Windows-specific
+            
             Console.WriteLine("Welcome to DMS");
         }
 

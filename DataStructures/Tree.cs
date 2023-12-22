@@ -1,6 +1,6 @@
 ﻿namespace DataStructures
 {
-    public class Tree
+    /*public class Tree
     {
         private DKList<TreeNode> root = new();
 
@@ -42,5 +42,5 @@
                 Values = new DKList<long> { value };
             }
         }
-    }
+    }*/
 }

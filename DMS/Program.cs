@@ -27,7 +27,7 @@ namespace DMS
                 Console.Write("Enter a command (or 'exit' to quit): ");
                 string command = Console.ReadLine()!;
                 string[] cliInput = command.CustomSplit(new[] { ' ' });
-                string uiPath = @"D:\my_own_projects\DMS\UI\bin\Debug\net7.0-windows\UI.exe";
+                //string uiPath = @"D:\my_own_projects\DMS\UI\bin\Debug\net7.0-windows\UI.exe";
 
                 string input = string.Empty;
                 if (cliInput.Length is not 0)

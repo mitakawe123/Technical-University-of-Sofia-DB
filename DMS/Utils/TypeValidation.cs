@@ -64,15 +64,13 @@ namespace DMS.Utils
 
         private static bool IsValidValue(char[] value, EDataTypes type)
         {
-            switch (type)
+            return type switch
             {
-                case EDataTypes.INT:
-                    return int.TryParse(value, out _);
-                case EDataTypes.DATE:
-                    return DateTime.TryParseExact(value, Formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
-                default:
-                    return true; // All values are valid as strings
-            }
+                EDataTypes.INT => int.TryParse(value, out _),
+                EDataTypes.DATE => DateTime.TryParseExact(value, Formats, CultureInfo.InvariantCulture,
+                    DateTimeStyles.None, out _),
+                _ => true
+            };
         }
     }
 }
