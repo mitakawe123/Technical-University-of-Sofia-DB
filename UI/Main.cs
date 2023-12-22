@@ -42,7 +42,7 @@ namespace UI
 
             SelectQueryParams tableInformation = SqlCommands.SelectFromTable(valuesToSelect, tableName, logicalOperator, true);
 
-            DataTable dataTable = new DataTable();
+            DataTable dataTable = new();
 
             foreach (var column in tableInformation.ColumnTypeAndName)
                 dataTable.Columns.Add(column.Name, typeof(string));
@@ -58,6 +58,19 @@ namespace UI
             }
 
             DataGridView.DataSource = dataTable;
+
+            TableInfo tableInfo = DataPageManager.TableInfo(tableName, true);
+
+            NumberOfDataPagesTextBox.Text = "Number of data pages the table snaps across: " + tableInfo.NumberOfDataPages;
+            TableNameTextBox.Text = "Table Name: " + tableInfo.TableName;
+            ColumnCountTextBox.Text = "Number of columns: " + tableInfo.ColumnCount;
+
+            TableInfoGrid.Columns.Add("ColumnName", "Column Name");
+            TableInfoGrid.Columns.Add("ColumnType", "Column Type");
+
+            for (int i = 0; i < tableInfo.ColumnName.Count; i++)
+                TableInfoGrid.Rows.Add(tableInfo.ColumnName[i], tableInfo.ColumnType[i]);
+
         }
 
         private void DropTable_Click(object sender, EventArgs e)
@@ -73,6 +86,7 @@ namespace UI
 
             tableNames.Items.Remove(tableNames.SelectedItems[0]);
             tableNames.Refresh();
+            DataGridView.Refresh();
         }
     }
 }

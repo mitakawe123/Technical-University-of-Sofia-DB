@@ -220,18 +220,26 @@ namespace DMS.DataPages
             Console.WriteLine($"{TableOffsets.Count} tables listed.");
         }
 
-        public static void TableInfo(ReadOnlySpan<char> tableName)
+        public static TableInfo TableInfo(ReadOnlySpan<char> tableName, bool isForUi = false)
         {
             char[] tableFromOffset = HelperMethods.FindTableWithName(tableName);
 
             if (tableFromOffset == Array.Empty<char>())
             {
                 Console.WriteLine("No table found with this name");
-                return;
+                return default;
             }
+
+            TableInfo tableInfoForUi = new()
+            {
+                ColumnType = new DKList<string>(),
+                ColumnName = new DKList<string>()
+            };
 
             long offset = TableOffsets[tableFromOffset];
             int numberOfDataPagesForTable = FindDataPageNumberForTable(offset);
+
+            tableInfoForUi.NumberOfDataPages = numberOfDataPagesForTable;
 
             using FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryReader reader = new(fileStream, Encoding.UTF8);
@@ -245,6 +253,9 @@ namespace DMS.DataPages
             char[] tableNameFromFile = reader.ReadChars(tableNameLengthFromFile);
             int columnsCount = reader.ReadInt32();
 
+            tableInfoForUi.ColumnCount = columnsCount;
+            tableInfoForUi.TableName = new string(tableNameFromFile);
+
             Console.WriteLine($"Table name: {new string(tableNameFromFile)}");
             Console.WriteLine($"The table spans across {numberOfDataPagesForTable} data pages");
             Console.WriteLine($"Columns count is {columnsCount}");
@@ -257,9 +268,14 @@ namespace DMS.DataPages
                 string columnType = reader.ReadString();
                 string columnName = reader.ReadString();
 
+                tableInfoForUi.ColumnType.Add(columnType);
+                tableInfoForUi.ColumnName.Add(columnName); 
+
                 Console.WriteLine($"{columnName,-20} {columnType}");
             }
             Console.WriteLine(new string('-', 40));
+
+            return isForUi ? tableInfoForUi : default;
         }
 
         private static int FindDataPageNumberForTable(long startingPosition)
@@ -346,5 +362,14 @@ namespace DMS.DataPages
             ConsoleEventCallback();
             Console.WriteLine("System is logging off or shutting down...");
         }
+    }
+
+    public ref struct TableInfo
+    {
+        public string TableName;
+        public int NumberOfDataPages;
+        public int ColumnCount;
+        public DKList<string> ColumnType;
+        public DKList<string> ColumnName;
     }
 }
