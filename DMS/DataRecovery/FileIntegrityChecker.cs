@@ -20,7 +20,7 @@ namespace DMS.DataRecovery
             (FileStream fs, BinaryReader reader) = OpenFileAndRead();
 
             fs.Seek(DataPageManager.CounterSection, SeekOrigin.Begin);
-
+            var a = DataPageManager.FirstOffsetPageStart;
             for (int i = 0; i < DataPageManager.AllDataPagesCount; i++)
             {
                 long end = fs.Position + SectionSize - HashSize;

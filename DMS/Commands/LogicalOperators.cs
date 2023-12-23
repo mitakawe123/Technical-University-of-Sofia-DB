@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Globalization;
+using System.Text;
 using DataStructures;
 using DMS.Constants;
 using DMS.DataPages;
@@ -194,6 +195,7 @@ namespace DMS.Commands
                 return op switch
                 {
                     "=" => intValue1 == intValue2,
+                    "!=" => intValue1 != intValue2,
                     ">" => intValue1 > intValue2,
                     "<" => intValue1 < intValue2,
                     ">=" => intValue1 >= intValue2,
@@ -211,6 +213,7 @@ namespace DMS.Commands
                 return op switch
                 {
                     "=" => dateValue1 == dateValue2,
+                    "!=" => dateValue1 != dateValue2,
                     ">" => dateValue1 > dateValue2,
                     "<" => dateValue1 < dateValue2,
                     ">=" => dateValue1 >= dateValue2,
@@ -220,10 +223,11 @@ namespace DMS.Commands
             }
 
             // Fallback to string comparison if neither are integers or dates
-            int comparison = string.CompareOrdinal(new string(value1), new string(value2));
+            int comparison = string.Compare(new string(value1), new string(value2), CultureInfo.CurrentCulture, CompareOptions.None);
             return op switch
             {
                 "=" => comparison == 0,
+                //"!=" => comparison != 0,
                 _ => false,
             };
         }

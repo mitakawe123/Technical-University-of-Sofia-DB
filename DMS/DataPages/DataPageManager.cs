@@ -69,8 +69,13 @@ namespace DMS.DataPages
             using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open, FileAccess.ReadWrite);
             using BinaryWriter writer = new(fs, Encoding.UTF8);
 
-            ulong totalSpaceForColumnTypes = HelperAllocater.AllocatedStorageForTypes(columns);// this will calc max space required for one record
             int columnDefinitionSpace = HelperAllocater.SpaceTakenByColumnsDefinitions(columns);
+            ulong totalSpaceForColumnTypes = HelperAllocater.AllocatedStorageForTypes(columns);// this will calc max space required for one record
+            if (totalSpaceForColumnTypes == 0)
+            {
+                Console.WriteLine("Invalid create table command");
+                return;
+            }
 
             int nonRowDataSpace = (int)Math.Ceiling((double)(columnDefinitionSpace + Metadata + tableName.Length));
             int totalNumberOfPages = (int)Math.Ceiling((double)(columnDefinitionSpace + Metadata + tableName.Length) / DataPageSize);
@@ -349,8 +354,8 @@ namespace DMS.DataPages
                 case CtrlTypes.CTRL_BREAK_EVENT:
                 case CtrlTypes.CTRL_LOGOFF_EVENT:
                 case CtrlTypes.CTRL_SHUTDOWN_EVENT:
-                    ConsoleEventCallback();
                     Console.WriteLine("Closing the program ....");
+                    ConsoleEventCallback();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(ctrlType), ctrlType, null);
@@ -360,17 +365,8 @@ namespace DMS.DataPages
 
         private static void SystemEvents_SessionEnding(object sender, SessionEndingEventArgs e)
         {
-            ConsoleEventCallback();
             Console.WriteLine("System is logging off or shutting down...");
+            ConsoleEventCallback();
         }
-    }
-
-    public ref struct TableInfo
-    {
-        public string TableName;
-        public int NumberOfDataPages;
-        public int ColumnCount;
-        public DKList<string> ColumnType;
-        public DKList<string> ColumnName;
     }
 }

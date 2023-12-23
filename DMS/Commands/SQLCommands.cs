@@ -254,7 +254,6 @@ namespace DMS.Commands
             catch (Exception)
             {
                 // ignore
-                // Console.WriteLine("Error occurred while deleting records");
             }
 
             return deletedRowsCounter;
@@ -516,14 +515,5 @@ namespace DMS.Commands
             reader.Close();
         }
 
-    }
-
-    public ref struct SelectQueryParams
-    {
-        public IReadOnlyList<char[]> AllData;
-        public DKList<string> ValuesToSelect;
-        public IReadOnlyList<Column> ColumnTypeAndName;
-        public ReadOnlySpan<char> LogicalOperator;
-        public int ColumnCount;
     }
 }

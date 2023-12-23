@@ -63,7 +63,7 @@ namespace DMS.Commands
                 return false;
             }
 
-            string tableName = command[(firstWhiteSpace + 1)..openingBracket];
+            string tableName = command[(firstWhiteSpace + 1)..openingBracket].CustomTrim();
 
             if (tableName.Length > 128)
             {

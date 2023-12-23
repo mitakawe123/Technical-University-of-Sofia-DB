@@ -42,7 +42,6 @@ namespace DMS.Commands
 
         private static void CreateTable(string command)
         {
-            //add a case when there is default values
             ReadOnlySpan<char> commandSpan = command;
             int startAfterKeyword = ECliCommands.CreateTable.ToString().Length;
             int openingBracket = commandSpan.CustomIndexOf('(');
@@ -215,9 +214,10 @@ namespace DMS.Commands
 
         private static void DropIndex(string command)
         {
+            string dropIndexKeyword = "dropindex";
             ReadOnlySpan<char> commandSpan = command;
 
-            int startKeywordIndex = commandSpan.CustomIndexOf("dropindex") + "dropindex".Length;
+            int startKeywordIndex = commandSpan.CustomIndexOf(dropIndexKeyword) + dropIndexKeyword.Length;
             int onKeyword = commandSpan.CustomIndexOf("on");
 
             ReadOnlySpan<char> indexName = commandSpan[startKeywordIndex..onKeyword].CustomTrim();
@@ -228,9 +228,10 @@ namespace DMS.Commands
 
         private static void CreateIndex(string command)
         {
+            string createIndexKeyword = "createindex";
             ReadOnlySpan<char> commandSpan = command;
 
-            int startKeywordIndex = commandSpan.CustomIndexOf("createindex") + "createindex".Length;
+            int startKeywordIndex = commandSpan.CustomIndexOf(createIndexKeyword) + createIndexKeyword.Length;
             int onKeyword = commandSpan.CustomIndexOf("on");
             int firstOpeningBracket = commandSpan.CustomIndexOf('(');
             int firstClosingBracket = commandSpan.CustomIndexOf(')');
@@ -268,9 +269,9 @@ namespace DMS.Commands
                 if (tuple[i] == '"' && (i == 0 || tuple[i - 1] != '\\'))
                     inQuotes = !inQuotes;
 
-                if (inQuotes || tuple[i] != ',') 
+                if (inQuotes || tuple[i] != ',')
                     continue;
-                
+
                 ReadOnlySpan<char> valueSpan = tuple[start..i].CustomTrim();
                 values.Add(ProcessValue(valueSpan));
                 start = i + 1;
