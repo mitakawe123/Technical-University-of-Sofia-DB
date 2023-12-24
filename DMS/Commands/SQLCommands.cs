@@ -240,12 +240,12 @@ namespace DMS.Commands
                 {
                     if (TryReadRow(reader, lengthToRead, ref offset, out char[] charArray, out int recordLength))
                     {
-                        if (!charArray.SequenceEqual(value) ||
-                            !LogicalOperators.CompareValues(charArray, value, operation))
-                            continue;
-
-                        DeleteRow(fileStream, reader, writer, columnCount, recordLength);
-                        deletedRowsCounter++;
+                        if (LogicalOperators.CompareValues(charArray, value, operation))
+                            //&& charArray.SequenceEqual(value)
+                        {
+                            DeleteRow(fileStream, reader, writer, columnCount, recordLength);
+                            deletedRowsCounter++;
+                        }
                     }
                     else
                         break;
