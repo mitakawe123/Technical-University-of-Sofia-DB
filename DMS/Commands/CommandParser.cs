@@ -203,15 +203,16 @@ namespace DMS.Commands
             DKList<string> whereConditions = new();
             DKList<string> columnNames = new();
 
-            foreach (string condition in conditions)
+            string[] separators = new[] { ">=", "<=", "!=", "=", ">", "<" };
+            string[] parts = conditions[0].CustomSplit(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+            for (int i = 0; i < parts.Length; i++)
             {
-                string[] columns = condition.CustomSplit(new[] { "=", ">", "<" }, StringSplitOptions.RemoveEmptyEntries);
-
-                columns[0] = columns[0].CustomTrim();
-
-                columnNames.Add(columns[0]);
-                whereConditions.Add(condition.CustomTrim());
+                if (Array.IndexOf(separators, parts[i].CustomToLower()) != -1 && i > 0)
+                    columnNames.Add(parts[i - 1]);
             }
+
+            whereConditions.Add(conditions[0].CustomTrim());
 
             SqlCommands.DeleteFromTable(tableSpan, whereConditions, columnNames);
         }

@@ -3,6 +3,8 @@ using DMS.Commands;
 using DMS.DataPages;
 using System.Data;
 using DMS.Shared;
+using System.Windows.Forms;
+using System.Text;
 
 namespace UI
 {
@@ -101,6 +103,30 @@ namespace UI
             InsertForm insertForm = new();
             insertForm.GetTableInfo(DataPageManager.TableInfo(tableName, true));
             insertForm.ShowDialog();
+        }
+
+        private void DataGridView_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+
+            if (e.Button != MouseButtons.Right) 
+                return;
+
+            DataGridView.ClearSelection();
+            DataGridView.Rows[e.RowIndex].Selected = true;
+
+            ContextMenuStrip menu = this.DataGridViewMenu;
+            menu.Show(DataGridView, DataGridView.PointToClient(Cursor.Position));
+
+            if (DataGridView.SelectedRows.Count <= 0) 
+                return;
+
+            DataGridViewRow selectedRow = DataGridView.SelectedRows[0];
+            StringBuilder rowData = new();
+
+            foreach (DataGridViewCell cell in selectedRow.Cells)
+                rowData.AppendLine($"{cell.OwningColumn.HeaderText}: {cell.Value.ToString()}");
+
+            MessageBox.Show(rowData.ToString(), "Row Details");
         }
     }
 }

@@ -195,32 +195,38 @@ namespace DMS.Commands
             (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) metadata)
         {
             DKList<string> operations = new();
+            int deletedRows = 0;
 
             foreach (string item in logicalOperators)
             {
                 string logicalOperator = item.CustomTrim();
-                DKList<string> operation = HelperMethods.SplitSqlQuery(logicalOperator);
-                operations.Add(operation[0]);
+                DKList<string> operationList = HelperMethods.SplitSqlQuery(logicalOperator);
 
-                var operatorAndIndex = LogicalOperators.ParseOperation(operation[0]);
-                string op = operatorAndIndex.Item1;
-                int operatorIndex = operatorAndIndex.Item2;
-
-                char[] value = LogicalOperators.GetValueFromOperation(operation[0], operatorIndex);
-
-                foreach (char[] charArr in allData)
+                foreach (string operation in operationList)
                 {
-                    if (!LogicalOperators.CompareValues(charArr, value, op))
-                        continue;
+                    operations.Add(operation);
 
-                    fs.Seek(start, SeekOrigin.Begin);
-                    int rowsDeleted = ReadAndDeleteData(fs, reader, writer, lengthToRead, value, op, metadata.columnCount);
+                    var operatorAndIndex = LogicalOperators.ParseOperation(operation);
+                    string op = operatorAndIndex.Item1;
+                    int operatorIndex = operatorAndIndex.Item2;
 
-                    FileIntegrityChecker.RecalculateHash(fs, writer, snapshotHashStartingPoint);
-                    if (rowsDeleted > 0)
-                        Console.WriteLine($"Rows affected {rowsDeleted}");
+                    char[] value = LogicalOperators.GetValueFromOperation(operation, operatorIndex);
+
+                    foreach (char[] charArr in allData)
+                    {
+                        if (!LogicalOperators.CompareValues(charArr, value, op))
+                            continue;
+
+                        fs.Seek(start, SeekOrigin.Begin);
+                        int rowsDeleted = ReadAndDeleteData(fs, reader, writer, lengthToRead, value, op, metadata.columnCount);
+
+                        FileIntegrityChecker.RecalculateHash(fs, writer, snapshotHashStartingPoint);
+                        deletedRows = rowsDeleted;
+                    }
                 }
             }
+
+            Console.WriteLine($"Rows affected {deletedRows}");
         }
 
         private static int ReadAndDeleteData(
@@ -241,12 +247,12 @@ namespace DMS.Commands
                 {
                     if (TryReadRow(reader, lengthToRead, ref offset, out char[] charArray, out int recordLength))
                     {
-                        if (LogicalOperators.CompareValues(charArray, value, operation))
                         //&& charArray.SequenceEqual(value)
-                        {
-                            DeleteRow(fileStream, reader, writer, columnCount, recordLength);
-                            deletedRowsCounter++;
-                        }
+                        if (!LogicalOperators.CompareValues(charArray, value, operation)) 
+                            continue;
+
+                        DeleteRow(fileStream, reader, writer, columnCount, recordLength);
+                        deletedRowsCounter++;
                     }
                     else
                         break;
