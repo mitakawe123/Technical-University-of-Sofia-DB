@@ -113,18 +113,28 @@ namespace DMS.Commands
 
             if (!commandSpan.CustomContains(insetIntoText, StringComparison.OrdinalIgnoreCase)
                 || !commandSpan.CustomContains(valuesTest, StringComparison.OrdinalIgnoreCase))
-                throw new Exception("Not a valid insert into command");
+            {
+                Console.WriteLine("Not a valid insert into command");
+                return false;
+            }
 
             int firstBracket = commandSpan.CustomIndexOf('(');
 
-            ReadOnlySpan<char> vals = commandSpan.CustomSlice(insetIntoText.Length + 1, commandSpan.Length - insetIntoText.Length - 1);
-            ReadOnlySpan<char> tableName = vals[..firstBracket].CustomTrim();
+            ReadOnlySpan<char> vals = commandSpan.CustomSlice(insetIntoText.Length + 1,
+                commandSpan.Length - insetIntoText.Length - 1);
+            ReadOnlySpan<char> tableName = commandSpan[(insetIntoText.Length + 1)..firstBracket].CustomTrim();
 
             if (tableName.Length > 128)
-                throw new Exception("Table name is too long");
+            {
+                Console.WriteLine("Table name is too long");
+                return false;
+            }
 
             if (tableName.IsEmpty)
-                throw new Exception("Table name is empty");
+            {
+                Console.WriteLine("Table name is empty");
+                return false;
+            }
 
             int valuesKeyWordIndex = vals.CustomIndexOf(valuesTest);
             ReadOnlySpan<char> valuesPart = vals[(valuesKeyWordIndex + valuesTest.Length + 1)..];
@@ -170,7 +180,6 @@ namespace DMS.Commands
                     return false;
                 }
             }
-            //maybe it will be good idea to check if I can parse the values to the correct type that are defined in the data page
 
             return true;
         }

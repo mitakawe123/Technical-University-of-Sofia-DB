@@ -115,7 +115,7 @@ namespace DMS.Commands
 
             long snapshotHashStartingPoint = start - headerSectionForMainDp;
 
-            allData.RemoveAll(charArray => charArray.Length == 0 || charArray.All(c => c == '\0'));
+            allData.RemoveAll(charArray => charArray.Length == 0 || charArray.CustomAll(c => c == '\0'));
 
             SplitAndFindRecords(fs, reader, writer, logicalOperators, allData, start, lengthToRead, snapshotHashStartingPoint, metadata);
 

@@ -47,7 +47,14 @@ namespace DMS.Utils
                         // This block is executed if Enum.Parse throws an error.
                         if (column.Type[..6] == EDataTypes.STRING.ToString().CustomToLower())
                         {
-                            // Ignore this case if the type is STRING.
+                            int indexOfOpeningBracket = column.Type.CustomIndexOf('(');
+                            int indexOfClosingBracket = column.Type.CustomIndexOf(')');
+
+                            string allowedLengthForString = column.Type[(indexOfOpeningBracket + 1)..indexOfClosingBracket];
+                            int allowedLength = allowedLengthForString == "max" ? 4000 : int.Parse(allowedLengthForString);
+
+                            if (value.Length > allowedLength)
+                                return false;
                         }
                         else
                             return false;

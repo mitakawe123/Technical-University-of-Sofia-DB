@@ -34,6 +34,11 @@ namespace UI
 
         private void ShowAllRecords_Click(object sender, EventArgs e)
         {
+            TableInfoGrid.Rows.Clear();
+            TableInfoGrid.Columns.Clear();
+            TableInfoGrid.Refresh();
+            DataGridView.Refresh();
+
             if (tableNames.SelectedItems.Count <= 0)
                 return;
 
@@ -71,7 +76,6 @@ namespace UI
 
             for (int i = 0; i < tableInfo.ColumnName.Count; i++)
                 TableInfoGrid.Rows.Add(tableInfo.ColumnName[i], tableInfo.ColumnType[i]);
-
         }
 
         private void DropTable_Click(object sender, EventArgs e)
