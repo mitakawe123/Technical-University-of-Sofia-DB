@@ -40,6 +40,7 @@
             NumberOfDataPagesTextBox = new TextBox();
             ColumnCountTextBox = new TextBox();
             DataGridViewMenu = new ContextMenuStrip(components);
+            createTableToolStripMenuItem = new ToolStripMenuItem();
             TableMenu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)DataGridView).BeginInit();
             ((System.ComponentModel.ISupportInitialize)TableInfoGrid).BeginInit();
@@ -59,28 +60,28 @@
             // TableMenu
             // 
             TableMenu.ImageScalingSize = new Size(20, 20);
-            TableMenu.Items.AddRange(new ToolStripItem[] { ShowAllRecords, DropTable, insertIntoTableToolStripMenuItem });
+            TableMenu.Items.AddRange(new ToolStripItem[] { ShowAllRecords, DropTable, insertIntoTableToolStripMenuItem, createTableToolStripMenuItem });
             TableMenu.Name = "TableMenu";
-            TableMenu.Size = new Size(161, 70);
+            TableMenu.Size = new Size(181, 114);
             // 
             // ShowAllRecords
             // 
             ShowAllRecords.Name = "ShowAllRecords";
-            ShowAllRecords.Size = new Size(160, 22);
+            ShowAllRecords.Size = new Size(180, 22);
             ShowAllRecords.Text = "Show all records";
             ShowAllRecords.Click += ShowAllRecords_Click;
             // 
             // DropTable
             // 
             DropTable.Name = "DropTable";
-            DropTable.Size = new Size(160, 22);
+            DropTable.Size = new Size(180, 22);
             DropTable.Text = "Drop table";
             DropTable.Click += DropTable_Click;
             // 
             // insertIntoTableToolStripMenuItem
             // 
             insertIntoTableToolStripMenuItem.Name = "insertIntoTableToolStripMenuItem";
-            insertIntoTableToolStripMenuItem.Size = new Size(160, 22);
+            insertIntoTableToolStripMenuItem.Size = new Size(180, 22);
             insertIntoTableToolStripMenuItem.Text = "Insert Into Table";
             insertIntoTableToolStripMenuItem.Click += InsertIntoTableToolStripMenuItem_Click;
             // 
@@ -143,6 +144,13 @@
             DataGridViewMenu.Name = "DataGridViewMenu";
             DataGridViewMenu.Size = new Size(61, 4);
             // 
+            // createTableToolStripMenuItem
+            // 
+            createTableToolStripMenuItem.Name = "createTableToolStripMenuItem";
+            createTableToolStripMenuItem.Size = new Size(180, 22);
+            createTableToolStripMenuItem.Text = "Create Table";
+            createTableToolStripMenuItem.Click += CreateTableToolStripMenuItem_Click;
+            // 
             // Main
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
@@ -177,5 +185,6 @@
         private TextBox ColumnCountTextBox;
         private ToolStripMenuItem insertIntoTableToolStripMenuItem;
         private ContextMenuStrip DataGridViewMenu;
+        private ToolStripMenuItem createTableToolStripMenuItem;
     }
 }

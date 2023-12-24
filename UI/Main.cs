@@ -13,7 +13,11 @@ namespace UI
         public Main()
         {
             InitializeComponent();
+            this.FormClosing += Main_FormClosing;
         }
+
+        private static void Main_FormClosing(object sender, FormClosingEventArgs e) => DataPageManager.ConsoleEventCallback();
+
 
         private void MainForm_Load(object sender, EventArgs e)
         {
@@ -103,13 +107,16 @@ namespace UI
             InsertForm insertForm = new();
             insertForm.GetTableInfo(DataPageManager.TableInfo(tableName, true));
             insertForm.ShowDialog();
+
+            DataGridView.Refresh();
         }
 
         private void DataGridView_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
-
-            if (e.Button != MouseButtons.Right) 
+            if (e.Button != MouseButtons.Right)
                 return;
+
+            ReadOnlySpan<char> tableName = tableNames.SelectedItems[0].Text;
 
             DataGridView.ClearSelection();
             DataGridView.Rows[e.RowIndex].Selected = true;
@@ -117,16 +124,41 @@ namespace UI
             ContextMenuStrip menu = this.DataGridViewMenu;
             menu.Show(DataGridView, DataGridView.PointToClient(Cursor.Position));
 
-            if (DataGridView.SelectedRows.Count <= 0) 
+            if (DataGridView.SelectedRows.Count <= 0)
                 return;
 
             DataGridViewRow selectedRow = DataGridView.SelectedRows[0];
             StringBuilder rowData = new();
+            rowData.Append("where ");
 
-            foreach (DataGridViewCell cell in selectedRow.Cells)
-                rowData.AppendLine($"{cell.OwningColumn.HeaderText}: {cell.Value.ToString()}");
+            DKList<string> whereConditions = new();
+            DKList<string> columnNames = new();
 
-            MessageBox.Show(rowData.ToString(), "Row Details");
+            for (var i = 0; i < selectedRow.Cells.Count; i++)
+            {
+                var cell = selectedRow.Cells[i];
+                if (i < selectedRow.Cells.Count - 1)
+                    rowData.Append($"{cell.OwningColumn.HeaderText} = {cell.Value.ToString()} and ");
+                else
+                    rowData.Append($"{cell.OwningColumn.HeaderText} = {cell.Value.ToString()}");
+
+                columnNames.Add(cell.OwningColumn.HeaderText);
+            }
+
+            whereConditions.Add(rowData.ToString());
+
+            SqlCommands.DeleteFromTable(tableName, whereConditions, columnNames);
+
+            DataGridView.Refresh();
+        }
+
+        private void CreateTableToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            CreateTableForm createTableForm = new();
+            createTableForm.ShowDialog();
+            
+            tableNames.Clear();
+            LoadTableNamesIntoListView();
         }
     }
 }
