@@ -163,8 +163,10 @@ namespace DMS.Commands
                             ReadOnlySpan<char> segment = valuesPart.CustomSlice(start, end - start + 1).CustomTrim();
                             if (!segment.CustomContains('(')
                                 || !segment.CustomContains(')'))
-                                throw new Exception(
-                                    "Invalid value format. Each value must be enclosed in parentheses.");
+                            {
+                                Console.WriteLine("Invalid value format. Each value must be enclosed in parentheses.");
+                                return false;
+                            }
 
                             start = end + 1;
                             break;

@@ -26,15 +26,15 @@ namespace DMS.Utils
 
         public static bool CheckValidityOfColumnValuesBasedOnType(IReadOnlyList<Column> columnNameAndType, IReadOnlyList<IReadOnlyList<char[]>> columnsValues)
         {
-            for (int i = 0; i < columnNameAndType.Count; i++)
+            foreach (IReadOnlyList<char[]> rowValues in columnsValues)
             {
-                Column column = columnNameAndType[i];
-                int indexSnapshot = i;
+                if (rowValues.Count != columnNameAndType.Count)
+                    return false;
 
-                for (int j = 0; j < columnNameAndType.Count; j++)
+                for (int columnIndex = 0; columnIndex < rowValues.Count; columnIndex++)
                 {
-                    IReadOnlyList<char[]> values = columnsValues[j];
-                    char[] value = values[indexSnapshot];
+                    Column column = columnNameAndType[columnIndex];
+                    char[] value = rowValues[columnIndex];
 
                     try
                     {
@@ -44,14 +44,12 @@ namespace DMS.Utils
                     }
                     catch (ArgumentException)
                     {
-                        // This block is executed if Enum.Parse throws an error.
-                        if (column.Type[..6] == EDataTypes.STRING.ToString().CustomToLower())
+                        if (column.Type.StartsWith(EDataTypes.STRING.ToString(), StringComparison.OrdinalIgnoreCase))
                         {
-                            int indexOfOpeningBracket = column.Type.CustomIndexOf('(');
-                            int indexOfClosingBracket = column.Type.CustomIndexOf(')');
-
-                            string allowedLengthForString = column.Type[(indexOfOpeningBracket + 1)..indexOfClosingBracket];
-                            int allowedLength = allowedLengthForString == "max" ? 4000 : int.Parse(allowedLengthForString);
+                            int lengthSpecStart = column.Type.IndexOf('(') + 1;
+                            int lengthSpecEnd = column.Type.IndexOf(')');
+                            string lengthSpec = column.Type.Substring(lengthSpecStart, lengthSpecEnd - lengthSpecStart);
+                            int allowedLength = lengthSpec.Equals("max", StringComparison.OrdinalIgnoreCase) ? 4000 : int.Parse(lengthSpec);
 
                             if (value.Length > allowedLength)
                                 return false;
@@ -59,11 +57,7 @@ namespace DMS.Utils
                         else
                             return false;
                     }
-
-                    i++;
                 }
-
-                i = indexSnapshot;
             }
 
             return true;

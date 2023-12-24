@@ -93,5 +93,14 @@ namespace UI
             tableNames.Refresh();
             DataGridView.Refresh();
         }
+
+        private void InsertIntoTableToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ReadOnlySpan<char> tableName = tableNames.SelectedItems[0].Text;
+
+            InsertForm insertForm = new();
+            insertForm.GetTableInfo(DataPageManager.TableInfo(tableName, true));
+            insertForm.ShowDialog();
+        }
     }
 }

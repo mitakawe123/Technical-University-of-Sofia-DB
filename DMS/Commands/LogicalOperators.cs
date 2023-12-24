@@ -179,6 +179,7 @@ namespace DMS.Commands
                 if (index is not -1)
                     return (op, index + op.Length);
             }
+
             throw new InvalidOperationException("No valid operator found.");
         }
 
@@ -222,7 +223,7 @@ namespace DMS.Commands
                 };
             }
 
-            // Fallback to string comparison if neither are integers or dates
+            // Fallback to string comparison if neither are integers nor dates
             int comparison = string.Compare(new string(value1), new string(value2), CultureInfo.CurrentCulture, CompareOptions.None);
             return op switch
             {

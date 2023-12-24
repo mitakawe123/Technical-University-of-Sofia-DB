@@ -38,6 +38,7 @@
             TableNameTextBox = new TextBox();
             NumberOfDataPagesTextBox = new TextBox();
             ColumnCountTextBox = new TextBox();
+            insertIntoTableToolStripMenuItem = new ToolStripMenuItem();
             TableMenu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)DataGridView).BeginInit();
             ((System.ComponentModel.ISupportInitialize)TableInfoGrid).BeginInit();
@@ -47,8 +48,9 @@
             // 
             tableNames.HoverSelection = true;
             tableNames.Location = new Point(0, 0);
+            tableNames.Margin = new Padding(3, 2, 3, 2);
             tableNames.Name = "tableNames";
-            tableNames.Size = new Size(219, 688);
+            tableNames.Size = new Size(192, 517);
             tableNames.TabIndex = 0;
             tableNames.UseCompatibleStateImageBehavior = false;
             tableNames.View = View.List;
@@ -56,21 +58,21 @@
             // TableMenu
             // 
             TableMenu.ImageScalingSize = new Size(20, 20);
-            TableMenu.Items.AddRange(new ToolStripItem[] { ShowAllRecords, DropTable });
+            TableMenu.Items.AddRange(new ToolStripItem[] { ShowAllRecords, DropTable, insertIntoTableToolStripMenuItem });
             TableMenu.Name = "TableMenu";
-            TableMenu.Size = new Size(188, 52);
+            TableMenu.Size = new Size(181, 92);
             // 
             // ShowAllRecords
             // 
             ShowAllRecords.Name = "ShowAllRecords";
-            ShowAllRecords.Size = new Size(187, 24);
+            ShowAllRecords.Size = new Size(180, 22);
             ShowAllRecords.Text = "Show all records";
             ShowAllRecords.Click += ShowAllRecords_Click;
             // 
             // DropTable
             // 
             DropTable.Name = "DropTable";
-            DropTable.Size = new Size(187, 24);
+            DropTable.Size = new Size(180, 22);
             DropTable.Text = "Drop table";
             DropTable.Click += DropTable_Click;
             // 
@@ -79,11 +81,12 @@
             DataGridView.AllowUserToAddRows = false;
             DataGridView.AllowUserToDeleteRows = false;
             DataGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            DataGridView.Location = new Point(225, 185);
+            DataGridView.Location = new Point(197, 139);
+            DataGridView.Margin = new Padding(3, 2, 3, 2);
             DataGridView.Name = "DataGridView";
             DataGridView.ReadOnly = true;
             DataGridView.RowHeadersWidth = 51;
-            DataGridView.Size = new Size(1036, 503);
+            DataGridView.Size = new Size(906, 377);
             DataGridView.TabIndex = 1;
             // 
             // TableInfoGrid
@@ -91,49 +94,59 @@
             TableInfoGrid.AllowUserToAddRows = false;
             TableInfoGrid.AllowUserToDeleteRows = false;
             TableInfoGrid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            TableInfoGrid.Location = new Point(425, 0);
+            TableInfoGrid.Location = new Point(372, 0);
+            TableInfoGrid.Margin = new Padding(3, 2, 3, 2);
             TableInfoGrid.Name = "TableInfoGrid";
             TableInfoGrid.ReadOnly = true;
             TableInfoGrid.RowHeadersWidth = 51;
-            TableInfoGrid.Size = new Size(836, 179);
+            TableInfoGrid.Size = new Size(732, 134);
             TableInfoGrid.TabIndex = 2;
             // 
             // TableNameTextBox
             // 
-            TableNameTextBox.Location = new Point(225, 69);
+            TableNameTextBox.Location = new Point(197, 52);
+            TableNameTextBox.Margin = new Padding(3, 2, 3, 2);
             TableNameTextBox.Multiline = true;
             TableNameTextBox.Name = "TableNameTextBox";
-            TableNameTextBox.Size = new Size(194, 55);
+            TableNameTextBox.Size = new Size(170, 42);
             TableNameTextBox.TabIndex = 3;
             // 
             // NumberOfDataPagesTextBox
             // 
-            NumberOfDataPagesTextBox.Location = new Point(225, 12);
+            NumberOfDataPagesTextBox.Location = new Point(197, 9);
+            NumberOfDataPagesTextBox.Margin = new Padding(3, 2, 3, 2);
             NumberOfDataPagesTextBox.Multiline = true;
             NumberOfDataPagesTextBox.Name = "NumberOfDataPagesTextBox";
-            NumberOfDataPagesTextBox.Size = new Size(194, 51);
+            NumberOfDataPagesTextBox.Size = new Size(170, 39);
             NumberOfDataPagesTextBox.TabIndex = 4;
             // 
             // ColumnCountTextBox
             // 
-            ColumnCountTextBox.Location = new Point(225, 130);
+            ColumnCountTextBox.Location = new Point(197, 98);
+            ColumnCountTextBox.Margin = new Padding(3, 2, 3, 2);
             ColumnCountTextBox.Multiline = true;
             ColumnCountTextBox.Name = "ColumnCountTextBox";
-            ColumnCountTextBox.Size = new Size(194, 49);
+            ColumnCountTextBox.Size = new Size(170, 38);
             ColumnCountTextBox.TabIndex = 5;
+            // 
+            // insertIntoTableToolStripMenuItem
+            // 
+            insertIntoTableToolStripMenuItem.Name = "insertIntoTableToolStripMenuItem";
+            insertIntoTableToolStripMenuItem.Size = new Size(180, 22);
+            insertIntoTableToolStripMenuItem.Text = "Insert Into Table";
+            insertIntoTableToolStripMenuItem.Click += InsertIntoTableToolStripMenuItem_Click;
             // 
             // Main
             // 
-            AutoScaleDimensions = new SizeF(8F, 20F);
+            AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1263, 689);
+            ClientSize = new Size(1105, 517);
             Controls.Add(ColumnCountTextBox);
             Controls.Add(NumberOfDataPagesTextBox);
             Controls.Add(TableNameTextBox);
             Controls.Add(TableInfoGrid);
             Controls.Add(DataGridView);
             Controls.Add(tableNames);
-            Margin = new Padding(3, 4, 3, 4);
             Name = "Main";
             Text = "MainForm";
             Load += MainForm_Load;
@@ -155,5 +168,6 @@
         private TextBox TableNameTextBox;
         private TextBox NumberOfDataPagesTextBox;
         private TextBox ColumnCountTextBox;
+        private ToolStripMenuItem insertIntoTableToolStripMenuItem;
     }
 }

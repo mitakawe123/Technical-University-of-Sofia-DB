@@ -48,7 +48,8 @@ namespace DMS.Commands
             int closingBracket = commandSpan.CustomLastIndexOf(')');
             int endBeforeParenthesis = commandSpan[startAfterKeyword..].CustomIndexOf('(');
 
-            ReadOnlySpan<char> tableNameSpan = commandSpan.CustomSlice(startAfterKeyword, endBeforeParenthesis).CustomTrim();
+            ReadOnlySpan<char> tableNameSpan =
+                commandSpan.CustomSlice(startAfterKeyword, endBeforeParenthesis).CustomTrim();
             ReadOnlySpan<char> values = commandSpan[(openingBracket + 1)..closingBracket];
             DKList<Column> columns = new();
 
@@ -79,7 +80,10 @@ namespace DMS.Commands
             }
 
             if (columns.CustomAny(x => x.Name.Length > 128))
-                throw new Exception("Column name is too long");
+            {
+                Console.WriteLine("Column name is too long");
+                return;
+            }
 
             DataPageManager.CreateTable(columns, tableNameSpan);
         }

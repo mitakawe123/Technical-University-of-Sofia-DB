@@ -21,9 +21,9 @@ namespace DMS.Commands
                 return;
             }
 
-            (FileStream fileStream, BinaryReader reader) = OpenFileAndReader();
+            (FileStream fs, BinaryReader reader) = OpenFileAndReader();
 
-            fileStream.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
+            fs.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
 
             var metadata = ReadTableMetadata(reader);
 
@@ -34,12 +34,13 @@ namespace DMS.Commands
             if (!areValidTypes)
             {
                 Console.WriteLine($"Invalid types when inserting into table {tableName}");
+                CloseStreamAndReader(fs, reader);
                 return;
             }
 
-            long firstFreeDp = FindFirstFreeDataPageOffsetStart(fileStream, reader, DataPageManager.TableOffsets[matchingKey]);
+            long firstFreeDp = FindFirstFreeDataPageOffsetStart(fs, reader, DataPageManager.TableOffsets[matchingKey]);
 
-            CloseStreamAndReader(fileStream, reader);
+            CloseStreamAndReader(fs, reader);
 
             byte[] allRecords = GetAllData(columnsValues);
 
@@ -241,7 +242,7 @@ namespace DMS.Commands
                     if (TryReadRow(reader, lengthToRead, ref offset, out char[] charArray, out int recordLength))
                     {
                         if (LogicalOperators.CompareValues(charArray, value, operation))
-                            //&& charArray.SequenceEqual(value)
+                        //&& charArray.SequenceEqual(value)
                         {
                             DeleteRow(fileStream, reader, writer, columnCount, recordLength);
                             deletedRowsCounter++;
