@@ -8,7 +8,7 @@ namespace UI;
 
 public partial class CreateTableForm : Form
 {
-    private const int MAX_NUMBER_COLUMNS = 50;
+    private const int MAX_NUMBER_COLUMNS = 128;
     private readonly DKList<Control> _dynamicControls = new();
 
     public CreateTableForm()
@@ -37,7 +37,7 @@ public partial class CreateTableForm : Form
     {
         foreach (Control control in _dynamicControls)
         {
-            this.Controls.Remove(control);
+            Controls.Remove(control);
             control.Dispose();
         }
         _dynamicControls.Clear();
@@ -57,6 +57,7 @@ public partial class CreateTableForm : Form
                 Location = new Point(10, currentY)
             };
             this.Controls.Add(lblColumnName);
+            _dynamicControls.Add(lblColumnName);
 
             TextBox txtColumnName = new()
             {
@@ -72,6 +73,7 @@ public partial class CreateTableForm : Form
                 Location = new Point(220, currentY)
             };
             this.Controls.Add(lblColumnType);
+            _dynamicControls.Add(lblColumnType);
 
             TextBox txtColumnType = new()
             {

@@ -90,7 +90,6 @@
             Controls.Add(CreateTableButton);
             Name = "CreateTableForm";
             Text = "CreateTableForm";
-            Load += CreateTableForm_Load;
             ResumeLayout(false);
             PerformLayout();
         }

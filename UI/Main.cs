@@ -3,12 +3,14 @@ using DMS.Commands;
 using DMS.DataPages;
 using System.Data;
 using DMS.Shared;
+using System.Windows.Forms;
 using System.Text;
 
 namespace UI;
 
 public partial class Main : Form
 {
+    private DataGridView.HitTestInfo? _testInfo;
     public Main()
     {
         InitializeComponent();
@@ -71,7 +73,6 @@ public partial class Main : Form
 
         TableInfo tableInfo = DataPageManager.TableInfo(tableName, true);
 
-        NumberOfDataPagesTextBox.Text = "Number of data pages the table snaps across: " + tableInfo.NumberOfDataPages;
         TableNameTextBox.Text = "Table Name: " + tableInfo.TableName;
         ColumnCountTextBox.Text = "Number of columns: " + tableInfo.ColumnCount;
 
@@ -109,23 +110,20 @@ public partial class Main : Form
         DataGridView.Refresh();
     }
 
-    private void DataGridView_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+    private void CreateTableToolStripMenuItem_Click(object sender, EventArgs e)
     {
-        if (e.Button != MouseButtons.Right)
-            return;
+        CreateTableForm createTableForm = new();
+        createTableForm.ShowDialog();
 
+        tableNames.Clear();
+        LoadTableNamesIntoListView();
+    }
+
+    private void DeleteRowToolStripMenuItem_Click(object sender, EventArgs e)
+    {
         ReadOnlySpan<char> tableName = tableNames.SelectedItems[0].Text;
 
-        DataGridView.ClearSelection();
-        DataGridView.Rows[e.RowIndex].Selected = true;
-
-        ContextMenuStrip menu = this.DataGridViewMenu;
-        menu.Show(DataGridView, DataGridView.PointToClient(Cursor.Position));
-
-        if (DataGridView.SelectedRows.Count <= 0)
-            return;
-
-        DataGridViewRow selectedRow = DataGridView.SelectedRows[0];
+        DataGridViewRow selectedRow = DataGridView.Rows[_testInfo.RowIndex];
         StringBuilder rowData = new();
         rowData.Append("where ");
 
@@ -148,14 +146,24 @@ public partial class Main : Form
         SqlCommands.DeleteFromTable(tableName, whereConditions, columnNames);
 
         DataGridView.Refresh();
+
+        ShowAllRecords_Click(sender, e);
     }
 
-    private void CreateTableToolStripMenuItem_Click(object sender, EventArgs e)
+    private void DataGridView_MouseClick(object sender, MouseEventArgs e)
     {
-        CreateTableForm createTableForm = new();
-        createTableForm.ShowDialog();
-            
-        tableNames.Clear();
-        LoadTableNamesIntoListView();
+        //first select the whole row and then right mouse button
+        if (e.Button != MouseButtons.Right) 
+            return;
+
+        DataGridView.HitTestInfo? hitTestInfo = DataGridView.HitTest(e.X, e.Y);
+        if (hitTestInfo.RowIndex < 0 || hitTestInfo.Type != DataGridViewHitTestType.RowHeader) 
+            return;
+
+        if (!DataGridView.Rows[hitTestInfo.RowIndex].Selected) 
+            return;
+
+        DataGridViewMenu.Show(DataGridView, new Point(e.X, e.Y));
+        _testInfo = hitTestInfo;
     }
 }
