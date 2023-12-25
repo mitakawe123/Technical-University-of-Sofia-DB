@@ -17,10 +17,11 @@ namespace DMS.DataRecovery
             if (DataPageManager.AllDataPagesCount == 0)
                 return false;
 
-            (FileStream fs, BinaryReader reader) = OpenFileAndRead();
-
+            using FileStream fs = File.OpenRead(Files.MDF_FILE_NAME);
+            using BinaryReader reader = new(fs, Encoding.UTF8);
+            
             fs.Seek(DataPageManager.CounterSection, SeekOrigin.Begin);
-            var a = DataPageManager.FirstOffsetPageStart;
+
             for (int i = 0; i < DataPageManager.AllDataPagesCount; i++)
             {
                 long end = fs.Position + SectionSize - HashSize;
@@ -36,12 +37,12 @@ namespace DMS.DataRecovery
                 bool compareHashes = CompareHashes(hash, currentHash);
                 if (!compareHashes)
                 {
-                    CloseFileAndRead(fs,reader);
+                    fs.Close();
+                    reader.Close();
                     return true;
                 }
             }
 
-            CloseFileAndRead(fs, reader);
             return false;
         }
 
@@ -63,18 +64,5 @@ namespace DMS.DataRecovery
         }
 
         private static bool CompareHashes(ulong hash1, ulong hash2) => hash1 == hash2;
-        
-        private static (FileStream, BinaryReader) OpenFileAndRead()
-        {
-            FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
-            BinaryReader reader = new(fileStream, Encoding.UTF8);
-            return (fileStream, reader);
-        }
-
-        private static void CloseFileAndRead(FileStream fs, BinaryReader reader)
-        {
-            fs.Close();
-            reader.Close();
-        }
     }
 }

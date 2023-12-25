@@ -52,6 +52,9 @@ namespace DMS.OffsetPages
             DKDictionary<char[], long> offsetMap = new();
             ReadOffsetTable(fs, reader, offsetMap);
 
+            if (DataPageManager.TablesCount == offsetMap.Count) 
+                return offsetMap;
+            
             long nextPagePointer = reader.ReadInt64();
             while (nextPagePointer != DefaultBufferValue)
             {
@@ -407,7 +410,7 @@ namespace DMS.OffsetPages
             return (int)DefaultBufferValue;
         }
 
-        private static void ReadOffsetTable(FileStream fs, BinaryReader reader, IDictionary<char[], long> offsetMap)
+        private static void ReadOffsetTable(FileStream fs, BinaryReader reader, DKDictionary<char[], long> offsetMap)
         {
             long stopPosition = fs.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
 
@@ -423,18 +426,15 @@ namespace DMS.OffsetPages
 
                 for (int i = 0; i < columnCount; i++)
                 {
-                    int indexValue = reader.ReadInt32(); //the start of the index tree in the file for the given column if the value is 0 that means there is not index for the given column
+                    int indexValue = reader.ReadInt32();
                     long indexNameAsNumber = reader.ReadInt64();
                 }
 
-                if (tableNameLength == 0)
-                {
-                    fs.Seek(stopPosition, SeekOrigin.Begin);
-                    return;
-                }
+                if (tableNameLength is not 0)
+                    offsetMap.TryAdd(tableName, offsetValue);
 
-                if (tableNameLength is not 0 && !offsetMap.ContainsKey(tableName))
-                    offsetMap.Add(tableName, offsetValue);
+                if (DataPageManager.TablesCount == offsetMap.Count)
+                    return;
             }
         }
     }

@@ -46,6 +46,7 @@ namespace DMS.Indexes
             DKList<long> offsets = new();
             DKList<int> columnIndexInTheTable = new();
             DKList<string> columnIndexNames = new();
+
             foreach (string col in columns)
             {
                 int columnIndex = HelperMethods.FindColumnIndex(col, columnTypeAndName);
@@ -243,12 +244,14 @@ namespace DMS.Indexes
             char[] tableName = new char[tableNameLength];
             Array.Copy(offsetValues, 4, tableName, 0, tableNameLength);
 
-            int offsetValue = BitConverter.ToInt32(offsetValues, 4 + tableNameLength);
-            int columnCount = BitConverter.ToInt32(offsetValues, 8 + tableNameLength);
+            long offsetValue = BitConverter.ToInt64(offsetValues, 4 + tableNameLength);
+
+            int columnCount = BitConverter.ToInt32(offsetValues, 12 + tableNameLength);
 
             int[] columnIndexes = new int[columnCount];
             long[] columnIndexNamesAsNumbers = new long[columnCount];
-            int byteIndex = 12 + tableNameLength; // Start index for reading columnIndexes
+
+            int byteIndex = 16 + tableNameLength;
 
             for (int i = 0; i < columnCount; i++)
             {

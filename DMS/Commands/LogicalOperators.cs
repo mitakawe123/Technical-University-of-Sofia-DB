@@ -92,7 +92,10 @@ namespace DMS.Commands
 
                 // Set the new operator and add the current operation
                 currentOperator = Operators[i];
-                currentOperations.Add(_operations[i]);
+                if (currentOperator == "distinct")
+                    ExecuteCondition(ref allData, allColumnsForTable, selectedColumns, colCount, currentOperator, currentOperations);
+                else
+                    currentOperations.Add(_operations[i]);
             }
 
             // Execute any remaining operations
@@ -258,7 +261,7 @@ namespace DMS.Commands
         #endregion
 
         #region order by clause
-        
+
         private static void OrderByCondition(
             ref IReadOnlyList<char[]> allData,
             IReadOnlyList<Column> allColumnsForTable,
@@ -266,7 +269,7 @@ namespace DMS.Commands
             string operation)
         {
             string[] multiColOrdering = operation.CustomSplit(',');
-            
+
             // Map column names to their indices
             DKDictionary<string, int> columnMap = allColumnsForTable.CustomSelect((col, index) => new { col.Name, Index = index })
                 .CustomToDictionary(x => new string(x.Name), x => x.Index);
@@ -313,7 +316,7 @@ namespace DMS.Commands
         #endregion
 
         #region join clause
-        
+
         private static void JoinCondition(
             ref IReadOnlyList<char[]> allDataFromMainTable,
             DKList<Column> selectedColumns,
@@ -329,7 +332,7 @@ namespace DMS.Commands
                 Console.WriteLine("There is no \'ON\' keyword after the table that will be joined");
                 return;
             }
-                
+
             char[]? matchingKey = DataPageManager.TableOffsets.Keys.CustomFirstOrDefault(table => tableToJoin.SequenceEqual(table)) ?? null;
 
             if (matchingKey is null)
@@ -391,8 +394,8 @@ namespace DMS.Commands
 
             allDataFromMainTable = resultRows.CustomSelectMany(row => row).CustomToArray();
         }
-       
-        private static (IReadOnlyList<char[]> allDataFromJoinedTable, IReadOnlyList<Column> columnsForJoinedTable, int colCount) 
+
+        private static (IReadOnlyList<char[]> allDataFromJoinedTable, IReadOnlyList<Column> columnsForJoinedTable, int colCount)
             AllDataFromJoinedTable(long startOfOffsetForJoinedTable, char[] matchingKey)
         {
             using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
@@ -421,10 +424,10 @@ namespace DMS.Commands
             while (pointer != DataPageManager.DefaultBufferForDp)
             {
                 fs.Seek(pointer, SeekOrigin.Begin);
-                
+
                 reader.ReadUInt64(); //<- hash
                 reader.ReadInt32(); //<- free space
-                
+
                 start = pointer + sizeof(int);
                 end = pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
                 lengthToRead = end - start;
@@ -437,7 +440,7 @@ namespace DMS.Commands
             allDataFromJoinedTable.RemoveAll(charArray => charArray.Length == 0 || charArray.All(c => c == '\0'));
             return (allDataFromJoinedTable, columnTypeAndName, metadata.columnCount);
         }
-        
+
         #endregion
     }
 }

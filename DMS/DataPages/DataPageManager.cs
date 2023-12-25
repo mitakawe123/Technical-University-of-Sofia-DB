@@ -27,22 +27,30 @@ namespace DMS.DataPages
         public static int AllDataPagesCount; // 4 bytes for data page count
         public static int FirstOffsetPageStart; // 4 bytes for offset table 
 
-        public static DKDictionary<char[], long> TableOffsets { get; private set; } = new();
+        public static DKDictionary<char[], long> TableOffsets { get; } = new();
 
         static DataPageManager()
         {
             SetConsoleCtrlHandler(ConsoleCtrlCheck, true);
 
-            PagesCountSection();
+            try
+            {
+                ReadCountsFromFile();
+            }
+            catch (FileNotFoundException)
+            {
+                CreateNewFileWithDefaults();
+            }
+            catch (IOException ex)
+            {
+                Console.WriteLine($"An IO exception occurred: {ex.Message}");
+            }
+
+            if (AllDataPagesCount != 0)
+                TableOffsets = OffsetManager.ReadTableOffsets();
         }
 
-        public static void InitDataPageManager()
-        {
-            if (OperatingSystem.IsWindows())
-                SystemEvents.SessionEnding += SystemEvents_SessionEnding; // Windows-specific
-            
-            Console.WriteLine("Welcome to DMS");
-        }
+        public static void InitDataPageManager() => Console.WriteLine("Welcome to DMS");
 
         public static void ConsoleEventCallback()
         {
@@ -302,25 +310,6 @@ namespace DMS.DataPages
             }
 
             return counter;
-        }
-
-        private static void PagesCountSection()
-        {
-            try
-            {
-                ReadCountsFromFile();
-            }
-            catch (FileNotFoundException)
-            {
-                CreateNewFileWithDefaults();
-            }
-            catch (IOException ex)
-            {
-                Console.WriteLine($"An IO exception occurred: {ex.Message}");
-            }
-
-            if (AllDataPagesCount != 0)
-                TableOffsets = OffsetManager.ReadTableOffsets();
         }
 
         private static void ReadCountsFromFile()
