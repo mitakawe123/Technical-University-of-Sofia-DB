@@ -5,6 +5,7 @@ using DMS.Shared;
 using DMS.Utils;
 using System.Text;
 using DMS.Commands;
+using DMS.DataRecovery;
 using DMS.Extensions;
 using DMS.OffsetPages;
 
@@ -58,14 +59,14 @@ namespace DMS.Indexes
             CloseFileAndReader(fileStream, reader);
 
             var offsetValues = OffsetManager.GetDataPageOffsetByTableName(tableName.CustomToArray());
-            UpdateOffsetManagerIndexColumns(columnIndexInTheTable, columnIndexNames, offsets, indexName, offsetValues.offsetValues, offsetValues.endOfRecordOffsetValues);
+            UpdateOffsetManagerIndexColumns(columnIndexInTheTable, columnIndexNames, offsets, indexName, offsetValues.offsetValues, offsetValues.endOfRecordOffsetValues, offsetValues.startOfRecordOffsetValue);
 
             WriteBinaryTreeToFile(offsets, columns.Count);
         }
 
-        public static void DropIndex(ReadOnlySpan<char> tableName, ReadOnlySpan<char> indexName)
+        public static void DropIndex(ReadOnlySpan<char> tableNameFromCommand, ReadOnlySpan<char> indexName)
         {
-            char[] matchingKey = HelperMethods.FindTableWithName(tableName);
+            char[] matchingKey = HelperMethods.FindTableWithName(tableNameFromCommand);
 
             if (matchingKey == Array.Empty<char>())
             {
@@ -73,19 +74,21 @@ namespace DMS.Indexes
                 return;
             }
 
-            var offsetValues = OffsetManager.GetDataPageOffsetByTableName(tableName.CustomToArray());
+            var offsetValues = OffsetManager.GetDataPageOffsetByTableName(tableNameFromCommand.CustomToArray());
 
             int tableNameLength = BitConverter.ToInt32(offsetValues.offsetValues, 0);
 
-            char[] tableNameFromIndexPage = new char[tableNameLength];
-            Array.Copy(offsetValues.offsetValues, 4, tableNameFromIndexPage, 0, tableNameLength);
+            char[] tableName = new char[tableNameLength];
+            Array.Copy(offsetValues.offsetValues, 4, tableName, 0, tableNameLength);
 
-            int offsetValue = BitConverter.ToInt32(offsetValues.offsetValues, 4 + tableNameLength);
-            int columnCount = BitConverter.ToInt32(offsetValues.offsetValues, 8 + tableNameLength);
+            long offsetValue = BitConverter.ToInt64(offsetValues.offsetValues, 4 + tableNameLength);
+
+            int columnCount = BitConverter.ToInt32(offsetValues.offsetValues, 12 + tableNameLength);
 
             int[] columnIndexes = new int[columnCount];
             long[] columnIndexNamesAsNumbers = new long[columnCount];
-            int byteIndex = 12 + tableNameLength; // Start index for reading columnIndexes
+
+            int byteIndex = 16 + tableNameLength;
 
             for (int i = 0; i < columnCount; i++)
             {
@@ -111,9 +114,10 @@ namespace DMS.Indexes
                     writer.Write(DefaultOffsetIndexValue);
                     writer.Write(DefaultOffsetIndexNameValue);
                     Console.WriteLine("Successfully drop index");
+                    return;
                 }
-                else
-                    fs.Seek(sizeof(int) + sizeof(long), SeekOrigin.Begin);
+
+                fs.Seek(sizeof(int) + sizeof(long), SeekOrigin.Begin);
             }
         }
 
@@ -141,8 +145,10 @@ namespace DMS.Indexes
             while (pointer != DataPageManager.DefaultBufferForDp)
             {
                 fileStream.Seek(pointer, SeekOrigin.Begin);
-                reader.ReadInt32(); //<- free space
-                start = pointer + sizeof(int);
+                ulong hash = reader.ReadUInt64();// <- hash
+                int freeSpace = reader.ReadInt32(); //<- free space
+
+                start = pointer + sizeof(int) + sizeof(ulong);
                 end = pointer + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
                 lengthToRead = end - start;
 
@@ -188,8 +194,8 @@ namespace DMS.Indexes
 
         private static void WriteBinaryTreeToFile(DKList<long> offsets, int indexColumnCount)
         {
-            using FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
-            using BinaryWriter writer = new(fileStream);
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
+            using BinaryWriter writer = new(fs);
 
             int metadataForIndex = sizeof(int) + sizeof(long);
             int treeArraySize = CalculateBinaryTreeArraySize(offsets.Count);
@@ -200,8 +206,8 @@ namespace DMS.Indexes
 
             while (numberOfPagesNeeded > 0)
             {
-                long pageStartOffset = currentPage * DataPageManager.DataPageSize + sizeof(int);// sizeof(int) is for free space
-                fileStream.Seek(pageStartOffset, SeekOrigin.Begin);
+                long pageStartOffset = currentPage * DataPageManager.DataPageSize + DataPageManager.CounterSection + sizeof(int) + sizeof(ulong);// sizeof(int) is for free space and ulong for hash
+                fs.Seek(pageStartOffset, SeekOrigin.Begin);
 
                 int freeSpace = DataPageManager.DataPageSize - metadataForIndex;
                 while (offsetIndex < treeArraySize && freeSpace >= sizeof(long))
@@ -216,16 +222,18 @@ namespace DMS.Indexes
                 if (offsetIndex < treeArraySize)
                 {
                     long startOfNewDp = (currentPage + 1) * DataPageManager.DataPageSize;
-                    fileStream.Seek(startOfNewDp - sizeof(long), SeekOrigin.Begin);
+                    fs.Seek(startOfNewDp - sizeof(long), SeekOrigin.Begin);
                     writer.Write(startOfNewDp);
                 }
 
                 // Update free space in the current page
-                fileStream.Seek(pageStartOffset - sizeof(int), SeekOrigin.Begin);
+                fs.Seek(pageStartOffset - sizeof(int), SeekOrigin.Begin);
                 writer.Write(freeSpace);
 
                 currentPage++;
                 numberOfPagesNeeded--;
+
+                FileIntegrityChecker.RecalculateHash(fs, writer, pageStartOffset - sizeof(int) - sizeof(ulong));
             }
 
             DataPageManager.AllDataPagesCount += currentPage - DataPageManager.AllDataPagesCount;
@@ -237,7 +245,8 @@ namespace DMS.Indexes
             IReadOnlyList<long> indexOffsets,
             ReadOnlySpan<char> indexName,
             byte[] offsetValues,
-            long endOfRecordOffsetValues)
+            long endOfRecordOffsetValues,
+            long startOfOffsetRecord)
         {
             int tableNameLength = BitConverter.ToInt32(offsetValues, 0);
 
@@ -264,28 +273,29 @@ namespace DMS.Indexes
 
             long startOfRecordOffsetValues = endOfRecordOffsetValues - sizeof(int) * columnCount - sizeof(long) * columnCount;
 
-            using FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
-            using BinaryWriter writer = new(fileStream);
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
+            using BinaryWriter writer = new(fs);
 
-            fileStream.Seek(startOfRecordOffsetValues, SeekOrigin.Begin);
+            fs.Seek(startOfRecordOffsetValues, SeekOrigin.Begin);
 
-            int colIndex = 0;
             for (int i = 0; i < columnCount; i++)
             {
                 if (columnIndexInTheTable.CustomContains(i))
                 {
-                    long indexOffset = indexOffsets[i];
+                    int indexOffset = (int)indexOffsets[i];
                     writer.Write(indexOffset);
 
                     long columnNameAsNumber = WordConverter.ConvertWordToNumber(indexName.ToString());
                     writer.Write(columnNameAsNumber);
-                    colIndex++;
 
                     Console.WriteLine("Successfully created index");
+                    return;
                 }
-                else
-                    fileStream.Seek(sizeof(int) + sizeof(long), SeekOrigin.Current);
+
+                fs.Seek(sizeof(int) + sizeof(long), SeekOrigin.Current);
             }
+
+            FileIntegrityChecker.RecalculateHash(fs, writer, startOfOffsetRecord);
         }
 
         private static DKList<long> ReadBinaryTreeFromFile(int indexColumnCount)
