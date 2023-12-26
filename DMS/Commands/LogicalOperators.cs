@@ -128,7 +128,7 @@ namespace DMS.Commands
                         JoinCondition(ref allData, selectedColumns, colCount, operation);
                     break;
                 case "distinct":
-                    DistinctCondition(ref allData);
+                    DistinctCondition(ref allData, colCount);
                     break;
             }
         }
@@ -247,15 +247,46 @@ namespace DMS.Commands
 
         #region distinct clause
 
-        private static void DistinctCondition(ref IReadOnlyList<char[]> allData)
+        private static void DistinctCondition(ref IReadOnlyList<char[]> allData, int columnCount)
         {
             DKList<char[]> result = new();
+            DKList<char[]> tempList = new();
 
             foreach (char[] rowValue in allData)
-                if (!result.CustomAny(existingRow => existingRow.SequenceEqual(rowValue)))
-                    result.Add(rowValue);
+            {
+                tempList.Add(rowValue);
+
+                if (tempList.Count != columnCount) 
+                    continue;
+
+                if (!IsConsecutiveInList(tempList, result))
+                    foreach (var item in tempList)
+                        result.Add(item);
+
+                tempList.Clear();
+            }
 
             allData = result;
+        }
+
+        private static bool IsConsecutiveInList(IReadOnlyList<char[]> tempList, IReadOnlyList<char[]> result)
+        {
+            for (int i = 0; i <= result.Count - tempList.Count; i++)
+            {
+                bool isConsecutive = true;
+                for (int j = 0; j < tempList.Count; j++)
+                {
+                    if (tempList[j].SequenceEqual(result[i + j])) 
+                        continue;
+
+                    isConsecutive = false;
+                    break;
+                }
+                
+                if (isConsecutive)
+                    return true;
+            }
+            return false;
         }
 
         #endregion
