@@ -244,7 +244,7 @@ namespace DMS.Commands
                     if (TryReadRow(reader, lengthToRead, ref offset, out char[] charArray, out int recordLength))
                     {
                         //&& charArray.SequenceEqual(value)
-                        if (!LogicalOperators.CompareValues(charArray, value, operation)) 
+                        if (!LogicalOperators.CompareValues(charArray, value, operation))
                             continue;
 
                         DeleteRow(fileStream, reader, writer, columnCount, recordLength);
@@ -299,7 +299,7 @@ namespace DMS.Commands
                 string columnType = reader.ReadString();
                 string columnName = reader.ReadString();
                 string defaultValue = reader.ReadString();
-                headerSectionForMainDp += columnName.Length * 2 + columnType.Length * 2 + defaultValue.Length;
+                headerSectionForMainDp += columnName.Length * 2 + columnType.Length * 2 + defaultValue.Length * 2;
                 columnNameAndType.Add(new Column(columnName, columnType, defaultValue));
             }
 

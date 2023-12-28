@@ -44,7 +44,7 @@ namespace DMS.Utils
                     }
                     catch (ArgumentException)
                     {
-                        if (column.Type.CustomStartsWith(EDataTypes.STRING.ToString(), StringCompare.IgnoreCaseSensitivity))
+                        if (column.Type.CustomStartsWith(EDataTypes.STRING.ToString(), StringComparison.InvariantCultureIgnoreCase))
                         {
                             int lengthSpecStart = column.Type.CustomIndexOf('(') + 1;
                             int lengthSpecEnd = column.Type.CustomIndexOf(')');

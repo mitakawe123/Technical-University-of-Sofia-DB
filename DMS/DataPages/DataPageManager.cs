@@ -127,6 +127,7 @@ namespace DMS.DataPages
                 {
                     writer.Write(columns[columnIndex].Type);//2 bytes per char
                     writer.Write(columns[columnIndex].Name);//2 bytes per char
+                    writer.Write(columns[columnIndex].DefaultValue);// 2 bytes per char
 
                     freeSpace -= 2 * columns[columnIndex].Type.Length + 2 * columns[columnIndex].Name.Length + 2 * columns[columnIndex].DefaultValue.Length;
                     columnIndex++;

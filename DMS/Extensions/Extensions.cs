@@ -309,9 +309,12 @@ namespace DMS.Extensions
 
         public static bool CustomIsWhiteSpace(this char input) => input is ' ';
 
-        public static bool CustomStartsWith(this string input, string value, StringCompare comparisonType)
+        public static bool CustomStartsWith(this string input, string value, StringComparison comparisonType)
         {
-            return comparisonType == StringCompare.IgnoreCaseSensitivity && input.CustomToLower() == value.CustomToLower();
+            if (input == null || value == null) 
+                return false;
+
+            return value.Length <= input.Length && input[..value.Length].Equals(value, comparisonType);
         }
 
         public static int CustomIndexOf(this string input, char value)
