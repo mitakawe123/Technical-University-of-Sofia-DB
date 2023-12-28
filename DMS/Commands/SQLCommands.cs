@@ -34,13 +34,16 @@ namespace DMS.Commands
 
             if (selectedColumns.Count != columnNameAndType.Count)
             {
-                if (IsThereDefaultValueForNonSelectedColumns(selectedColumns, columnNameAndType))
+                if (IsThereDefaultValueForNonSelectedColumns(selectedColumns, columnNameAndType, out DKList<Column> nonSelectedColumns, out DKList<int> nonSelectedColumnsIndex))
+                {
+                    Console.WriteLine("There is no default value for the non selected columns");
                     return;
+                }
 
                 if (FilterSelectedColumns(columnsValuesToInsert, selectedColumns, tableName, columnNameAndType, fs, reader))
                     return;
 
-                InsertDefaultValues();
+                InsertDefaultValues(columnsValuesToInsert, columnNameAndType, nonSelectedColumns, nonSelectedColumnsIndex);
             }
 
             long firstFreeDp = FindFirstFreeDataPageOffsetStart(fs, reader, DataPageManager.TableOffsets[matchingKey]);
@@ -533,20 +536,47 @@ namespace DMS.Commands
             return true;
         }
 
-        private static bool IsThereDefaultValueForNonSelectedColumns(IReadOnlyList<string> selectedColumns, IReadOnlyList<Column> columnTypeAndName)
+        private static bool IsThereDefaultValueForNonSelectedColumns(
+            IReadOnlyList<string> selectedColumns,
+            IReadOnlyList<Column> columnTypeAndName,
+            out DKList<Column> nonSelectedColumns,
+            out DKList<int> nonSelectedColumnsIndex)
         {
-            DKList<Column> nonSelectedColumns = new();
+            nonSelectedColumns = new();
+            nonSelectedColumnsIndex = new();
 
             foreach (Column column in columnTypeAndName)
-                if (!selectedColumns.CustomContains(column.Name))
-                    nonSelectedColumns.Add(column);
+            {
+                if (selectedColumns.CustomContains(column.Name))
+                    continue;
+
+                nonSelectedColumns.Add(column);
+                nonSelectedColumnsIndex.Add(HelperMethods.FindColumnIndex(column.Name, columnTypeAndName));
+            }
 
             return nonSelectedColumns.CustomAll(column => column.DefaultValue == "-");
         }
 
-        private static void InsertDefaultValues()
+        private static void InsertDefaultValues(
+            DKList<DKList<char[]>> columnsValuesToInsert,
+            IReadOnlyList<Column> columnNameAndType,
+            IReadOnlyList<Column> nonSelectedColumns,
+            IReadOnlyList<int> nonSelectedColumnsIndex)
         {
+            foreach (int index in nonSelectedColumnsIndex)
+            {
+                Column column = columnNameAndType[index];
+                string defaultValue = column.DefaultValue;
 
+                while (columnsValuesToInsert.Count <= index)
+                    columnsValuesToInsert.Add(new DKList<char[]>());
+
+                while (columnsValuesToInsert[index].Count < columnNameAndType.Count)
+                    columnsValuesToInsert[index].Add(Array.Empty<char>());
+
+                for (int j = 0; j < columnNameAndType.Count; j++)
+                    columnsValuesToInsert[j].Insert(index, defaultValue.ToCharArray());
+            }
         }
 
         private static (FileStream, BinaryReader) OpenFileAndReader()
