@@ -129,20 +129,20 @@ namespace DMS.Commands
             ReadOnlySpan<char> tableNameSpan = commandSpan.CustomSlice(startAfterKeyword, endBeforeParenthesis).CustomTrim();
             ReadOnlySpan<char> valuesSpan = commandSpan[valuesKeyword..].CustomTrim();
 
-            DKList<char[]> selectedColumns = new();
+            DKList<string> selectedColumns = new();
             int lastComma = 0;
             for (int i = 0; i < selectedColumnsSpan.Length; i++)
             {
                 if (selectedColumnsSpan[i] != ',')
                     continue;
 
-                ReadOnlySpan<char> column = selectedColumnsSpan.Slice(lastComma, i - lastComma).CustomTrim();
-                selectedColumns.Add(column.CustomToArray());
+                ReadOnlySpan<char> column = selectedColumnsSpan[lastComma..i].CustomTrim();
+                selectedColumns.Add(column.ToString());
                 lastComma = i + 1;
             }
 
             ReadOnlySpan<char> lastColumn = selectedColumnsSpan[lastComma..].CustomTrim();
-            selectedColumns.Add(lastColumn.ToArray());
+            selectedColumns.Add(lastColumn.ToString());
 
             DKList<DKList<char[]>> valuesList = new();
             bool inQuotes = false;

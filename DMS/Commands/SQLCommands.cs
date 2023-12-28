@@ -11,10 +11,12 @@ namespace DMS.Commands
 {
     public static class SqlCommands
     {
-        public static void InsertIntoTable(IReadOnlyList<IReadOnlyList<char[]>> columnsValues, IReadOnlyList<char[]> selectedColumns,ReadOnlySpan<char> tableName)
+        public static void InsertIntoTable(
+            DKList<DKList<char[]>> columnsValuesToInsert,
+            IReadOnlyList<string> selectedColumns,
+            ReadOnlySpan<char> tableName)
         {
             char[] matchingKey = HelperMethods.FindTableWithName(tableName);
-
             if (matchingKey == Array.Empty<char>())
             {
                 Console.WriteLine("There is not table with the given name");
@@ -26,23 +28,26 @@ namespace DMS.Commands
             fs.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
 
             var metadata = ReadTableMetadata(reader);
-                
+
             int headerSectionForMainDp = DataPageManager.Metadata + metadata.tableLength;
             (headerSectionForMainDp, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDp, metadata.columnCount);
 
-            bool areValidTypes = TypeValidation.CheckValidityOfColumnValuesBasedOnType(columnNameAndType, columnsValues);
-            if (!areValidTypes)
+            if (selectedColumns.Count != columnNameAndType.Count)
             {
-                Console.WriteLine($"Invalid types when inserting into table {tableName}");
-                CloseStreamAndReader(fs, reader);
-                return;
+                if (IsThereDefaultValueForNonSelectedColumns(selectedColumns, columnNameAndType))
+                    return;
+
+                if (FilterSelectedColumns(columnsValuesToInsert, selectedColumns, tableName, columnNameAndType, fs, reader))
+                    return;
+
+                InsertDefaultValues();
             }
 
             long firstFreeDp = FindFirstFreeDataPageOffsetStart(fs, reader, DataPageManager.TableOffsets[matchingKey]);
 
             CloseStreamAndReader(fs, reader);
 
-            byte[] allRecords = GetAllData(columnsValues);
+            byte[] allRecords = GetAllData(columnsValuesToInsert);
 
             InsertIntoFreeSpace(allRecords, firstFreeDp);
         }
@@ -504,6 +509,44 @@ namespace DMS.Commands
             }
 
             return allBytes;
+        }
+
+        private static bool FilterSelectedColumns(
+            IReadOnlyList<IReadOnlyList<char[]>> columnsValues,
+            IReadOnlyList<string> selectedColumns,
+            ReadOnlySpan<char> tableName,
+            DKList<Column> columnTypeAndName,
+            FileStream fs,
+            BinaryReader reader)
+        {
+            DKList<Column> filteredSelectedColumns = new();
+            foreach (Column column in columnTypeAndName)
+                if (selectedColumns.CustomContains(column.Name))
+                    filteredSelectedColumns.Add(column);
+
+            bool areValidTypes = TypeValidation.CheckValidityOfColumnValuesBasedOnType(filteredSelectedColumns, columnsValues);
+            if (areValidTypes)
+                return false;
+
+            Console.WriteLine($"Invalid types when inserting into table {tableName}");
+            CloseStreamAndReader(fs, reader);
+            return true;
+        }
+
+        private static bool IsThereDefaultValueForNonSelectedColumns(IReadOnlyList<string> selectedColumns, IReadOnlyList<Column> columnTypeAndName)
+        {
+            DKList<Column> nonSelectedColumns = new();
+
+            foreach (Column column in columnTypeAndName)
+                if (!selectedColumns.CustomContains(column.Name))
+                    nonSelectedColumns.Add(column);
+
+            return nonSelectedColumns.CustomAll(column => column.DefaultValue == "-");
+        }
+
+        private static void InsertDefaultValues()
+        {
+
         }
 
         private static (FileStream, BinaryReader) OpenFileAndReader()

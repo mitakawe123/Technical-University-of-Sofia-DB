@@ -82,7 +82,7 @@ public partial class InsertForm : Form
         }
 
         valuesToInsert.Add(columnData);
-        SqlCommands.InsertIntoTable(valuesToInsert, tableName);
+        SqlCommands.InsertIntoTable(valuesToInsert, default,tableName);
         MessageBox.Show($"Succesfully inserted into table {tableName}");
     }
 }
