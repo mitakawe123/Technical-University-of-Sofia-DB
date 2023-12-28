@@ -4,7 +4,6 @@ using DMS.Extensions;
 using DMS.OffsetPages;
 using DMS.Shared;
 using DMS.Utils;
-using Microsoft.Win32;
 using System.Text;
 using DMS.DataRecovery;
 using static DMS.Utils.ControlTypes;
@@ -353,12 +352,6 @@ namespace DMS.DataPages
                     throw new ArgumentOutOfRangeException(nameof(ctrlType), ctrlType, null);
             }
             return true;
-        }
-
-        private static void SystemEvents_SessionEnding(object sender, SessionEndingEventArgs e)
-        {
-            Console.WriteLine("System is logging off or shutting down...");
-            ConsoleEventCallback();
         }
     }
 }
