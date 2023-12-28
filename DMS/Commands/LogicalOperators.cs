@@ -15,7 +15,7 @@ namespace DMS.Commands
     {
         private static readonly DKList<string> Operators = new();
         private static DKList<string> _operations = new();
-
+        
         public static void Parse(
             ref IReadOnlyList<char[]> allData,
             DKList<Column> selectedColumns,
@@ -324,7 +324,13 @@ namespace DMS.Commands
             for (int i = 0; i < allData.Count; i += colCount)
                 rows.Add(allData.CustomSkip(i).CustomTake(colCount).CustomToList());
 
-            Comparison<DKList<char[]>> rowComparer = (row1, row2) =>
+            rows.Sort(RowComparer);
+
+            DKList<char[]> sortedData = rows.CustomSelectMany(row => row).CustomToList();
+            allData = sortedData.AsReadOnly();
+            return;
+
+            int RowComparer(DKList<char[]> row1, DKList<char[]> row2)
             {
                 foreach ((int index, bool isAscending) in sortingColumns)
                 {
@@ -332,16 +338,11 @@ namespace DMS.Commands
                     string value2 = new(row2[index]);
 
                     int comparison = string.Compare(value1, value2, StringComparison.Ordinal);
-                    if (comparison is not 0)
-                        return isAscending ? comparison : -comparison;
+                    if (comparison is not 0) return isAscending ? comparison : -comparison;
                 }
+
                 return 0;
-            };
-
-            rows.Sort(rowComparer);
-
-            DKList<char[]> sortedData = rows.CustomSelectMany(row => row).CustomToList();
-            allData = sortedData.AsReadOnly();
+            }
         }
 
         #endregion

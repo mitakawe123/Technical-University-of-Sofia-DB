@@ -156,6 +156,7 @@ namespace DMS.OffsetPages
                                         + sizeof(int) // Size of columnCount
                                         + totalIndexValueSize // Total size of all indexValue entries
                                         + totalIndexValueAsNumberSize; // Total size of all indexValueAsNumber entries
+
                 byte[] emptyBuffer = new byte[recordSizeInBytes];
 
                 fs.Seek(-recordSizeInBytes, SeekOrigin.Current);
@@ -414,7 +415,7 @@ namespace DMS.OffsetPages
             return (int)DefaultBufferValue;
         }
 
-        private static void ReadOffsetTable(FileStream fs, BinaryReader reader, DKDictionary<char[], long> offsetMap)
+        private static void ReadOffsetTable(FileStream fs, BinaryReader reader, IDictionary<char[], long> offsetMap)
         {
             long stopPosition = fs.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
 

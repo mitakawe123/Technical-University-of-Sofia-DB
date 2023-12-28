@@ -60,7 +60,12 @@ namespace DMS.Commands
                 int spaceIndex = columnDefinition.CustomIndexOf(' ');
 
                 ReadOnlySpan<char> columnName = columnDefinition[..spaceIndex].CustomTrim();
-                ReadOnlySpan<char> columnType = columnDefinition[(spaceIndex + 1)..].CustomTrim();
+                ReadOnlySpan<char> fullColumnType = columnDefinition[(spaceIndex + 1)..].CustomTrim();
+
+                int defaultIndex = fullColumnType.CustomIndexOf(" default ");
+                ReadOnlySpan<char> columnType = defaultIndex != -1 ? fullColumnType[..defaultIndex] : fullColumnType;
+
+                string defaultValue = defaultIndex != -1 ? new string(fullColumnType[(defaultIndex + 9)..].CustomTrim()) : "-";
 
                 bool isValidType = TypeValidation.CheckIfValidColumnType(columnType);
                 if (!isValidType)
@@ -73,7 +78,7 @@ namespace DMS.Commands
                 if (typeSpaceIndex is not -1)
                     columnType = columnType[..typeSpaceIndex];
 
-                columns.Add(new Column(new string(columnName), new string(columnType)));
+                columns.Add(new Column(new string(columnName), new string(columnType), defaultValue));
 
                 values = commaIndex is not -1 ? values[(commaIndex + 1)..].CustomTrim() : ReadOnlySpan<char>.Empty;
             }

@@ -87,11 +87,11 @@ namespace DMS.Commands
 
                 int firstWhiteSpaceAfterColumnName = itemTrimmed.CustomIndexOf(' ');
                 string columnName = itemTrimmed[..firstWhiteSpaceAfterColumnName].CustomTrim();
-                if (SqlDataTypes.CustomAny(x => columnName == x))
-                {
-                    Console.WriteLine("Invalid column name");
-                    return false;
-                }
+                if (!SqlDataTypes.CustomAny(x => columnName == x)) 
+                    continue;
+
+                Console.WriteLine("Invalid column name");
+                return false;
             }
 
             return true;

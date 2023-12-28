@@ -8,7 +8,7 @@ namespace UI;
 
 public partial class CreateTableForm : Form
 {
-    private const int MAX_NUMBER_COLUMNS = 128;
+    private const int MaxNumberColumns = 128;
     private readonly DKList<Control> _dynamicControls = new();
 
     public CreateTableForm()
@@ -20,13 +20,13 @@ public partial class CreateTableForm : Form
     private void InitializeDropdown()
     {
         ColumnNumberDropdown.Items.Clear();
-        for (int i = 1; i <= MAX_NUMBER_COLUMNS; i++)
+        for (int i = 1; i <= MaxNumberColumns; i++)
             ColumnNumberDropdown.Items.Add(i);
 
         ColumnNumberDropdown.SelectedIndexChanged += ComboBox_SelectedIndexChanged;
     }
 
-    private void ComboBox_SelectedIndexChanged(object sender, EventArgs e)
+    private void ComboBox_SelectedIndexChanged(object? sender, EventArgs e)
     {
         ClearDynamicControls();
         int numberOfRows = (int)ColumnNumberDropdown.SelectedItem;
@@ -83,6 +83,22 @@ public partial class CreateTableForm : Form
             this.Controls.Add(txtColumnType);
             _dynamicControls.Add(txtColumnType);
 
+            Label lblDefaultValue = new()
+            {
+                Text = "Default Value",
+                Location = new Point(430, currentY)
+            };
+            this.Controls.Add(lblDefaultValue);
+            _dynamicControls.Add(lblDefaultValue);
+
+            TextBox txtDefaultValue = new()
+            {
+                Name = $"DefaultValue_{i}",
+                Location = new Point(530, currentY)
+            };
+            this.Controls.Add(txtDefaultValue);
+            _dynamicControls.Add(txtDefaultValue);
+
             currentY += spacingY;
         }
     }
@@ -92,15 +108,17 @@ public partial class CreateTableForm : Form
         ReadOnlySpan<char> tableName = TableNameInput.Text.CustomAsSpan();
         DKList<Column> columns = new();
 
-        for (int i = 0; i < _dynamicControls.Count; i += 2)
+        for (int i = 0; i < _dynamicControls.Count; i += 3)
         {
-            if (Controls[$"ColumnName_{i / 2}"] is not TextBox columnNameTextBox
-                || Controls[$"ColumnType_{i / 2}"] is not TextBox columnTypeTextBox)
+            if (Controls[$"ColumnName_{i / 3}"] is not TextBox columnNameTextBox
+                || Controls[$"ColumnType_{i / 3}"] is not TextBox columnTypeTextBox
+                || Controls[$"DefaultValue_{i / 3}"] is not TextBox defaultValueTextBox)
                 continue;
 
             string columnName = columnNameTextBox.Text;
             string columnType = columnTypeTextBox.Text;
-            columns.Add(new Column(columnName, columnType));
+            string defaultValue = defaultValueTextBox.Text;
+            columns.Add(new Column(columnName, columnType, defaultValue));
         }
 
         DataPageManager.CreateTable(columns, tableName);

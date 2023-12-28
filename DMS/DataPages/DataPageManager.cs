@@ -115,7 +115,7 @@ namespace DMS.DataPages
                     writer.Write(freeSpace);// 4 bytes for free space
                     writer.Write(totalSpaceForColumnTypes);// 8 bytes (max size in bytes for record)
                     writer.Write(table.Length); //4 bytes for the table name length
-                    writer.Write(table);// 1 bytes per char
+                    writer.Write(table);// 1 byte per char
                     writer.Write(columns.Count);// 4 bytes for column count
 
                     if (!TableOffsets.ContainsKey(table))
@@ -128,7 +128,7 @@ namespace DMS.DataPages
                     writer.Write(columns[columnIndex].Type);//2 bytes per char
                     writer.Write(columns[columnIndex].Name);//2 bytes per char
 
-                    freeSpace -= 2 * columns[columnIndex].Type.Length + 2 * columns[columnIndex].Name.Length;
+                    freeSpace -= 2 * columns[columnIndex].Type.Length + 2 * columns[columnIndex].Name.Length + 2 * columns[columnIndex].DefaultValue.Length;
                     columnIndex++;
 
                     if (columnIndex == columns.Count)
@@ -285,7 +285,7 @@ namespace DMS.DataPages
                 string columnName = reader.ReadString();
 
                 tableInfoForUi.ColumnType.Add(columnType);
-                tableInfoForUi.ColumnName.Add(columnName); 
+                tableInfoForUi.ColumnName.Add(columnName);
 
                 Console.WriteLine($"{columnName,-20} {columnType}");
             }

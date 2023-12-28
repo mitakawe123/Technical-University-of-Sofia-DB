@@ -61,16 +61,16 @@ namespace DMS.Utils
             return allocatedBytes;
         }
 
-        public static int SpaceTakenByColumnsDefinitions(IReadOnlyList<Column> columns) => columns.CustomSum(column => 2 * column.Name.Length + 2 * column.Type.Length);
+        public static int SpaceTakenByColumnsDefinitions(IReadOnlyList<Column> columns) => columns.CustomSum(column => 2 * column.Name.Length + 2 * column.Type.Length + 2 * column.DefaultValue.Length);
 
-        public static int SpaceTakenByColumnsDefinition(Column column) => (2 * column.Name.Length) + (2 * column.Type.Length);
+        public static int SpaceTakenByColumnsDefinition(Column column) => 2 * column.Name.Length + 2 * column.Type.Length + 2 * column.DefaultValue.Length;
 
         public static ulong CalculateSpaceForInsertRecords(IReadOnlyList<Column> columns)
         {
             //2 bytes for each char in type and name
             ulong space = 0;
             foreach (Column column in columns)
-                space += (ulong)((column.Name.Length * 2) + (column.Type.Length * 2));
+                space += (ulong)(column.Name.Length * 2 + column.Type.Length * 2 + column.DefaultValue.Length);
 
             return space;
         }

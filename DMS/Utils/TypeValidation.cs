@@ -44,11 +44,11 @@ namespace DMS.Utils
                     }
                     catch (ArgumentException)
                     {
-                        if (column.Type.StartsWith(EDataTypes.STRING.ToString(), StringComparison.OrdinalIgnoreCase))
+                        if (column.Type.CustomStartsWith(EDataTypes.STRING.ToString(), StringCompare.IgnoreCaseSensitivity))
                         {
-                            int lengthSpecStart = column.Type.IndexOf('(') + 1;
-                            int lengthSpecEnd = column.Type.IndexOf(')');
-                            string lengthSpec = column.Type.Substring(lengthSpecStart, lengthSpecEnd - lengthSpecStart);
+                            int lengthSpecStart = column.Type.CustomIndexOf('(') + 1;
+                            int lengthSpecEnd = column.Type.CustomIndexOf(')');
+                            string lengthSpec = column.Type[lengthSpecStart..lengthSpecEnd];
                             int allowedLength = lengthSpec.Equals("max", StringComparison.OrdinalIgnoreCase) ? 4000 : int.Parse(lengthSpec);
 
                             if (value.Length > allowedLength)

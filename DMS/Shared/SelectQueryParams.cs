@@ -2,7 +2,6 @@
 
 namespace DMS.Shared
 {
-
     public ref struct SelectQueryParams
     {
         public IReadOnlyList<char[]> AllData;

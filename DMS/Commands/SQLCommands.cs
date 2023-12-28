@@ -77,7 +77,7 @@ namespace DMS.Commands
             allData.RemoveAll(charArray => charArray.Length == 0 || charArray.CustomAll(c => c == '\0'));
 
             if (isForUi)
-                return PrintSelectedValuesInUI(allData, valuesToSelect, columnTypeAndName, logicalOperator, metadata.columnCount);
+                return PrintSelectedValuesInUi(allData, valuesToSelect, columnTypeAndName, logicalOperator, metadata.columnCount);
 
             PrintSelectedValues(allData, valuesToSelect, columnTypeAndName, logicalOperator, metadata.columnCount);
             return default;
@@ -193,7 +193,6 @@ namespace DMS.Commands
             long snapshotHashStartingPoint,
             (int freeSpace, ulong recordSizeInBytes, int tableLength, string table, int columnCount) metadata)
         {
-            DKList<string> operations = new();
             int deletedRows = 0;
 
             foreach (string item in logicalOperators)
@@ -203,8 +202,6 @@ namespace DMS.Commands
 
                 foreach (string operation in operationList)
                 {
-                    operations.Add(operation);
-
                     var operatorAndIndex = LogicalOperators.ParseOperation(operation);
                     string op = operatorAndIndex.Item1;
                     int operatorIndex = operatorAndIndex.Item2;
@@ -301,8 +298,9 @@ namespace DMS.Commands
             {
                 string columnType = reader.ReadString();
                 string columnName = reader.ReadString();
-                headerSectionForMainDp += columnName.Length * 2 + columnType.Length * 2;
-                columnNameAndType.Add(new Column(columnName, columnType));
+                string defaultValue = reader.ReadString();
+                headerSectionForMainDp += columnName.Length * 2 + columnType.Length * 2 + defaultValue.Length;
+                columnNameAndType.Add(new Column(columnName, columnType, defaultValue));
             }
 
             return (headerSectionForMainDp, columnNameAndType);
@@ -321,7 +319,7 @@ namespace DMS.Commands
             return (freeSpace, recordSizeInBytes, tableLength, table, columnCount);
         }
 
-        public static SelectQueryParams PrintSelectedValuesInUI(
+        private static SelectQueryParams PrintSelectedValuesInUi(
             IReadOnlyList<char[]> allData,
             DKList<string> valuesToSelect,
             IReadOnlyList<Column> columnTypeAndName,
@@ -520,6 +518,5 @@ namespace DMS.Commands
             stream.Close();
             reader.Close();
         }
-
     }
 }
