@@ -367,8 +367,8 @@ namespace DMS.OffsetPages
 
             for (int i = 0; i < columnCount; i++)
             {
-                writer.Write(DefaultIndexValue);
-                writer.Write(DefaultWordIndexValue);
+                writer.Write(DefaultIndexValue);//4 bytes
+                writer.Write(DefaultWordIndexValue);// 8 bytes
             }
 
             fs.Seek(startOfFreeOffset + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);

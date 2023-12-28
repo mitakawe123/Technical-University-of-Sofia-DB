@@ -83,7 +83,6 @@ namespace DMS.Commands
             return default;
         }
 
-        //need to update the hash here too
         public static void DeleteFromTable(ReadOnlySpan<char> tableName, IReadOnlyList<string> logicalOperators, IReadOnlyList<string> columns)//<- can contains not keyword
         {
             char[] matchingKey = HelperMethods.FindTableWithName(tableName);
@@ -221,7 +220,7 @@ namespace DMS.Commands
                         int rowsDeleted = ReadAndDeleteData(fs, reader, writer, lengthToRead, value, op, metadata.columnCount);
 
                         FileIntegrityChecker.RecalculateHash(fs, writer, snapshotHashStartingPoint);
-                        deletedRows = rowsDeleted;
+                        deletedRows += rowsDeleted;
                     }
                 }
             }

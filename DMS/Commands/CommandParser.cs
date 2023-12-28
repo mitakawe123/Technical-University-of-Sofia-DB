@@ -48,8 +48,7 @@ namespace DMS.Commands
             int closingBracket = commandSpan.CustomLastIndexOf(')');
             int endBeforeParenthesis = commandSpan[startAfterKeyword..].CustomIndexOf('(');
 
-            ReadOnlySpan<char> tableNameSpan =
-                commandSpan.CustomSlice(startAfterKeyword, endBeforeParenthesis).CustomTrim();
+            ReadOnlySpan<char> tableNameSpan = commandSpan.CustomSlice(startAfterKeyword, endBeforeParenthesis).CustomTrim();
             ReadOnlySpan<char> values = commandSpan[(openingBracket + 1)..closingBracket];
             DKList<Column> columns = new();
 

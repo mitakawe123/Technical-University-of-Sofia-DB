@@ -112,7 +112,7 @@ namespace DMS.Commands
             DKList<Column> selectedColumns,
             int colCount,
             string operatorType,
-            DKList<string> operations)
+            IReadOnlyList<string> operations)
         {
             switch (operatorType)
             {
@@ -146,11 +146,11 @@ namespace DMS.Commands
             DKList<int> blockIndexes = new();
             for (int i = 0; i < allData.Count; i++)
             {
-                if (CompareValues(allData[i], value, op))
-                {
-                    int blockIndex = i / colCount;
-                    blockIndexes.Add(blockIndex);
-                }
+                if (!CompareValues(allData[i], value, op)) 
+                    continue;
+
+                int blockIndex = i / colCount;
+                blockIndexes.Add(blockIndex);
             }
 
             if (blockIndexes.Count == 0)

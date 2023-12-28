@@ -95,6 +95,8 @@ namespace DMS.DataPages
             int freeSpace = DataPageSize;
             int currentPage = AllDataPagesCount;
 
+            //here there is an edge case when I create table drop it, create new one and insert record the logic is broken
+            //fix it
             if (DataPageCounter == 0)
                 FirstOffsetPageStart = numberOfPagesNeeded * DataPageSize + CounterSection;
 
@@ -104,7 +106,7 @@ namespace DMS.DataPages
 
                 writer.Write(FileIntegrityChecker.DefaultHashValue); // 8 bytes hash
 
-                //this is the first Data page for the table and we need to write the header section only in this data page
+                //this is the first Data page for the table, and we need to write the header section only in this data page
                 if (currentPage == AllDataPagesCount)
                 {
                     freeSpace -= Metadata + tableName.Length;// minus the header section
