@@ -137,6 +137,7 @@ namespace DMS.Commands
 
         private static void WhereCondition(ref IReadOnlyList<char[]> allData, int colCount, string operation)
         {
+            //check the index if their for the given column
             var operatorAndIndex = ParseOperation(operation);
             string op = operatorAndIndex.Item1;
             int operatorIndex = operatorAndIndex.Item2;

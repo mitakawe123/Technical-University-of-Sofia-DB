@@ -1,4 +1,5 @@
-﻿using DMS.Commands;
+﻿using System.Diagnostics;
+using DMS.Commands;
 using DMS.Constants;
 using DMS.DataPages;
 using DMS.DataRecovery;
@@ -26,7 +27,7 @@ namespace DMS
                 Console.Write("Enter a command (or 'exit' to quit): ");
                 string command = Console.ReadLine()!;
                 string[] cliInput = command.CustomSplit(new[] { ' ' });
-                //string uiPath = @"D:\my_own_projects\DMS\UI\bin\Debug\net7.0-windows\UI.exe";
+                string uiPath = @"D:\my_own_projects\DMS\UI\bin\Debug\net7.0-windows\UI.exe";
 
                 string input = string.Empty;
                 if (cliInput.Length is not 0)
@@ -49,11 +50,11 @@ namespace DMS
                         running = false;
                         break;
 
-                    /*case ECliCommands.UI:
+                    case ECliCommands.UI:
                         Process.Start(uiPath);
                         DataPageManager.ConsoleEventCallback();
                         running = false;
-                        break;*/
+                        break;
 
                     case ECliCommands.Clear:
                     case ECliCommands.Cls:
