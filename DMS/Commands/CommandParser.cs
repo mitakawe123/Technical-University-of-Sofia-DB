@@ -121,9 +121,28 @@ namespace DMS.Commands
             int valuesKeyword = commandSpan.CustomIndexOf("values") + "values".Length;
 
             int endBeforeParenthesis = commandSpan[startAfterKeyword..].CustomIndexOf('(');
+            int tableNameSpanEndIndex = endBeforeParenthesis + startAfterKeyword;
+
+            ReadOnlySpan<char> betweenSpan = commandSpan.CustomSlice(tableNameSpanEndIndex + 1, (commandSpan.CustomIndexOf("values") - 3) - tableNameSpanEndIndex);
+            ReadOnlySpan<char> selectedColumnsSpan = betweenSpan.CustomTrim();
 
             ReadOnlySpan<char> tableNameSpan = commandSpan.CustomSlice(startAfterKeyword, endBeforeParenthesis).CustomTrim();
             ReadOnlySpan<char> valuesSpan = commandSpan[valuesKeyword..].CustomTrim();
+
+            DKList<char[]> selectedColumns = new();
+            int lastComma = 0;
+            for (int i = 0; i < selectedColumnsSpan.Length; i++)
+            {
+                if (selectedColumnsSpan[i] != ',')
+                    continue;
+
+                ReadOnlySpan<char> column = selectedColumnsSpan.Slice(lastComma, i - lastComma).CustomTrim();
+                selectedColumns.Add(column.CustomToArray());
+                lastComma = i + 1;
+            }
+
+            ReadOnlySpan<char> lastColumn = selectedColumnsSpan[lastComma..].CustomTrim();
+            selectedColumns.Add(lastColumn.ToArray());
 
             DKList<DKList<char[]>> valuesList = new();
             bool inQuotes = false;
@@ -133,17 +152,22 @@ namespace DMS.Commands
                 if (valuesSpan[i] == '"' && (i == 0 || valuesSpan[i - 1] != '\\'))
                     inQuotes = !inQuotes;
 
-                if (!inQuotes && valuesSpan[i] == ')')
+                switch (inQuotes)
                 {
-                    ReadOnlySpan<char> tupleSpan = valuesSpan[start..i].CustomTrim();
-                    valuesList.Add(ProcessTuple(tupleSpan));
-                    start = i + 1;
+                    case false when valuesSpan[i] == ')':
+                    {
+                        ReadOnlySpan<char> tupleSpan = valuesSpan[start..i].CustomTrim();
+                        valuesList.Add(ProcessTuple(tupleSpan));
+                        start = i + 1;
+                        break;
+                    }
+                    case false when valuesSpan[i] == '(':
+                        start = i + 1;
+                        break;
                 }
-                else if (!inQuotes && valuesSpan[i] == '(')
-                    start = i + 1;
             }
 
-            SqlCommands.InsertIntoTable(valuesList, tableNameSpan);
+            SqlCommands.InsertIntoTable(valuesList, selectedColumns, tableNameSpan);
         }
 
         private static void SelectFromTable(string command)

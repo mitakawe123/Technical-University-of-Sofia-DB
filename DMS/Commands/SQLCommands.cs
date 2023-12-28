@@ -11,7 +11,7 @@ namespace DMS.Commands
 {
     public static class SqlCommands
     {
-        public static void InsertIntoTable(IReadOnlyList<IReadOnlyList<char[]>> columnsValues, ReadOnlySpan<char> tableName)
+        public static void InsertIntoTable(IReadOnlyList<IReadOnlyList<char[]>> columnsValues, IReadOnlyList<char[]> selectedColumns,ReadOnlySpan<char> tableName)
         {
             char[] matchingKey = HelperMethods.FindTableWithName(tableName);
 
@@ -26,7 +26,7 @@ namespace DMS.Commands
             fs.Seek(DataPageManager.TableOffsets[matchingKey], SeekOrigin.Begin);
 
             var metadata = ReadTableMetadata(reader);
-
+                
             int headerSectionForMainDp = DataPageManager.Metadata + metadata.tableLength;
             (headerSectionForMainDp, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDp, metadata.columnCount);
 
