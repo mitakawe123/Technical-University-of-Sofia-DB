@@ -1,5 +1,6 @@
 ﻿using DataStructures;
 using DMS.Commands;
+using DMS.Extensions;
 using DMS.Shared;
 
 namespace UI;
@@ -9,8 +10,9 @@ public partial class InsertForm : Form
     private string tableName;
     private int numberOfDataPages;
     private int columnCount;
-    private DKList<string> columnType;
-    private DKList<string> columnName;
+    private DKList<string> columnTypes;
+    private DKList<string> columnNames;
+    private DKList<string> defaultValues;
 
     public InsertForm()
     {
@@ -22,8 +24,9 @@ public partial class InsertForm : Form
         tableName = tableInfo.TableName;
         numberOfDataPages = tableInfo.NumberOfDataPages;
         columnCount = tableInfo.ColumnCount;
-        columnType = tableInfo.ColumnType;
-        columnName = tableInfo.ColumnName;
+        columnTypes = tableInfo.ColumnTypes;
+        columnNames = tableInfo.ColumnNames;
+        defaultValues = tableInfo.DefaultValues;
     }
 
     private void InsertForm_Load(object sender, EventArgs e)
@@ -41,7 +44,7 @@ public partial class InsertForm : Form
         {
             Label nameLabel = new()
             {
-                Text = columnName[i],
+                Text = columnNames[i],
                 AutoSize = true,
                 Location = new Point((this.ClientSize.Width / 2) - 200, currentY)
             };
@@ -56,7 +59,7 @@ public partial class InsertForm : Form
 
             Label typeLabel = new()
             {
-                Text = columnType[i],
+                Text = columnTypes[i],
                 AutoSize = true,
                 Location = new Point((this.ClientSize.Width / 2) + 20, currentY)
             };
@@ -73,7 +76,7 @@ public partial class InsertForm : Form
 
         for (int i = 0; i < columnCount; i++)
         {
-            if (Controls.Find($"inputBox_{i}", true).FirstOrDefault() is not TextBox inputBox) 
+            if (Controls.Find($"inputBox_{i}", true).CustomFirstOrDefault() is not TextBox inputBox)
                 continue;
 
             string inputText = inputBox.Text;
@@ -82,7 +85,7 @@ public partial class InsertForm : Form
         }
 
         valuesToInsert.Add(columnData);
-        SqlCommands.InsertIntoTable(valuesToInsert, default,tableName);
+        SqlCommands.InsertIntoTable(valuesToInsert, new DKList<string>(new string[columnCount]), tableName);
         MessageBox.Show($"Succesfully inserted into table {tableName}");
     }
 }

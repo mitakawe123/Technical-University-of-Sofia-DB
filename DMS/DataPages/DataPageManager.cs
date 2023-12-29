@@ -248,8 +248,9 @@ namespace DMS.DataPages
 
             TableInfo tableInfoForUi = new()
             {
-                ColumnType = new DKList<string>(),
-                ColumnName = new DKList<string>()
+                ColumnTypes = new(),
+                ColumnNames = new(),
+                DefaultValues = new()
             };
 
             long offset = TableOffsets[tableFromOffset];
@@ -283,9 +284,11 @@ namespace DMS.DataPages
             {
                 string columnType = reader.ReadString();
                 string columnName = reader.ReadString();
+                string defaultValue = reader.ReadString();
 
-                tableInfoForUi.ColumnType.Add(columnType);
-                tableInfoForUi.ColumnName.Add(columnName);
+                tableInfoForUi.ColumnTypes.Add(columnType);
+                tableInfoForUi.ColumnNames.Add(columnName);
+                tableInfoForUi.DefaultValues.Add(defaultValue);
 
                 Console.WriteLine($"{columnName,-20} {columnType}");
             }

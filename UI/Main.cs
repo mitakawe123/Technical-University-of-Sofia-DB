@@ -11,6 +11,7 @@ namespace UI;
 public partial class Main : Form
 {
     private DataGridView.HitTestInfo? _testInfo;
+
     public Main()
     {
         InitializeComponent();
@@ -76,11 +77,12 @@ public partial class Main : Form
         TableNameTextBox.Text = "Table Name: " + tableInfo.TableName;
         ColumnCountTextBox.Text = "Number of columns: " + tableInfo.ColumnCount;
 
-        TableInfoGrid.Columns.Add("ColumnName", "Column Name");
-        TableInfoGrid.Columns.Add("ColumnType", "Column Type");
+        TableInfoGrid.Columns.Add("ColumnNames", "Column Name");
+        TableInfoGrid.Columns.Add("ColumnTypes", "Column Type");
+        TableInfoGrid.Columns.Add("DefaultValue", "Default Value");
 
-        for (int i = 0; i < tableInfo.ColumnName.Count; i++)
-            TableInfoGrid.Rows.Add(tableInfo.ColumnName[i], tableInfo.ColumnType[i]);
+        for (int i = 0; i < tableInfo.ColumnNames.Count; i++)
+            TableInfoGrid.Rows.Add(tableInfo.ColumnNames[i], tableInfo.ColumnTypes[i], tableInfo.DefaultValues[i]);
     }
 
     private void DropTable_Click(object sender, EventArgs e)
@@ -153,17 +155,23 @@ public partial class Main : Form
     private void DataGridView_MouseClick(object sender, MouseEventArgs e)
     {
         //first select the whole row and then right mouse button
-        if (e.Button != MouseButtons.Right) 
+        if (e.Button != MouseButtons.Right)
             return;
 
         DataGridView.HitTestInfo? hitTestInfo = DataGridView.HitTest(e.X, e.Y);
-        if (hitTestInfo.RowIndex < 0 || hitTestInfo.Type != DataGridViewHitTestType.RowHeader) 
+        if (hitTestInfo.RowIndex < 0 || hitTestInfo.Type != DataGridViewHitTestType.RowHeader)
             return;
 
-        if (!DataGridView.Rows[hitTestInfo.RowIndex].Selected) 
+        if (!DataGridView.Rows[hitTestInfo.RowIndex].Selected)
             return;
 
         DataGridViewMenu.Show(DataGridView, new Point(e.X, e.Y));
         _testInfo = hitTestInfo;
+    }
+
+    private void ExitButton_Click(object sender, EventArgs e)
+    {
+        DataPageManager.ConsoleEventCallback();
+        Close();
     }
 }

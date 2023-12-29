@@ -684,6 +684,17 @@ namespace DMS.Extensions
             }
         }
 
+        public static T? CustomFirstOrDefault<T>(this IEnumerable<T> source)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            foreach (T item in source)
+                return item;
+
+            return default;
+        }
+
         #endregion
 
         #region readonly span extensions

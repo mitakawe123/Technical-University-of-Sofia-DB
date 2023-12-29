@@ -78,7 +78,7 @@ namespace DMS.OffsetPages
             long stopPosition = DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize -
                                 DataPageManager.BufferOverflowPointer;
             long snapshotHashStartingPosition = fs.Position;
-            long prevPosition = fs.Position;
+            long prevPosition;
 
             ulong hash = reader.ReadUInt64();
             int freeSpace = reader.ReadInt32();

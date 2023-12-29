@@ -7,7 +7,8 @@ namespace DMS.Shared
         public string TableName;
         public int NumberOfDataPages;
         public int ColumnCount;
-        public DKList<string> ColumnType;
-        public DKList<string> ColumnName;
+        public DKList<string> ColumnTypes;
+        public DKList<string> ColumnNames;
+        public DKList<string> DefaultValues;
     }
 }
