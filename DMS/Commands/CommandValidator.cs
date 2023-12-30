@@ -38,12 +38,12 @@ namespace DMS.Commands
             {
                 bool isValid = validateAction(command);
                 if (!isValid)
-                    Console.WriteLine($"Please enter a valid {commandType.ToString().CustomToLower()} command!");
+                    Console.WriteLine($@"Please enter a valid {commandType.ToString().CustomToLower()} command!");
 
                 return isValid;
             }
 
-            Console.WriteLine("Invalid command, please enter a valid command");
+            Console.WriteLine(@"Invalid command, please enter a valid command");
             return false;
         }
 
@@ -59,7 +59,7 @@ namespace DMS.Commands
 
             if (openingBracket is -1 || closingBracketForColumns is -1)
             {
-                Console.WriteLine("Add closing and opening brackets before and after the table name");
+                Console.WriteLine(@"Add closing and opening brackets before and after the table name");
                 return false;
             }
 
@@ -67,14 +67,14 @@ namespace DMS.Commands
 
             if (tableName.Length > 128)
             {
-                Console.WriteLine("Table name length is too long");
+                Console.WriteLine(@"Table name length is too long");
                 return false;
             }
 
             if (tableName.CustomAny(x => InvalidTableNameCharacters.CustomContains(x)) ||
                 SqlDataTypes.CustomAny(x => tableName == x))
             {
-                Console.WriteLine("Invalid table name");
+                Console.WriteLine(@"Invalid table name");
                 return false;
             }
 
@@ -90,7 +90,7 @@ namespace DMS.Commands
                 if (!SqlDataTypes.CustomAny(x => columnName == x)) 
                     continue;
 
-                Console.WriteLine("Invalid column name");
+                Console.WriteLine(@"Invalid column name");
                 return false;
             }
 
@@ -114,7 +114,7 @@ namespace DMS.Commands
             if (!commandSpan.CustomContains(insetIntoText, StringComparison.OrdinalIgnoreCase)
                 || !commandSpan.CustomContains(valuesTest, StringComparison.OrdinalIgnoreCase))
             {
-                Console.WriteLine("Not a valid insert into command");
+                Console.WriteLine(@"Not a valid insert into command");
                 return false;
             }
 
@@ -126,13 +126,13 @@ namespace DMS.Commands
 
             if (tableName.Length > 128)
             {
-                Console.WriteLine("Table name is too long");
+                Console.WriteLine(@"Table name is too long");
                 return false;
             }
 
             if (tableName.IsEmpty)
             {
-                Console.WriteLine("Table name is empty");
+                Console.WriteLine(@"Table name is empty");
                 return false;
             }
 
@@ -164,7 +164,7 @@ namespace DMS.Commands
                             if (!segment.CustomContains('(')
                                 || !segment.CustomContains(')'))
                             {
-                                Console.WriteLine("Invalid value format. Each value must be enclosed in parentheses.");
+                                Console.WriteLine(@"Invalid value format. Each value must be enclosed in parentheses.");
                                 return false;
                             }
 
@@ -178,7 +178,7 @@ namespace DMS.Commands
 
                 if (bracketCount != 0 || inQuote)
                 {
-                    Console.WriteLine("Unbalanced parentheses or quotes in values.");
+                    Console.WriteLine(@"Unbalanced parentheses or quotes in values.");
                     return false;
                 }
             }

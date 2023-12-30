@@ -5,6 +5,7 @@ using System.Data;
 using DMS.Shared;
 using System.Text;
 using DMS.Extensions;
+using DMS.DataRecovery;
 
 namespace UI;
 
@@ -22,6 +23,13 @@ public partial class Main : Form
 
     private void MainForm_Load(object sender, EventArgs e)
     {
+        bool isThereCorruptedDataPages = FileIntegrityChecker.CheckForCorruptionOnStart();
+        if (isThereCorruptedDataPages)
+        {
+            MessageBox.Show(@"There is corruption in the DB");
+            Close();
+        }
+
         DataPageManager.InitDataPageManager();
 
         LoadTableNamesIntoListView();
@@ -89,7 +97,7 @@ public partial class Main : Form
     {
         if (tableNames.SelectedItems.Count <= 0)
         {
-            MessageBox.Show("Please select a table to drop.");
+            MessageBox.Show(@"Please select a table to drop.");
             return;
         }
 

@@ -30,13 +30,13 @@ namespace UI
         {
             if (ColumnNamesListBox.SelectedItems.Count <= 0)
             {
-                MessageBox.Show("Please select at least one column to index");
+                MessageBox.Show(@"Please select at least one column to index");
                 return;
             }
 
             if (IndexNameTextBox.Text == string.Empty)
             {
-                MessageBox.Show("Please enter a index name");
+                MessageBox.Show(@"Please enter a index name");
                 return;
             }
 

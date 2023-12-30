@@ -70,7 +70,7 @@ namespace DMS.Commands
                 bool isValidType = TypeValidation.CheckIfValidColumnType(columnType);
                 if (!isValidType)
                 {
-                    Console.WriteLine($"Invalid type for column {columnName} with type {columnType}");
+                    Console.WriteLine($@"Invalid type for column {columnName} with type {columnType}");
                     return;
                 }
 
@@ -85,7 +85,7 @@ namespace DMS.Commands
 
             if (columns.CustomAny(x => x.Name.Length > 128))
             {
-                Console.WriteLine("Column name is too long");
+                Console.WriteLine(@"Column name is too long");
                 return;
             }
 

@@ -42,14 +42,14 @@ namespace DMS.DataPages
             }
             catch (IOException ex)
             {
-                Console.WriteLine($"An IO exception occurred: {ex.Message}");
+                Console.WriteLine($@"An IO exception occurred: {ex.Message}");
             }
 
             if (AllDataPagesCount != 0)
                 TableOffsets = OffsetManager.ReadTableOffsets();
         }
 
-        public static void InitDataPageManager() => Console.WriteLine("Welcome to DMS");
+        public static void InitDataPageManager() => Console.WriteLine(@"Welcome to DMS");
 
         public static void ConsoleEventCallback()
         {
@@ -69,7 +69,7 @@ namespace DMS.DataPages
             char[] table = tableName.CustomToArray();
             if (TableOffsets.ContainsKey(table))
             {
-                Console.WriteLine("Table already exists");
+                Console.WriteLine(@"Table already exists");
                 return;
             }
 
@@ -80,7 +80,7 @@ namespace DMS.DataPages
             ulong totalSpaceForColumnTypes = HelperAllocater.AllocatedStorageForTypes(columns);// this will calc max space required for one record
             if (totalSpaceForColumnTypes == 0)
             {
-                Console.WriteLine("Invalid create table command");
+                Console.WriteLine(@"Invalid create table command");
                 return;
             }
 
@@ -217,23 +217,23 @@ namespace DMS.DataPages
         {
             if (TableOffsets.Count == 0)
             {
-                Console.WriteLine("There are no tables in the DB.");
+                Console.WriteLine(@"There are no tables in the DB.");
                 return;
             }
 
-            Console.WriteLine("List of Tables in the Database:");
+            Console.WriteLine(@"List of Tables in the Database:");
             Console.WriteLine(new string('-', 30)); // Print a separator line
 
             int index = 1;
             foreach (char[] tableCharArray in TableOffsets.Keys)
             {
                 string tableName = new(tableCharArray);
-                Console.WriteLine($"{index}. {tableName}");
+                Console.WriteLine($@"{index}. {tableName}");
                 index++;
             }
 
             Console.WriteLine(new string('-', 30)); // Print a separator line
-            Console.WriteLine($"{TableOffsets.Count} tables listed.");
+            Console.WriteLine($@"{TableOffsets.Count} tables listed.");
         }
 
         public static TableInfo TableInfo(ReadOnlySpan<char> tableName, bool isForUi = false)
@@ -242,7 +242,7 @@ namespace DMS.DataPages
 
             if (tableFromOffset == Array.Empty<char>())
             {
-                Console.WriteLine("No table found with this name");
+                Console.WriteLine(@"No table found with this name");
                 return default;
             }
 
@@ -273,12 +273,13 @@ namespace DMS.DataPages
             tableInfoForUi.ColumnCount = columnsCount;
             tableInfoForUi.TableName = new string(tableNameFromFile);
 
-            Console.WriteLine($"Table name: {new string(tableNameFromFile)}");
-            Console.WriteLine($"The table spans across {numberOfDataPagesForTable} data pages");
-            Console.WriteLine($"Columns count is {columnsCount}");
-            Console.WriteLine("\nColumn Details:");
+            Console.WriteLine($@"Table name: {new string(tableNameFromFile)}");
+            Console.WriteLine($@"The table spans across {numberOfDataPagesForTable} data pages");
+            Console.WriteLine($@"Columns count is {columnsCount}");
+            Console.WriteLine(@"
+Column Details:");
 
-            Console.WriteLine($"{"Column Name",-20} Column Type");
+            Console.WriteLine($@"{"Column Name",-20} Column Type");
             Console.WriteLine(new string('-', 40));
             for (int i = 0; i < columnsCount; i++)
             {
@@ -290,7 +291,7 @@ namespace DMS.DataPages
                 tableInfoForUi.ColumnNames.Add(columnName);
                 tableInfoForUi.DefaultValues.Add(defaultValue);
 
-                Console.WriteLine($"{columnName,-20} {columnType}");
+                Console.WriteLine($@"{columnName,-20} {columnType}");
             }
             Console.WriteLine(new string('-', 40));
 
@@ -348,7 +349,7 @@ namespace DMS.DataPages
                 case CtrlTypes.CTRL_BREAK_EVENT:
                 case CtrlTypes.CTRL_LOGOFF_EVENT:
                 case CtrlTypes.CTRL_SHUTDOWN_EVENT:
-                    Console.WriteLine("Closing the program ....");
+                    Console.WriteLine(@"Closing the program ....");
                     ConsoleEventCallback();
                     break;
                 default:

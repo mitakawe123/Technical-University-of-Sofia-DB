@@ -21,7 +21,7 @@ namespace DMS.Commands
             char[] matchingKey = HelperMethods.FindTableWithName(tableName);
             if (matchingKey == Array.Empty<char>())
             {
-                Console.WriteLine("There is not table with the given name");
+                Console.WriteLine(@"There is not table with the given name");
                 return;
             }
 
@@ -38,7 +38,7 @@ namespace DMS.Commands
             {
                 if (IsThereDefaultValueForNonSelectedColumns(selectedColumns, columnNameAndType, out _, out DKList<int> nonSelectedColumnsIndex))
                 {
-                    Console.WriteLine("There is no default value for the non selected columns");
+                    Console.WriteLine(@"There is no default value for the non selected columns");
                     return;
                 }
 
@@ -190,7 +190,7 @@ namespace DMS.Commands
             if (areValidTypes)
                 return false;
 
-            Console.WriteLine($"Invalid types when inserting into table {tableName}");
+            Console.WriteLine($@"Invalid types when inserting into table {tableName}");
             CloseStreamAndReader(fs, reader);
             return true;
         }
@@ -251,7 +251,7 @@ namespace DMS.Commands
 
             if (matchingKey == Array.Empty<char>())
             {
-                Console.WriteLine("There is no table with the given name");
+                Console.WriteLine(@"There is no table with the given name");
                 return default;
             }
 
@@ -377,7 +377,7 @@ namespace DMS.Commands
                     if ((columnIndex + 1) % columnCount is not 0)
                         Console.Write(" | ");
                     else
-                        Console.WriteLine(" |");
+                        Console.WriteLine(@" |");
                 }
 
                 columnIndex++;
@@ -396,7 +396,7 @@ namespace DMS.Commands
 
             if (matchingKey == Array.Empty<char>())
             {
-                Console.WriteLine("There is not table with the given name");
+                Console.WriteLine(@"There is not table with the given name");
                 return;
             }
 
@@ -413,7 +413,7 @@ namespace DMS.Commands
             bool allElementsContained = columns.CustomAll(x => columnTypeAndName.CustomAny(y => y.Name == x));//there can be case with not in front of the column
             if (!allElementsContained)
             {
-                Console.WriteLine("Wrong column in the where clause");
+                Console.WriteLine(@"Wrong column in the where clause");
                 CloseStreamAndReader(fs, reader);
                 return;
             }
@@ -469,7 +469,7 @@ namespace DMS.Commands
                 }
             }
 
-            Console.WriteLine($"Rows affected {deletedRows}");
+            Console.WriteLine($@"Rows affected {deletedRows}");
         }
 
         private static int ReadAndDeleteData(

@@ -23,7 +23,7 @@ namespace DMS.Indexes
 
             if (matchingKey == Array.Empty<char>())
             {
-                Console.WriteLine("There is no table with the given name");
+                Console.WriteLine(@"There is no table with the given name");
                 return;
             }
 
@@ -39,7 +39,7 @@ namespace DMS.Indexes
             bool allElementsContained = columns.CustomAll(x => columnTypeAndName.CustomAny(y => y.Name == x));
             if (!allElementsContained)
             {
-                Console.WriteLine("Wrong column in the where clause");
+                Console.WriteLine(@"Wrong column in the where clause");
                 CloseFileAndReader(fileStream, reader);
                 return;
             }
@@ -70,7 +70,7 @@ namespace DMS.Indexes
 
             if (matchingKey == Array.Empty<char>())
             {
-                Console.WriteLine("There is no table with the given name");
+                Console.WriteLine(@"There is no table with the given name");
                 return;
             }
 
@@ -114,7 +114,7 @@ namespace DMS.Indexes
                     writer.Write(DefaultOffsetIndexValue);
                     writer.Write(DefaultOffsetIndexNameValue);
                  
-                    Console.WriteLine("Successfully drop index");
+                    Console.WriteLine(@"Successfully drop index");
                 }
 
                 fs.Seek(sizeof(int) + sizeof(long), SeekOrigin.Begin);
@@ -290,7 +290,7 @@ namespace DMS.Indexes
                     long columnNameAsNumber = WordConverter.ConvertWordToNumber(indexName.ToString());
                     writer.Write(columnNameAsNumber);   
 
-                    Console.WriteLine("Successfully created index");
+                    Console.WriteLine(@"Successfully created index");
                 }
 
                 fs.Seek(sizeof(int) + sizeof(long), SeekOrigin.Current);

@@ -14,7 +14,7 @@ namespace DMS
             bool isThereCorruptedDataPages = FileIntegrityChecker.CheckForCorruptionOnStart();
             if (isThereCorruptedDataPages)
             {
-                Console.WriteLine("There is corruption in the DB");
+                Console.WriteLine(@"There is corruption in the DB");
                 Environment.Exit(0);
             }
 
@@ -35,7 +35,7 @@ namespace DMS
 
                 if (!Enum.TryParse(input, true, out ECliCommands cliCommand))
                 {
-                    Console.WriteLine("Invalid command type help");
+                    Console.WriteLine(@"Invalid command type help");
                     continue;
                 }
 

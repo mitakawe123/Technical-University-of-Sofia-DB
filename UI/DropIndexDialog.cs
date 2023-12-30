@@ -21,7 +21,7 @@ namespace UI
         {
             if (DropIndexTextBox.Text == string.Empty)
             {
-                MessageBox.Show("Please enter a index name");
+                MessageBox.Show(@"Please enter a index name");
                 return;
             }
 

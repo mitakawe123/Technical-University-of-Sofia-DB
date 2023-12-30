@@ -156,7 +156,7 @@ namespace DMS.Commands
 
             if (blockIndexes.Count == 0)
             {
-                Console.WriteLine("Value not found");
+                Console.WriteLine(@"Value not found");
                 allData = new DKList<char[]>();
                 return;
             }
@@ -315,7 +315,7 @@ namespace DMS.Commands
 
                 if (!columnMap.TryGetValue(columnName, out int columnIndex))
                 {
-                    Console.WriteLine($"Invalid column in order by condition {columnName}");
+                    Console.WriteLine($@"Invalid column in order by condition {columnName}");
                     return;
                 }
                 sortingColumns.Add((columnIndex, isAsc));
@@ -362,7 +362,7 @@ namespace DMS.Commands
             int indexOnKeyword = operation.CustomIndexOf("on");
             if (indexOnKeyword is -1)
             {
-                Console.WriteLine("There is no \'ON\' keyword after the table that will be joined");
+                Console.WriteLine(@"There is no 'ON' keyword after the table that will be joined");
                 return;
             }
 
@@ -370,7 +370,7 @@ namespace DMS.Commands
 
             if (matchingKey is null)
             {
-                Console.WriteLine("Wrong table name cannot use join on that table");
+                Console.WriteLine(@"Wrong table name cannot use join on that table");
                 return;
             }
 
