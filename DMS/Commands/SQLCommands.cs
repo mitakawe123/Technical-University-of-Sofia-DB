@@ -38,12 +38,16 @@ namespace DMS.Commands
             {
                 if (IsThereDefaultValueForNonSelectedColumns(selectedColumns, columnNameAndType, out _, out DKList<int> nonSelectedColumnsIndex))
                 {
-                    Console.WriteLine(@"There is no default value for the non selected columns");
+                    Console.WriteLine("There is no default value for the non selected columns");
+                    CloseStreamAndReader(fs, reader);
                     return;
                 }
 
                 if (FilterSelectedColumns(columnsValuesToInsert, selectedColumns, tableName, columnNameAndType, fs, reader))
+                {
+                    CloseStreamAndReader(fs, reader);
                     return;
+                }
 
                 InsertDefaultValues(columnsValuesToInsert, columnNameAndType, nonSelectedColumnsIndex);
             }
@@ -589,7 +593,7 @@ namespace DMS.Commands
 
             return (freeSpace, recordSizeInBytes, tableLength, table, columnCount);
         }
-        
+
         private static (FileStream, BinaryReader) OpenFileAndReader()
         {
             FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
