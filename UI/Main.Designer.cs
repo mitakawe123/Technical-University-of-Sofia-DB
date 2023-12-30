@@ -42,10 +42,14 @@
             DataGridViewMenu = new ContextMenuStrip(components);
             deleteRowToolStripMenuItem = new ToolStripMenuItem();
             ExitButton = new Button();
+            IndexMenu = new ContextMenuStrip(components);
+            createIndexToolStripMenuItem = new ToolStripMenuItem();
+            dropIndexToolStripMenuItem = new ToolStripMenuItem();
             TableMenu.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)DataGridView).BeginInit();
             ((System.ComponentModel.ISupportInitialize)TableInfoGrid).BeginInit();
             DataGridViewMenu.SuspendLayout();
+            IndexMenu.SuspendLayout();
             SuspendLayout();
             // 
             // tableNames
@@ -158,6 +162,27 @@
             ExitButton.UseVisualStyleBackColor = true;
             ExitButton.Click += ExitButton_Click;
             // 
+            // IndexMenu
+            // 
+            IndexMenu.ImageScalingSize = new Size(20, 20);
+            IndexMenu.Items.AddRange(new ToolStripItem[] { createIndexToolStripMenuItem, dropIndexToolStripMenuItem });
+            IndexMenu.Name = "IndexMenu";
+            IndexMenu.Size = new Size(211, 80);
+            // 
+            // createIndexToolStripMenuItem
+            // 
+            createIndexToolStripMenuItem.Name = "createIndexToolStripMenuItem";
+            createIndexToolStripMenuItem.Size = new Size(210, 24);
+            createIndexToolStripMenuItem.Text = "Create Index";
+            createIndexToolStripMenuItem.Click += CreateIndexToolStripMenuItem_Click;
+            // 
+            // dropIndexToolStripMenuItem
+            // 
+            dropIndexToolStripMenuItem.Name = "dropIndexToolStripMenuItem";
+            dropIndexToolStripMenuItem.Size = new Size(210, 24);
+            dropIndexToolStripMenuItem.Text = "Drop Index";
+            dropIndexToolStripMenuItem.Click += DropIndexToolStripMenuItem_Click;
+            // 
             // Main
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
@@ -177,6 +202,7 @@
             ((System.ComponentModel.ISupportInitialize)DataGridView).EndInit();
             ((System.ComponentModel.ISupportInitialize)TableInfoGrid).EndInit();
             DataGridViewMenu.ResumeLayout(false);
+            IndexMenu.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -197,5 +223,8 @@
         private ToolStripMenuItem createTableToolStripMenuItem;
         private ToolStripMenuItem deleteRowToolStripMenuItem;
         private Button ExitButton;
+        private ContextMenuStrip IndexMenu;
+        private ToolStripMenuItem createIndexToolStripMenuItem;
+        private ToolStripMenuItem dropIndexToolStripMenuItem;
     }
 }

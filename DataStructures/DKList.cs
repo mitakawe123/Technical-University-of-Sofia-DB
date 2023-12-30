@@ -87,7 +87,7 @@ namespace DataStructures
                 catch (InvalidCastException)
                 {
                     throw new ArgumentException(nameof(value));
-                }
+                }   
             }
         }
 
@@ -100,7 +100,7 @@ namespace DataStructures
 
                 return _items[index];
             }
-            set
+            private set
             {
                 if ((uint)index >= (uint)_size)
                     throw new ArgumentOutOfRangeException();

@@ -87,5 +87,7 @@ public partial class InsertForm : Form
         valuesToInsert.Add(columnData);
         SqlCommands.InsertIntoTable(valuesToInsert, new DKList<string>(new string[columnCount]), tableName);
         MessageBox.Show($"Succesfully inserted into table {tableName}");
+
+        Close();
     }
 }

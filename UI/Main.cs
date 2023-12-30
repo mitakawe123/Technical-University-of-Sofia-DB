@@ -3,8 +3,8 @@ using DMS.Commands;
 using DMS.DataPages;
 using System.Data;
 using DMS.Shared;
-using System.Windows.Forms;
 using System.Text;
+using DMS.Extensions;
 
 namespace UI;
 
@@ -159,14 +159,36 @@ public partial class Main : Form
             return;
 
         DataGridView.HitTestInfo? hitTestInfo = DataGridView.HitTest(e.X, e.Y);
-        if (hitTestInfo.RowIndex < 0 || hitTestInfo.Type != DataGridViewHitTestType.RowHeader)
-            return;
+        if (hitTestInfo is { RowIndex: >= 0, Type: DataGridViewHitTestType.RowHeader })
+        {
+            if (!DataGridView.Rows[hitTestInfo.RowIndex].Selected)
+                return;
 
-        if (!DataGridView.Rows[hitTestInfo.RowIndex].Selected)
-            return;
+            DataGridViewMenu.Show(DataGridView, new Point(e.X, e.Y));
+            _testInfo = hitTestInfo;
+        }
+        else if (hitTestInfo is { ColumnIndex: >= 0, Type: DataGridViewHitTestType.ColumnHeader })
+        {
+            IndexMenu.Show(DataGridView, new Point(e.X, e.Y));
+            _testInfo = hitTestInfo;
+        }
+    }
 
-        DataGridViewMenu.Show(DataGridView, new Point(e.X, e.Y));
-        _testInfo = hitTestInfo;
+    private void CreateIndexToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        string tableName = tableNames.SelectedItems[0].Text;
+        TableInfo tableInfo = DataPageManager.TableInfo(tableName, true);
+
+        IndexNameForm indexForm = new(tableName, tableInfo.ColumnNames);
+        indexForm.ShowDialog();
+    }
+
+    private void DropIndexToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        string tableName = tableNames.SelectedItems[0].Text;
+
+        DropIndexDialog indexDialog = new(tableName);
+        indexDialog.ShowDialog();
     }
 
     private void ExitButton_Click(object sender, EventArgs e)

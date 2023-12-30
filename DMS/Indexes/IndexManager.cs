@@ -278,6 +278,7 @@ namespace DMS.Indexes
 
             fs.Seek(startOfRecordOffsetValues, SeekOrigin.Begin);
 
+            //logical error here
             for (int i = 0; i < columnCount; i++)
             {
                 if (columnIndexInTheTable.CustomContains(i))

@@ -46,7 +46,7 @@ public partial class CreateTableForm : Form
     private void CreateInputFields(int numberOfRows)
     {
         const int startY = 50;
-        const int spacingY = 30;
+        const int spacingY = 40;
         int currentY = startY;
 
         for (int i = 0; i < numberOfRows; i++)
@@ -54,7 +54,9 @@ public partial class CreateTableForm : Form
             Label lblColumnName = new()
             {
                 Text = "Column Name",
-                Location = new Point(10, currentY)
+                Location = new Point(20, currentY),
+                Width = 100,
+                AutoSize = true
             };
             this.Controls.Add(lblColumnName);
             _dynamicControls.Add(lblColumnName);
@@ -62,7 +64,8 @@ public partial class CreateTableForm : Form
             TextBox txtColumnName = new()
             {
                 Name = $"ColumnName_{i}",
-                Location = new Point(110, currentY)
+                Location = new Point(130, currentY),
+                Width = 100
             };
             this.Controls.Add(txtColumnName);
             _dynamicControls.Add(txtColumnName);
@@ -70,7 +73,9 @@ public partial class CreateTableForm : Form
             Label lblColumnType = new()
             {
                 Text = "Column Type",
-                Location = new Point(220, currentY)
+                Location = new Point(240, currentY),
+                Width = 100,
+                AutoSize = true
             };
             this.Controls.Add(lblColumnType);
             _dynamicControls.Add(lblColumnType);
@@ -78,7 +83,8 @@ public partial class CreateTableForm : Form
             TextBox txtColumnType = new()
             {
                 Name = $"ColumnType_{i}",
-                Location = new Point(320, currentY)
+                Location = new Point(350, currentY),
+                Width = 100
             };
             this.Controls.Add(txtColumnType);
             _dynamicControls.Add(txtColumnType);
@@ -86,7 +92,9 @@ public partial class CreateTableForm : Form
             Label lblDefaultValue = new()
             {
                 Text = "Default Value",
-                Location = new Point(430, currentY)
+                Location = new Point(460, currentY),
+                Width = 100,
+                AutoSize = true
             };
             this.Controls.Add(lblDefaultValue);
             _dynamicControls.Add(lblDefaultValue);
@@ -94,7 +102,8 @@ public partial class CreateTableForm : Form
             TextBox txtDefaultValue = new()
             {
                 Name = $"DefaultValue_{i}",
-                Location = new Point(530, currentY)
+                Location = new Point(570, currentY),
+                Width = 100
             };
             this.Controls.Add(txtDefaultValue);
             _dynamicControls.Add(txtDefaultValue);
