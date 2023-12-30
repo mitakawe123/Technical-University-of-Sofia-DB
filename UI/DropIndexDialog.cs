@@ -19,6 +19,12 @@ namespace UI
 
         private void DropIndexButton_Click(object sender, EventArgs e)
         {
+            if (DropIndexTextBox.Text == string.Empty)
+            {
+                MessageBox.Show("Please enter a index name");
+                return;
+            }
+
             ReadOnlySpan<char> indexName = DropIndexTextBox.Text.CustomAsSpan().CustomTrim();
             ReadOnlySpan<char> tableName = _tableName.CustomAsSpan();
 

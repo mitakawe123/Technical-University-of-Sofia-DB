@@ -6,10 +6,10 @@ namespace UI
 {
     public partial class IndexNameForm : Form
     {
-        private readonly string _tableName;
         private readonly IReadOnlyList<string> _columnNames;
+        private readonly string _tableName;
 
-        public IndexNameForm()
+        private IndexNameForm()
         {
             InitializeComponent();
         }
@@ -31,6 +31,12 @@ namespace UI
             if (ColumnNamesListBox.SelectedItems.Count <= 0)
             {
                 MessageBox.Show("Please select at least one column to index");
+                return;
+            }
+
+            if (IndexNameTextBox.Text == string.Empty)
+            {
+                MessageBox.Show("Please enter a index name");
                 return;
             }
 

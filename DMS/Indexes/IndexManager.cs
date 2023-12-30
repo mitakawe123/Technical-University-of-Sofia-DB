@@ -63,7 +63,7 @@ namespace DMS.Indexes
 
             WriteBinaryTreeToFile(offsets, columns.Count);
         }
-
+        
         public static void DropIndex(ReadOnlySpan<char> tableNameFromCommand, ReadOnlySpan<char> indexName)
         {
             char[] matchingKey = HelperMethods.FindTableWithName(tableNameFromCommand);
@@ -113,12 +113,14 @@ namespace DMS.Indexes
                 {
                     writer.Write(DefaultOffsetIndexValue);
                     writer.Write(DefaultOffsetIndexNameValue);
+                 
                     Console.WriteLine("Successfully drop index");
-                    return;
                 }
 
                 fs.Seek(sizeof(int) + sizeof(long), SeekOrigin.Begin);
             }
+
+            FileIntegrityChecker.RecalculateHash(fs, writer, offsetValues.startOfRecordOffsetValue);
         }
 
         private static IReadOnlyList<long> GetOffsetForIndexColumns(
@@ -278,7 +280,6 @@ namespace DMS.Indexes
 
             fs.Seek(startOfRecordOffsetValues, SeekOrigin.Begin);
 
-            //logical error here
             for (int i = 0; i < columnCount; i++)
             {
                 if (columnIndexInTheTable.CustomContains(i))
@@ -287,10 +288,9 @@ namespace DMS.Indexes
                     writer.Write(indexOffset);
 
                     long columnNameAsNumber = WordConverter.ConvertWordToNumber(indexName.ToString());
-                    writer.Write(columnNameAsNumber);
+                    writer.Write(columnNameAsNumber);   
 
                     Console.WriteLine("Successfully created index");
-                    return;
                 }
 
                 fs.Seek(sizeof(int) + sizeof(long), SeekOrigin.Current);

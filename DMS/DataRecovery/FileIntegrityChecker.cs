@@ -17,9 +17,9 @@ namespace DMS.DataRecovery
             if (DataPageManager.AllDataPagesCount == 0)
                 return false;
 
-            using FileStream fs = File.OpenRead(Files.MDF_FILE_NAME);
+            using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryReader reader = new(fs, Encoding.UTF8);
-            
+
             fs.Seek(DataPageManager.CounterSection, SeekOrigin.Begin);
 
             for (int i = 0; i < DataPageManager.AllDataPagesCount; i++)
@@ -32,7 +32,7 @@ namespace DMS.DataRecovery
 
                 int bytesRead = fs.Read(buffer, 0, (int)bytesToRead);
 
-                ulong currentHash = Hash.ComputeHash(buffer);   
+                ulong currentHash = Hash.ComputeHash(buffer);
 
                 bool compareHashes = CompareHashes(hash, currentHash);
                 if (!compareHashes)

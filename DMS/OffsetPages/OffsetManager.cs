@@ -52,9 +52,9 @@ namespace DMS.OffsetPages
             DKDictionary<char[], long> offsetMap = new();
             ReadOffsetTable(fs, reader, offsetMap);
 
-            if (DataPageManager.TablesCount == offsetMap.Count) 
+            if (DataPageManager.TablesCount == offsetMap.Count)
                 return offsetMap;
-            
+
             long nextPagePointer = reader.ReadInt64();
             while (nextPagePointer != DefaultBufferValue)
             {
@@ -120,7 +120,7 @@ namespace DMS.OffsetPages
 
                 pointer = reader.ReadInt64();
             }
-            
+
             return;
 
             void EraseRecordIfMatch()
@@ -166,7 +166,7 @@ namespace DMS.OffsetPages
             }
         }
 
-        public static (byte[] offsetValues, long endOfRecordOffsetValues,long startOfRecordOffsetValue) GetDataPageOffsetByTableName(char[] tableName)
+        public static (byte[] offsetValues, long endOfRecordOffsetValues, long startOfRecordOffsetValue) GetDataPageOffsetByTableName(char[] tableName)
         {
             using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
             using BinaryReader reader = new(fs, Encoding.UTF8);
@@ -204,7 +204,7 @@ namespace DMS.OffsetPages
                 pointer = reader.ReadInt64();
             }
 
-            return (Array.Empty<byte>(), 0,0);
+            return (Array.Empty<byte>(), 0, 0);
 
             byte[] CreateResultArray(
                 int tableNameLength,
