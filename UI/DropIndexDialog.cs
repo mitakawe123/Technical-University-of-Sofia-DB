@@ -1,34 +1,33 @@
 ﻿using DMS.Extensions;
 using DMS.Indexes;
 
-namespace UI
+namespace UI;
+
+public partial class DropIndexDialog : Form
 {
-    public partial class DropIndexDialog : Form
+    private readonly string _tableName;
+
+    public DropIndexDialog()
     {
-        private readonly string _tableName;
+        InitializeComponent();
+    }
 
-        public DropIndexDialog()
+    public DropIndexDialog(string tableName)
+    {
+        _tableName = tableName;
+    }
+
+    private void DropIndexButton_Click(object sender, EventArgs e)
+    {
+        if (DropIndexTextBox.Text == string.Empty)
         {
-            InitializeComponent();
+            MessageBox.Show(@"Please enter a index name");
+            return;
         }
 
-        public DropIndexDialog(string tableName)
-        {
-            _tableName = tableName;
-        }
+        ReadOnlySpan<char> indexName = DropIndexTextBox.Text.CustomAsSpan().CustomTrim();
+        ReadOnlySpan<char> tableName = _tableName.CustomAsSpan();
 
-        private void DropIndexButton_Click(object sender, EventArgs e)
-        {
-            if (DropIndexTextBox.Text == string.Empty)
-            {
-                MessageBox.Show(@"Please enter a index name");
-                return;
-            }
-
-            ReadOnlySpan<char> indexName = DropIndexTextBox.Text.CustomAsSpan().CustomTrim();
-            ReadOnlySpan<char> tableName = _tableName.CustomAsSpan();
-
-            IndexManager.DropIndex(tableName, indexName);
-        }
+        IndexManager.DropIndex(tableName, indexName);
     }
 }

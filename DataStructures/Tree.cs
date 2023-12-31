@@ -1,46 +1,45 @@
-﻿namespace DataStructures
+﻿namespace DataStructures;
+
+/*public class Tree
 {
-    /*public class Tree
+    private DKList<TreeNode> root = new();
+
+    public void InsertOrUpdate(char[] key, long value)
     {
-        private DKList<TreeNode> root = new();
+        var node = root.FirstOrDefault(n => n.Key.SequenceEqual(key));
+        if (node == null)
+            root.Add(new TreeNode(key, value));
+        else
+            if (!node.Values.Contains(value))
+                node.Values.Add(value);
+    }
 
-        public void InsertOrUpdate(char[] key, long value)
+    public bool Delete(char[] key)
+    {
+        var node = root.FirstOrDefault(n => n.Key.SequenceEqual(key));
+        if (node != null)
         {
-            var node = root.FirstOrDefault(n => n.Key.SequenceEqual(key));
-            if (node == null)
-                root.Add(new TreeNode(key, value));
-            else
-                if (!node.Values.Contains(value))
-                    node.Values.Add(value);
+            root.Remove(node);
+            return true;
         }
+        return false;
+    }
 
-        public bool Delete(char[] key)
+    public DKList<long> Search(char[] key)
+    {
+        var node = root.FirstOrDefault(n => n.Key.SequenceEqual(key));
+        return node?.Values;
+    }
+
+    private class TreeNode
+    {
+        public char[] Key { get; }
+        public DKList<long> Values { get; }
+
+        public TreeNode(char[] key, long value)
         {
-            var node = root.FirstOrDefault(n => n.Key.SequenceEqual(key));
-            if (node != null)
-            {
-                root.Remove(node);
-                return true;
-            }
-            return false;
+            Key = key;
+            Values = new DKList<long> { value };
         }
-
-        public DKList<long> Search(char[] key)
-        {
-            var node = root.FirstOrDefault(n => n.Key.SequenceEqual(key));
-            return node?.Values;
-        }
-
-        private class TreeNode
-        {
-            public char[] Key { get; }
-            public DKList<long> Values { get; }
-
-            public TreeNode(char[] key, long value)
-            {
-                Key = key;
-                Values = new DKList<long> { value };
-            }
-        }
-    }*/
-}
+    }
+}*/

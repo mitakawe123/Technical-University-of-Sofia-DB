@@ -2,54 +2,53 @@
 using DMS.Extensions;
 using DMS.Indexes;
 
-namespace UI
+namespace UI;
+
+public partial class IndexNameForm : Form
 {
-    public partial class IndexNameForm : Form
+    private readonly IReadOnlyList<string> _columnNames;
+    private readonly string _tableName;
+
+    private IndexNameForm()
     {
-        private readonly IReadOnlyList<string> _columnNames;
-        private readonly string _tableName;
+        InitializeComponent();
+    }
 
-        private IndexNameForm()
+    public IndexNameForm(string tableName, IReadOnlyList<string> columnNames) : this()
+    {
+        _tableName = tableName;
+        _columnNames = columnNames;
+    }
+
+    private void IndexNameDialog_Load(object sender, EventArgs e)
+    {
+        foreach (string name in _columnNames)
+            ColumnNamesListBox.Items.Add(name);
+    }
+
+    private void SubmitButton_Click(object sender, EventArgs e)
+    {
+        if (ColumnNamesListBox.SelectedItems.Count <= 0)
         {
-            InitializeComponent();
+            MessageBox.Show(@"Please select at least one column to index");
+            return;
         }
 
-        public IndexNameForm(string tableName, IReadOnlyList<string> columnNames) : this()
+        if (IndexNameTextBox.Text == string.Empty)
         {
-            _tableName = tableName;
-            _columnNames = columnNames;
+            MessageBox.Show(@"Please enter a index name");
+            return;
         }
 
-        private void IndexNameDialog_Load(object sender, EventArgs e)
-        {
-            foreach (string name in _columnNames)
-                ColumnNamesListBox.Items.Add(name);
-        }
+        DKList<string> columnsToIndex = new();
 
-        private void SubmitButton_Click(object sender, EventArgs e)
-        {
-            if (ColumnNamesListBox.SelectedItems.Count <= 0)
-            {
-                MessageBox.Show(@"Please select at least one column to index");
-                return;
-            }
+        foreach (string name in ColumnNamesListBox.SelectedItems)
+            columnsToIndex.Add(name);
 
-            if (IndexNameTextBox.Text == string.Empty)
-            {
-                MessageBox.Show(@"Please enter a index name");
-                return;
-            }
+        ReadOnlySpan<char> tableName = _tableName.CustomAsSpan();
+        ReadOnlySpan<char> indexName = IndexNameTextBox.Text.CustomAsSpan().CustomTrim();
 
-            DKList<string> columnsToIndex = new();
-
-            foreach (string name in ColumnNamesListBox.SelectedItems)
-                columnsToIndex.Add(name);
-
-            ReadOnlySpan<char> tableName = _tableName.CustomAsSpan();
-            ReadOnlySpan<char> indexName = IndexNameTextBox.Text.CustomAsSpan().CustomTrim();
-
-            IndexManager.CreateIndex(columnsToIndex, tableName, indexName);
-            Close();
-        }
+        IndexManager.CreateIndex(columnsToIndex, tableName, indexName);
+        Close();
     }
 }
