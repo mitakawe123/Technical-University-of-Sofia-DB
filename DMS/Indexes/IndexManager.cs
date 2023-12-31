@@ -23,7 +23,7 @@ public static class IndexManager
 
         if (matchingKey == Array.Empty<char>())
         {
-            Console.WriteLine(@"There is no table with the given name");
+            Console.WriteLine("There is no table with the given name");
             return;
         }
 
@@ -39,7 +39,7 @@ public static class IndexManager
         bool allElementsContained = columns.CustomAll(x => columnTypeAndName.CustomAny(y => y.Name == x));
         if (!allElementsContained)
         {
-            Console.WriteLine(@"Wrong column in the where clause");
+            Console.WriteLine("Wrong column in the where clause");
             CloseFileAndReader(fs, reader);
             return;
         }
@@ -59,11 +59,11 @@ public static class IndexManager
         CloseFileAndReader(fs, reader);
 
         var offsetValues = OffsetManager.GetDataPageOffsetByTableName(tableName.CustomToArray());
-        UpdateOffsetManagerIndexColumns(columnIndexInTheTable, columnIndexNames, offsets, indexName, offsetValues.offsetValues, offsetValues.endOfRecordOffsetValues, offsetValues.startOfRecordOffsetValue);
+        WriteBinaryTreeToFile(offsets, out long startOfBinaryTreeDp);
 
-        WriteBinaryTreeToFile(offsets, columns.Count);
+        UpdateOffsetManagerIndexColumns(columnIndexInTheTable, offsets, indexName, offsetValues.offsetValues, offsetValues.endOfRecordOffsetValues, offsetValues.startOfRecordOffsetValue, startOfBinaryTreeDp);
     }
-        
+
     public static void DropIndex(ReadOnlySpan<char> tableNameFromCommand, ReadOnlySpan<char> indexName)
     {
         char[] matchingKey = HelperMethods.FindTableWithName(tableNameFromCommand);
@@ -113,14 +113,78 @@ public static class IndexManager
             {
                 writer.Write(DefaultOffsetIndexValue);
                 writer.Write(DefaultOffsetIndexNameValue);
-                 
-                Console.WriteLine(@"Successfully drop index");
+
+                Console.WriteLine("Successfully drop index");
             }
 
             fs.Seek(sizeof(int) + sizeof(long), SeekOrigin.Begin);
         }
 
         FileIntegrityChecker.RecalculateHash(fs, writer, offsetValues.startOfRecordOffsetValue);
+    }
+
+    public static IReadOnlyList<long> ReadIndexedColumns(ReadOnlySpan<char> tableName)
+    {
+        var offsetValues = OffsetManager.GetDataPageOffsetByTableName(tableName.CustomToArray());
+
+        (int[] columnIndexes, long[] columnIndexNamesAsNumbers, int columnCount) = GetColumnIndexes(offsetValues.offsetValues);
+
+        IReadOnlyList<int> offsetForBinaryTrees = ReadOffsetForBinaryTrees(columnIndexes, tableName, columnCount);
+
+        (FileStream fs, BinaryReader reader) = OpenFileAndRead();
+
+        DKList<long> indexForIndexedColumns = new();
+        foreach (int offset in offsetForBinaryTrees)
+        {
+            long pointerOffset = offset - sizeof(ulong) - sizeof(int) + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
+            fs.Seek(offset, SeekOrigin.Begin);// int for free space and ulong for hash
+
+            while (fs.Position <= pointerOffset)
+            {
+                long offsetForIndexedColumn = reader.ReadInt64();
+                indexForIndexedColumns.Add(offsetForIndexedColumn);
+            }
+
+            fs.Seek(pointerOffset, SeekOrigin.Begin);
+            long pointer = reader.ReadInt64();
+
+           /* while (pointer != 0)
+            {
+                fs.Seek(pointer + sizeof(ulong) + sizeof(int), SeekOrigin.Begin);
+
+                long offsetForIndexedColumn = reader.ReadInt64();
+            }*/
+        }
+
+        return indexForIndexedColumns;
+    }
+
+    private static (int[] columnIndexes, long[] columnIndexNamesAsNumbers, int columnCount) GetColumnIndexes(byte[] offsetValues)
+    {
+        int tableNameLength = BitConverter.ToInt32(offsetValues, 0);
+
+        char[] tableName = new char[tableNameLength];
+        Array.Copy(offsetValues, 4, tableName, 0, tableNameLength);
+
+        long offsetValue = BitConverter.ToInt64(offsetValues, 4 + tableNameLength);
+
+        int columnCount = BitConverter.ToInt32(offsetValues, 12 + tableNameLength);
+
+        int[] columnIndexes = new int[columnCount];
+        long[] columnIndexNamesAsNumbers = new long[columnCount];
+
+        int byteIndex = 16 + tableNameLength;
+
+        for (int i = 0; i < columnCount; i++)
+        {
+            columnIndexes[i] = BitConverter.ToInt32(offsetValues, byteIndex);
+            byteIndex += 4;
+
+            columnIndexNamesAsNumbers[i] = BitConverter.ToInt64(offsetValues, byteIndex);
+            byteIndex += 8;
+        }
+
+        return (columnIndexes, columnIndexNamesAsNumbers, columnCount);
     }
 
     private static IReadOnlyList<long> GetOffsetForIndexColumns(
@@ -194,8 +258,10 @@ public static class IndexManager
         return offsets;
     }
 
-    private static void WriteBinaryTreeToFile(IReadOnlyList<long> offsets, int indexColumnCount)
+    private static void WriteBinaryTreeToFile(IReadOnlyCollection<long> offsets, out long startOfBinaryTreeDp)
     {
+        startOfBinaryTreeDp = 0;
+
         using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
         using BinaryWriter writer = new(fs);
 
@@ -206,10 +272,19 @@ public static class IndexManager
         int currentPage = DataPageManager.AllDataPagesCount;
         int offsetIndex = 0;
 
+        bool isStartBinaryTreeSet = false;
+
         while (numberOfPagesNeeded > 0)
         {
-            long pageStartOffset = currentPage * DataPageManager.DataPageSize + DataPageManager.CounterSection + sizeof(int) + sizeof(ulong);// sizeof(int) is for free space and ulong for hash
+            long pageStartOffset = currentPage * DataPageManager.DataPageSize + DataPageManager.CounterSection +
+                                   sizeof(int) + sizeof(ulong); // sizeof(int) is for free space and ulong for hash
             fs.Seek(pageStartOffset, SeekOrigin.Begin);
+
+            if (!isStartBinaryTreeSet)
+            {
+                startOfBinaryTreeDp = pageStartOffset;
+                isStartBinaryTreeSet = true;
+            }
 
             int freeSpace = DataPageManager.DataPageSize - metadataForIndex;
             while (offsetIndex < treeArraySize && freeSpace >= sizeof(long))
@@ -243,12 +318,12 @@ public static class IndexManager
 
     private static void UpdateOffsetManagerIndexColumns(
         IReadOnlyList<int> columnIndexInTheTable,
-        IReadOnlyList<string> columnIndexNames,
         IReadOnlyList<long> indexOffsets,
         ReadOnlySpan<char> indexName,
         byte[] offsetValues,
         long endOfRecordOffsetValues,
-        long startOfOffsetRecord)
+        long startOfOffsetRecord,
+        long startOfBinaryTreeDp)
     {
         int tableNameLength = BitConverter.ToInt32(offsetValues, 0);
 
@@ -284,13 +359,13 @@ public static class IndexManager
         {
             if (columnIndexInTheTable.CustomContains(i))
             {
-                int indexOffset = (int)indexOffsets[i];
-                writer.Write(indexOffset);
+                int startOfBt = (int)startOfBinaryTreeDp;
+                writer.Write(startOfBt);// write in the offset manager the start offset of the binary tree
 
                 long columnNameAsNumber = WordConverter.ConvertWordToNumber(indexName.ToString());
                 writer.Write(columnNameAsNumber);
 
-                Console.WriteLine(@"Successfully created index");
+                Console.WriteLine("Successfully created index");
             }
 
             fs.Seek(sizeof(int) + sizeof(long), SeekOrigin.Current);
@@ -299,40 +374,35 @@ public static class IndexManager
         FileIntegrityChecker.RecalculateHash(fs, writer, startOfOffsetRecord);
     }
 
-    private static DKList<long> ReadBinaryTreeFromFile(int indexColumnCount)
+    private static IReadOnlyList<int> ReadOffsetForBinaryTrees(
+        IReadOnlyList<int> columnIndexForIndexer,
+        ReadOnlySpan<char> tableName,
+        int columnCount)
     {
-        DKList<long> offsets = new();
-        using FileStream fileStream = new(Files.MDF_FILE_NAME, FileMode.Open);
-        using BinaryReader reader = new(fileStream);
+        DKList<int> offsetForBinaryTrees = new();
 
-        int metadataForIndex = sizeof(int) + sizeof(long);
-        long fileSize = fileStream.Length;
-        int numberOfPages = (int)Math.Ceiling((double)fileSize / DataPageManager.DataPageSize);
+        var offsetValues = OffsetManager.GetDataPageOffsetByTableName(tableName.CustomToArray());
+        long startOfRecordOffsetValues = offsetValues.endOfRecordOffsetValues - sizeof(int) * columnCount - sizeof(long) * columnCount;
 
-        int currentPage = 0;
+        using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open, FileAccess.Read);
+        using BinaryReader reader = new(fs);
 
-        while (currentPage < numberOfPages)
+        fs.Seek(startOfRecordOffsetValues, SeekOrigin.Begin);
+
+        for (int i = 0; i < columnCount; i++)
         {
-            long pageStartOffset = currentPage * DataPageManager.DataPageSize;// find from the offset manager the offset of the indexed column
-            fileStream.Seek(pageStartOffset, SeekOrigin.Begin);
-
-            ulong hash = reader.ReadUInt64();
-            int freeSpace = reader.ReadInt32();
-
-            int maxOffsetsInPage = (DataPageManager.DataPageSize - metadataForIndex) / sizeof(long);
-            int offsetsToRead = Math.Min(maxOffsetsInPage, (int)((fileSize - fileStream.Position) / sizeof(long)));
-
-            for (int i = 0; i < offsetsToRead; i++)
+            if (columnIndexForIndexer.CustomContains(i))
             {
-                long offset = reader.ReadInt64();
-                if (offset != 0) // 0 is used for empty nodes
-                    offsets.Add(offset);
+                int startOfBinaryTree = reader.ReadInt32();
+                long indexedColumnNameAsNumber = reader.ReadInt64();
+
+                offsetForBinaryTrees.Add(startOfBinaryTree);
             }
 
-            currentPage++;
+            fs.Seek(sizeof(int) + sizeof(long), SeekOrigin.Current);
         }
 
-        return offsets;
+        return offsetForBinaryTrees;
     }
 
     private static int CalculateBinaryTreeArraySize(int nodeCount)
