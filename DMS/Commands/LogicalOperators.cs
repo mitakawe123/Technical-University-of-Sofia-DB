@@ -121,7 +121,7 @@ public static class LogicalOperators
                     WhereCondition(ref allData, colCount, operation);
                 break;
             case "order by":
-                OrderByCondition(ref allData, allColumnsForTable, colCount, operations.Last());
+                OrderByCondition(ref allData, allColumnsForTable, colCount, operations[^1]);
                 break;
             case "join":
                 foreach (string operation in operations)

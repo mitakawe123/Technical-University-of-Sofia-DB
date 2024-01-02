@@ -141,20 +141,30 @@ public static class IndexManager
 
             while (fs.Position <= pointerOffset)
             {
-                long offsetForIndexedColumn = reader.ReadInt64();
-                indexForIndexedColumns.Add(offsetForIndexedColumn);
+                try
+                {
+                    long offsetForIndexedColumn = reader.ReadInt64();
+                    indexForIndexedColumns.Add(offsetForIndexedColumn);
+                }
+                catch (Exception)
+                {
+                    return indexForIndexedColumns;
+                    CloseFileAndReader(fs, reader);
+                }
             }
 
-            fs.Seek(pointerOffset, SeekOrigin.Begin);
+            /* fs.Seek(pointerOffset, SeekOrigin.Begin);
             long pointer = reader.ReadInt64();
 
-           /* while (pointer != 0)
-            {
-                fs.Seek(pointer + sizeof(ulong) + sizeof(int), SeekOrigin.Begin);
+             while (pointer != 0)
+             {
+                 fs.Seek(pointer + sizeof(ulong) + sizeof(int), SeekOrigin.Begin);
 
-                long offsetForIndexedColumn = reader.ReadInt64();
-            }*/
+                 long offsetForIndexedColumn = reader.ReadInt64();
+             }*/
         }
+
+        CloseFileAndReader(fs, reader);
 
         return indexForIndexedColumns;
     }

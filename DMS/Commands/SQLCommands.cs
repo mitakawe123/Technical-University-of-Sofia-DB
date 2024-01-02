@@ -5,6 +5,7 @@ using DMS.Shared;
 using System.Text;
 using DMS.DataRecovery;
 using DMS.Extensions;
+using DMS.Indexes;
 using DMS.Utils;
 
 namespace DMS.Commands;
@@ -274,9 +275,9 @@ public static class SqlCommands
         allData.RemoveAll(charArray => charArray.Length == 0 || charArray.CustomAll(c => c == '\0'));
 
         if (isForUi)
-            return PrintSelectedValuesInUi(allData, valuesToSelect, columnTypeAndName, logicalOperator, metadata.columnCount);
+            return PrintSelectedValuesInUi(logicalOperator, allData, columnTypeAndName, valuesToSelect, metadata.columnCount);
 
-        PrintSelectedValues(allData, valuesToSelect, columnTypeAndName, logicalOperator, metadata.columnCount);
+        PrintSelectedValues(logicalOperator, allData, columnTypeAndName, valuesToSelect, metadata.columnCount);
         return default;
     }
 
@@ -319,10 +320,10 @@ public static class SqlCommands
     }
 
     private static SelectQueryParams PrintSelectedValuesInUi(
-        IReadOnlyList<char[]> allData,
-        DKList<string> valuesToSelect,
-        IReadOnlyList<Column> columnTypeAndName,
         ReadOnlySpan<char> logicalOperator,
+        IReadOnlyList<char[]> allData,
+        IReadOnlyList<Column> columnTypeAndName,
+        DKList<string> valuesToSelect,
         int colCount)
     {
         DKList<Column> selectedColumns = columnTypeAndName.CustomWhere(c => valuesToSelect.CustomContains(c.Name) || valuesToSelect.CustomContains("*")).CustomToList();
@@ -340,10 +341,10 @@ public static class SqlCommands
     }
 
     private static void PrintSelectedValues(
-        IReadOnlyList<char[]> allData,
-        DKList<string> valuesToSelect,
-        IReadOnlyList<Column> columnTypeAndName,
         ReadOnlySpan<char> logicalOperator,
+        IReadOnlyList<char[]> allData,
+        IReadOnlyList<Column> columnTypeAndName,
+        DKList<string> valuesToSelect,
         int colCount)
     {
         DKList<Column> selectedColumns = columnTypeAndName.CustomWhere(c => valuesToSelect.CustomContains(c.Name) || valuesToSelect.CustomContains("*")).CustomToList();
@@ -380,7 +381,7 @@ public static class SqlCommands
                 if ((columnIndex + 1) % columnCount is not 0)
                     Console.Write(" | ");
                 else
-                    Console.WriteLine(@" |");
+                    Console.WriteLine(" |");
             }
 
             columnIndex++;
