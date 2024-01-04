@@ -150,17 +150,23 @@ public static class OffsetManager
                 totalIndexValueAsNumberSize += sizeof(long);
             }
 
-            int recordSizeInBytes = sizeof(int) // Size of tableNameLength
-                                    + tableNameLength // Size of currentTableName
-                                    + sizeof(long) // Size of offsetValue
-                                    + sizeof(int) // Size of columnCount
-                                    + totalIndexValueSize // Total size of all indexValue entries
-                                    + totalIndexValueAsNumberSize; // Total size of all indexValueAsNumber entries
+            int recordSizeInBytesBeforeColumnSize = sizeof(int) // Size of tableNameLength
+                                                    + tableNameLength // Size of currentTableName
+                                                    + sizeof(long); // Size of offsetValue
 
-            byte[] emptyBuffer = new byte[recordSizeInBytes];
 
-            fs.Seek(-recordSizeInBytes, SeekOrigin.Current);
-            fs.Write(emptyBuffer);
+            int recordSizeInBytesAfterColumnSize = totalIndexValueSize // Total size of all indexValue entries
+                                                   + totalIndexValueAsNumberSize; // Total size of all indexValueAsNumber entries
+
+            byte[] emptyBufferBefore = new byte[recordSizeInBytesBeforeColumnSize];
+            byte[] emptyBufferAfter = new byte[recordSizeInBytesAfterColumnSize];
+
+            fs.Seek(-(recordSizeInBytesAfterColumnSize + recordSizeInBytesBeforeColumnSize + sizeof(int)), SeekOrigin.Current);
+            writer.Write(emptyBufferBefore);
+
+            fs.Seek(sizeof(int), SeekOrigin.Current);//for the column count
+
+            writer.Write(emptyBufferAfter);
 
             isTableSuccessfulDeleted = true;
         }
@@ -417,10 +423,10 @@ public static class OffsetManager
 
     private static void ReadOffsetTable(FileStream fs, BinaryReader reader, IDictionary<char[], long> offsetMap)
     {
-        long stopPosition = fs.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
-
         ulong hash = reader.ReadUInt64();
         int freeSpace = reader.ReadInt32();
+
+        long stopPosition = fs.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
 
         while (fs.Position < stopPosition)
         {

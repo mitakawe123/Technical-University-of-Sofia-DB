@@ -273,11 +273,10 @@ public static class DataPageManager
         tableInfoForUi.ColumnCount = columnsCount;
         tableInfoForUi.TableName = new string(tableNameFromFile);
 
-        Console.WriteLine($@"Table name: {new string(tableNameFromFile)}");
-        Console.WriteLine($@"The table spans across {numberOfDataPagesForTable} data pages");
-        Console.WriteLine($@"Columns count is {columnsCount}");
-        Console.WriteLine(@"
-Column Details:");
+        Console.WriteLine($"Table name: {new string(tableNameFromFile)}");
+        Console.WriteLine($"The table spans across {numberOfDataPagesForTable} data pages");
+        Console.WriteLine($"Columns count is {columnsCount}");
+        Console.WriteLine("Column Details:");
 
         Console.WriteLine($@"{"Column Name",-20} Column Type");
         Console.WriteLine(new string('-', 40));
