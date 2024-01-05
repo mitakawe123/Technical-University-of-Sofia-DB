@@ -148,8 +148,8 @@ public static class IndexManager
                 }
                 catch (Exception)
                 {
-                    return indexForIndexedColumns;
                     CloseFileAndReader(fs, reader);
+                    return indexForIndexedColumns;
                 }
             }
 

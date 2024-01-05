@@ -75,10 +75,8 @@ public static class OffsetManager
 
         fs.Seek(DataPageManager.FirstOffsetPageStart, SeekOrigin.Begin);
 
-        long stopPosition = DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize -
-                            DataPageManager.BufferOverflowPointer;
+        long stopPosition = DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
         long snapshotHashStartingPosition = fs.Position;
-        long prevPosition;
 
         ulong hash = reader.ReadUInt64();
         int freeSpace = reader.ReadInt32();
@@ -87,9 +85,8 @@ public static class OffsetManager
         {
             if (isTableSuccessfulDeleted)
             {
-                prevPosition = fs.Position;
                 FileIntegrityChecker.RecalculateHash(fs, writer, snapshotHashStartingPosition);
-                fs.Seek(prevPosition, SeekOrigin.Begin);
+                return;
             }
 
             EraseRecordIfMatch();
@@ -98,10 +95,11 @@ public static class OffsetManager
         fs.Seek(stopPosition, SeekOrigin.Begin);
         long pointer = reader.ReadInt64();
 
-        while (pointer != DefaultBufferValue)
+        while (pointer != DefaultBufferValue && pointer > 0)
         {
             fs.Seek(pointer, SeekOrigin.Begin);
             snapshotHashStartingPosition = fs.Position;
+
             hash = reader.ReadUInt64();
             freeSpace = reader.ReadInt32();
 
@@ -110,9 +108,8 @@ public static class OffsetManager
             {
                 if (isTableSuccessfulDeleted)
                 {
-                    prevPosition = fs.Position;
                     FileIntegrityChecker.RecalculateHash(fs, writer, snapshotHashStartingPosition);
-                    fs.Seek(prevPosition, SeekOrigin.Begin);
+                    return;
                 }
 
                 EraseRecordIfMatch();
@@ -126,14 +123,7 @@ public static class OffsetManager
         void EraseRecordIfMatch()
         {
             int tableNameLength = reader.ReadInt32(); // 4 bytes
-
-            if (tableNameLength <= 0)
-                return;
-
             char[] currentTableName = reader.ReadChars(tableNameLength); // 1 byte per char
-
-            if (!currentTableName.SequenceEqual(tableName) || tableNameLength != tableName.Length)
-                return;
 
             long offsetValue = reader.ReadInt64(); // 8 bytes
             int columnCount = reader.ReadInt32(); // 4 bytes
@@ -150,18 +140,21 @@ public static class OffsetManager
                 totalIndexValueAsNumberSize += sizeof(long);
             }
 
-            int recordSizeInBytesBeforeColumnSize = sizeof(int) // Size of tableNameLength
-                                                    + tableNameLength // Size of currentTableName
+            if (tableNameLength <= 0 || !tableName.SequenceEqual(currentTableName))
+                return;
+
+            int recordSizeInBytesBeforeColumnSize = tableNameLength // Size of currentTableName (1 byte per char)
                                                     + sizeof(long); // Size of offsetValue
 
 
             int recordSizeInBytesAfterColumnSize = totalIndexValueSize // Total size of all indexValue entries
                                                    + totalIndexValueAsNumberSize; // Total size of all indexValueAsNumber entries
 
+            //don't erase the column count and the table name length
             byte[] emptyBufferBefore = new byte[recordSizeInBytesBeforeColumnSize];
             byte[] emptyBufferAfter = new byte[recordSizeInBytesAfterColumnSize];
 
-            fs.Seek(-(recordSizeInBytesAfterColumnSize + recordSizeInBytesBeforeColumnSize + sizeof(int)), SeekOrigin.Current);
+            fs.Seek(-(recordSizeInBytesAfterColumnSize + recordSizeInBytesBeforeColumnSize + sizeof(int)), SeekOrigin.Current);//don't include the table name length int
             writer.Write(emptyBufferBefore);
 
             fs.Seek(sizeof(int), SeekOrigin.Current);//for the column count
@@ -356,7 +349,6 @@ public static class OffsetManager
     {
         long snapshotHashStartingPosition = startOfFreeOffset;
 
-        //write to the current offset page
         long startingPoint = startOfFreeOffset + (DataPageManager.DataPageSize - freeSpace);
         int recordSize = sizeof(int) + entry.Key.Length + sizeof(long) + sizeof(int) + sizeof(int) * columnCount + sizeof(long) * columnCount;
         freeSpace -= recordSize;
@@ -386,20 +378,20 @@ public static class OffsetManager
 
     private static long PointerToNextPage()
     {
-        using FileStream binaryStream = new(Files.MDF_FILE_NAME, FileMode.Open);
-        using BinaryReader reader = new(binaryStream);
+        using FileStream fs = new(Files.MDF_FILE_NAME, FileMode.Open);
+        using BinaryReader reader = new(fs);
 
-        binaryStream.Seek(DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
+        fs.Seek(DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer, SeekOrigin.Begin);
         try
         {
             long pointer = reader.ReadInt64();
             while (pointer != DefaultBufferValue)
             {
-                binaryStream.Seek(pointer, SeekOrigin.Begin);
+                fs.Seek(pointer, SeekOrigin.Begin);
                 pointer = reader.ReadInt64();
             }
 
-            return binaryStream.Position;
+            return fs.Position;
         }
         catch
         {
@@ -423,10 +415,10 @@ public static class OffsetManager
 
     private static void ReadOffsetTable(FileStream fs, BinaryReader reader, IDictionary<char[], long> offsetMap)
     {
+        long stopPosition = fs.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
+
         ulong hash = reader.ReadUInt64();
         int freeSpace = reader.ReadInt32();
-
-        long stopPosition = fs.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
 
         while (fs.Position < stopPosition)
         {
@@ -441,11 +433,13 @@ public static class OffsetManager
                 long indexNameAsNumber = reader.ReadInt64();
             }
 
-            if (tableNameLength is not 0)
+            if (tableNameLength is not 0 && offsetValue is not 0)
                 offsetMap.TryAdd(tableName, offsetValue);
 
             if (DataPageManager.TablesCount == offsetMap.Count)
                 return;
         }
+
+        fs.Seek(stopPosition, SeekOrigin.Begin);
     }
 }

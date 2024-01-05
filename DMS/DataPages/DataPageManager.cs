@@ -177,7 +177,6 @@ public static class DataPageManager
     public static bool DropTable(ReadOnlySpan<char> tableName)
     {
         char[] matchingKey = HelperMethods.FindTableWithName(tableName);
-
         if (matchingKey == Array.Empty<char>())
             return false;
 
