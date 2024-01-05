@@ -30,6 +30,7 @@ public static class DataPageManager
 
     static DataPageManager()
     {
+        //TestCorruption.Change27thByte();
         SetConsoleCtrlHandler(ConsoleCtrlCheck, true);
 
         try
@@ -49,7 +50,7 @@ public static class DataPageManager
             TableOffsets = OffsetManager.ReadTableOffsets();
     }
 
-    public static void InitDataPageManager() => Console.WriteLine(@"Welcome to DMS");
+    public static void InitDataPageManager() => Console.WriteLine("Welcome to DMS");
 
     public static void ConsoleEventCallback()
     {

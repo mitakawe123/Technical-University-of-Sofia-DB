@@ -34,6 +34,7 @@
             // 
             // InsertButton
             // 
+            InsertButton.Enabled = false;
             InsertButton.Location = new Point(297, 363);
             InsertButton.Name = "InsertButton";
             InsertButton.Size = new Size(174, 75);

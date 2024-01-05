@@ -87,7 +87,7 @@ public partial class Main : Form
 
         TableInfoGrid.Columns.Add("ColumnNames", "Column Name");
         TableInfoGrid.Columns.Add("ColumnTypes", "Column Type");
-        TableInfoGrid.Columns.Add("DefaultValue", "Default Value");
+        //TableInfoGrid.Columns.Add("DefaultValue", "Default Value");
 
         for (int i = 0; i < tableInfo.ColumnNames.Count; i++)
             TableInfoGrid.Rows.Add(tableInfo.ColumnNames[i], tableInfo.ColumnTypes[i], tableInfo.DefaultValues[i]);
@@ -111,6 +111,9 @@ public partial class Main : Form
 
     private void InsertIntoTableToolStripMenuItem_Click(object sender, EventArgs e)
     {
+        if (tableNames.SelectedItems.Count <= 0)
+            return;
+
         ReadOnlySpan<char> tableName = tableNames.SelectedItems[0].Text;
 
         InsertForm insertForm = new();

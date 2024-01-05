@@ -15,7 +15,7 @@ public static class LogicalOperators
 {
     private static readonly DKList<string> Operators = new();
     private static DKList<string> _operations = new();
-        
+
     public static void Parse(
         ref IReadOnlyList<char[]> allData,
         DKList<Column> selectedColumns,
@@ -147,7 +147,7 @@ public static class LogicalOperators
         DKList<int> blockIndexes = new();
         for (int i = 0; i < allData.Count; i++)
         {
-            if (!CompareValues(allData[i], value, op)) 
+            if (!CompareValues(allData[i], value, op))
                 continue;
 
             int blockIndex = i / colCount;
@@ -184,7 +184,8 @@ public static class LogicalOperators
                 return (op, index + op.Length);
         }
 
-        throw new InvalidOperationException("No valid operator found.");
+        Console.WriteLine("No valid operator found.");
+        return ("", -1);
     }
 
     public static char[] GetValueFromOperation(string operation, int operatorIndex) => operation[operatorIndex..].CustomTrim().CustomToCharArray();
@@ -257,7 +258,7 @@ public static class LogicalOperators
         {
             tempList.Add(rowValue);
 
-            if (tempList.Count != columnCount) 
+            if (tempList.Count != columnCount)
                 continue;
 
             if (!IsConsecutiveInList(tempList, result))
@@ -277,13 +278,13 @@ public static class LogicalOperators
             bool isConsecutive = true;
             for (int j = 0; j < tempList.Count; j++)
             {
-                if (tempList[j].SequenceEqual(result[i + j])) 
+                if (tempList[j].SequenceEqual(result[i + j]))
                     continue;
 
                 isConsecutive = false;
                 break;
             }
-                
+
             if (isConsecutive)
                 return true;
         }

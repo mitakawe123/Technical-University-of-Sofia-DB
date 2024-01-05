@@ -84,7 +84,7 @@ public partial class CreateTableForm : Form
             {
                 Name = $"ColumnType_{i}",
                 Location = new Point(350, currentY),
-                Width = 100
+                Width = 100,
             };
             this.Controls.Add(txtColumnType);
             _dynamicControls.Add(txtColumnType);
@@ -94,7 +94,8 @@ public partial class CreateTableForm : Form
                 Text = "Default Value",
                 Location = new Point(460, currentY),
                 Width = 100,
-                AutoSize = true
+                AutoSize = true,
+                Visible = false
             };
             this.Controls.Add(lblDefaultValue);
             _dynamicControls.Add(lblDefaultValue);
@@ -103,7 +104,8 @@ public partial class CreateTableForm : Form
             {
                 Name = $"DefaultValue_{i}",
                 Location = new Point(570, currentY),
-                Width = 100
+                Width = 100,
+                Visible = false
             };
             this.Controls.Add(txtDefaultValue);
             _dynamicControls.Add(txtDefaultValue);

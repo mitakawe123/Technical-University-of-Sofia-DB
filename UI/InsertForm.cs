@@ -46,22 +46,23 @@ public partial class InsertForm : Form
             {
                 Text = columnNames[i],
                 AutoSize = true,
-                Location = new Point((this.ClientSize.Width / 2) - 200, currentY)
+                Location = new Point(ClientSize.Width / 2 - 200, currentY)
             };
             this.Controls.Add(nameLabel);
 
             TextBox inputBox = new()
             {
-                Location = new Point((this.ClientSize.Width / 2) - 90, currentY),
+                Location = new Point(ClientSize.Width / 2 - 90, currentY),
                 Name = $"inputBox_{i}"
             };
+            inputBox.TextChanged += InputBox_TextChanged;
             this.Controls.Add(inputBox);
 
             Label typeLabel = new()
             {
                 Text = columnTypes[i],
                 AutoSize = true,
-                Location = new Point((this.ClientSize.Width / 2) + 20, currentY)
+                Location = new Point(ClientSize.Width / 2 + 20, currentY)
             };
             this.Controls.Add(typeLabel);
 
@@ -71,6 +72,12 @@ public partial class InsertForm : Form
 
     private void InsertButton_Click(object sender, EventArgs e)
     {
+        if (!AreAllFieldsFilled())
+        {
+            MessageBox.Show("Please fill all fields before inserting.");
+            return;
+        }
+
         DKList<DKList<char[]>> valuesToInsert = new();
         DKList<char[]> columnData = new();
 
@@ -90,4 +97,23 @@ public partial class InsertForm : Form
 
         Close();
     }
+
+    private void InputBox_TextChanged(object sender, EventArgs e)
+    {
+        InsertButton.Enabled = AreAllFieldsFilled();
+    }
+
+    private bool AreAllFieldsFilled()
+    {
+        for (int i = 0; i < columnCount; i++)
+        {
+            if (Controls.Find($"inputBox_{i}", true).FirstOrDefault() is not TextBox inputBox)
+                continue;
+
+            if (string.IsNullOrWhiteSpace(inputBox.Text))
+                return false;
+        }
+        return true;
+    }
+
 }
