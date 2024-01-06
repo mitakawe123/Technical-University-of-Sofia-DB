@@ -62,7 +62,7 @@ public static class IndexManager
             Console.WriteLine("There was error creating tree for the columns");
             return;
         }
-        
+
         WriteBinaryTreeToFile(offsets, out long startOfBinaryTreeDp);
 
         UpdateOffsetManagerIndexColumns(columnIndexInTheTable, offsets, indexName, offsetValues.offsetValues, offsetValues.endOfRecordOffsetValues, offsetValues.startOfRecordOffsetValue, startOfBinaryTreeDp);
@@ -74,7 +74,7 @@ public static class IndexManager
 
         if (matchingKey == Array.Empty<char>())
         {
-            Console.WriteLine(@"There is no table with the given name");
+            Console.WriteLine("There is no table with the given name");
             return;
         }
 
@@ -120,8 +120,8 @@ public static class IndexManager
 
                 Console.WriteLine("Successfully drop index");
             }
-
-            fs.Seek(sizeof(int) + sizeof(long), SeekOrigin.Begin);
+            else
+                fs.Seek(sizeof(int) + sizeof(long), SeekOrigin.Current);
         }
 
         FileIntegrityChecker.RecalculateHash(fs, writer, offsetValues.startOfRecordOffsetValue);
@@ -381,8 +381,8 @@ public static class IndexManager
 
                 Console.WriteLine("Successfully created index");
             }
-
-            fs.Seek(sizeof(int) + sizeof(long), SeekOrigin.Current);
+            else
+                fs.Seek(sizeof(int) + sizeof(long), SeekOrigin.Current);
         }
 
         FileIntegrityChecker.RecalculateHash(fs, writer, startOfOffsetRecord);

@@ -14,7 +14,7 @@ internal static class Program
         bool isThereCorruptedDataPages = FileIntegrityChecker.CheckForCorruptionOnStart();
         if (isThereCorruptedDataPages)
         {
-            Console.WriteLine(@"There is corruption in the DB");
+            Console.WriteLine("There is corruption in the DB");
             Environment.Exit(0);
         }
 

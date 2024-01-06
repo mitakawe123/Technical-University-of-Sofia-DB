@@ -416,7 +416,7 @@ public static class OffsetManager
         return (int)DefaultBufferValue;
     }
 
-    private static void ReadOffsetTable(FileStream fs, BinaryReader reader, IDictionary<char[], long> offsetMap)
+    private static void ReadOffsetTable(FileStream fs, BinaryReader reader, DKDictionary<char[], long> offsetMap)
     {
         long stopPosition = fs.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
 

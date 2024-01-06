@@ -35,12 +35,12 @@ public static class FileIntegrityChecker
             ulong currentHash = Hash.ComputeHash(buffer);
 
             bool compareHashes = CompareHashes(hash, currentHash);
-            if (!compareHashes)
-            {
-                fs.Close();
-                reader.Close();
-                return true;
-            }
+            if (compareHashes) 
+                continue;
+
+            fs.Close();
+            reader.Close();
+            return true;
         }
 
         return false;
