@@ -35,17 +35,18 @@ public static class SqlCommands
         int headerSectionForMainDp = DataPageManager.Metadata + metadata.tableLength;
         (headerSectionForMainDp, DKList<Column> columnNameAndType) = ReadColumns(reader, headerSectionForMainDp, metadata.columnCount);
 
+
+        if (FilterSelectedColumns(columnsValuesToInsert, selectedColumns, tableName, columnNameAndType, fs, reader))
+        {
+            CloseStreamAndReader(fs, reader);
+            return;
+        }
+
         if (selectedColumns.Count != columnNameAndType.Count)
         {
             if (IsThereDefaultValueForNonSelectedColumns(selectedColumns, columnNameAndType, out _, out DKList<int> nonSelectedColumnsIndex))
             {
                 Console.WriteLine("There is no default value for the non selected columns");
-                CloseStreamAndReader(fs, reader);
-                return;
-            }
-
-            if (FilterSelectedColumns(columnsValuesToInsert, selectedColumns, tableName, columnNameAndType, fs, reader))
-            {
                 CloseStreamAndReader(fs, reader);
                 return;
             }

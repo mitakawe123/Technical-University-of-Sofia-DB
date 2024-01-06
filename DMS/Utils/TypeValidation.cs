@@ -65,12 +65,21 @@ public static class TypeValidation
 
     private static bool IsValidValue(char[] value, EDataTypes type)
     {
-        return type switch
+        string valueString = new(value);
+
+        try
         {
-            EDataTypes.INT => int.TryParse(value, out _),
-            EDataTypes.DATE => DateTime.TryParseExact(value, Formats, CultureInfo.InvariantCulture,
-                DateTimeStyles.None, out _),
-            _ => true
-        };
+            return type switch
+            {
+                EDataTypes.INT => int.TryParse(valueString, out _),
+                EDataTypes.DATE => DateTime.TryParse(valueString, out _),
+                _ => true
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception occurred: {ex.Message}");
+            return false;
+        }
     }
 }
