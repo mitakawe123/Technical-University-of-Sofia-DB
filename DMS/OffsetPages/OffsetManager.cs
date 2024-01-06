@@ -245,10 +245,6 @@ public static class OffsetManager
             int tableNameLength = reader.ReadInt32();
             char[] currentTableName = reader.ReadChars(tableNameLength);
 
-            if (!currentTableName.SequenceEqual(tableName) ||
-                tableNameLength != tableName.Length) //early check to see if the table match
-                return null;
-
             long offsetValue = reader.ReadInt64();
             int columnCount = reader.ReadInt32();
 
