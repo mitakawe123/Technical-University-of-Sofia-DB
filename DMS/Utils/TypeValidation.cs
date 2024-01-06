@@ -1,17 +1,11 @@
 ﻿using DMS.Constants;
 using DMS.Extensions;
 using DMS.Shared;
-using System.Globalization;
 
 namespace DMS.Utils;
 
 public static class TypeValidation
 {
-    //('2023-11-03'); -- ISO format
-    //('11/03/2023'); -- U.S.format
-    //('03/11/2023'); -- European format
-    private static readonly string[] Formats = { "yyyy-MM-dd", "MM/dd/yyyy", "dd/MM/yyyy" };
-
     public static bool CheckIfValidColumnType(ReadOnlySpan<char> type)
     {
         if (type.SequenceEqual(EDataTypes.DATE.ToString().CustomToLower())

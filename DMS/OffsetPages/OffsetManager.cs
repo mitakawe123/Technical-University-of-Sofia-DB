@@ -177,30 +177,37 @@ public static class OffsetManager
         int freeSpace = reader.ReadInt32();
         long stopPosition = DataPageManager.FirstOffsetPageStart + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
 
-        while (fs.Position < stopPosition)
+        try
         {
-            byte[]? result = CheckAndGetResult();
-            if (result is not null)
-                return (result, fs.Position, startOfRecordOffsetValue);
-        }
-
-        long pointer = reader.ReadInt64();
-        while (pointer is not DefaultBufferValue)
-        {
-            fs.Seek(pointer, SeekOrigin.Begin);
-            startOfRecordOffsetValue = pointer;
-
-            hash = reader.ReadUInt64();
-            freeSpace = reader.ReadInt32();
-            long stop = fs.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
-            while (fs.Position < stop)
+            while (fs.Position < stopPosition)
             {
                 byte[]? result = CheckAndGetResult();
                 if (result is not null)
                     return (result, fs.Position, startOfRecordOffsetValue);
             }
 
-            pointer = reader.ReadInt64();
+            long pointer = reader.ReadInt64();
+            while (pointer is not DefaultBufferValue)
+            {
+                fs.Seek(pointer, SeekOrigin.Begin);
+                startOfRecordOffsetValue = pointer;
+
+                hash = reader.ReadUInt64();
+                freeSpace = reader.ReadInt32();
+                long stop = fs.Position + DataPageManager.DataPageSize - DataPageManager.BufferOverflowPointer;
+                while (fs.Position < stop)
+                {
+                    byte[]? result = CheckAndGetResult();
+                    if (result is not null)
+                        return (result, fs.Position, startOfRecordOffsetValue);
+                }
+
+                pointer = reader.ReadInt64();
+            }
+        }
+        catch (Exception)
+        {
+            Console.WriteLine($"There was unknown error while creating index for {new string(tableName)}");
         }
 
         return (Array.Empty<byte>(), 0, 0);

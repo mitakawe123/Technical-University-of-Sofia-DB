@@ -46,19 +46,23 @@ public static class IndexManager
 
         DKList<long> offsets = new();
         DKList<int> columnIndexInTheTable = new();
-        DKList<string> columnIndexNames = new();
 
         foreach (string col in columns)
         {
             int columnIndex = HelperMethods.FindColumnIndex(col, columnTypeAndName);
             offsets.AddRange(GetOffsetForIndexColumns(fs, reader, columnIndex, matchingKey, headerSectionForMainDp, columnTypeAndName.Count));
             columnIndexInTheTable.Add(columnIndex);
-            columnIndexNames.Add(col);
         }
 
         CloseFileAndReader(fs, reader);
 
         var offsetValues = OffsetManager.GetDataPageOffsetByTableName(tableName.CustomToArray());
+        if (offsetValues.offsetValues.Length == 0)
+        {
+            Console.WriteLine("There was error creating tree for the columns");
+            return;
+        }
+        
         WriteBinaryTreeToFile(offsets, out long startOfBinaryTreeDp);
 
         UpdateOffsetManagerIndexColumns(columnIndexInTheTable, offsets, indexName, offsetValues.offsetValues, offsetValues.endOfRecordOffsetValues, offsetValues.startOfRecordOffsetValue, startOfBinaryTreeDp);

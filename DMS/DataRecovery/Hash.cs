@@ -2,6 +2,9 @@
 
 public abstract class Hash
 {
+    // << left shift
+    // ^ XOR (0101 ^ 1000 = 1101)
+    // >> right shift
     public static ulong ComputeHash(byte[] data)
     {
         ulong hash = 5381;
